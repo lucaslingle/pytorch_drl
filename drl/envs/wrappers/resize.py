@@ -6,6 +6,7 @@ from drl.envs.wrappers.abstract import ObservationWrapper
 
 ATARI_TARGET_HEIGHT = 84
 ATARI_TARGET_WIDTH = 84
+ATARI_USE_GRAYSCALE = True
 
 
 class ResizeWrapper(ObservationWrapper):
