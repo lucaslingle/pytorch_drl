@@ -1,7 +1,7 @@
 from drl.envs.wrappers.common.abstract import Wrapper
 
 
-ATARI_LIFES_FN = lambda env: env.unwrapped.ale.lives()
+ATARI_LIVES_FN = lambda env: env.unwrapped.ale.lives()
 ATARI_NOOP_ACTION = 0
 
 
