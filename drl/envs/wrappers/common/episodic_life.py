@@ -1,4 +1,4 @@
-from drl.envs.wrappers.abstract import Wrapper
+from drl.envs.wrappers.common.abstract import Wrapper
 
 
 ATARI_LIFES_FN = lambda env: env.unwrapped.ale.lives()
@@ -15,7 +15,7 @@ class EpisodicLifeWrapper(Wrapper):
         :param lives_fn (Callable[[Env], int]): Function to obtain num lives.
         :param noop_action (int): Any no-op action.
         """
-        super().__init__(self, env)
+        super().__init__(env)
         self._was_real_done = True
         self._lives = 0
         self._lives_fn = lives_fn

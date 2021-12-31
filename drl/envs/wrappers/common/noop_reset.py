@@ -1,4 +1,4 @@
-from drl.envs.wrappers.abstract import Wrapper
+from drl.envs.wrappers.common.abstract import Wrapper
 
 
 ATARI_NOOP_ACTION = 0
@@ -17,7 +17,7 @@ class NoopResetWrapper(Wrapper):
         :param noop_min (int): Minimum number of no-op actions to take.
         :param noop_max (int): Maximum number of no-op actions to take.
         """
-        super().__init__(self, env)
+        super().__init__(env)
         assert env.unwrapped.get_action_meanings()[noop_action] == 'NOOP'
         self._noop_action = noop_action
         self._noop_min = noop_min

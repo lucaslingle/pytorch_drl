@@ -1,6 +1,6 @@
 import numpy as np
 
-from drl.envs.wrappers.abstract import Wrapper
+from drl.envs.wrappers.common.abstract import Wrapper
 
 
 ATARI_NUM_SKIP = 4
@@ -18,9 +18,19 @@ class MaxAndSkipWrapper(Wrapper):
         :param apply_max (bool): Apply max-pooling to the last two frames?
             This can reduce artifacts in some environments, such as the ALE.
         """
-        super().__init__(self, env)
+        super().__init__(env)
         self._num_skip = num_skip
         self._apply_max = apply_max
+
+    def _run_checks(self):
+        cond1 = isinstance(self._num_skip, int)
+        cond2 = self._num_skip > 0
+        if not cond1:
+            msg = "Number of frames to skip must be an integer."
+            raise TypeError(msg)
+        if not cond2:
+            msg = "Number of frames to skip must be greater than zero."
+            raise ValueError(msg)
 
     def step(self, action):
         prev_obs, total_reward, done = None, 0., False

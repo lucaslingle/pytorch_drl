@@ -1,7 +1,4 @@
-import numpy as np
-import gym
-
-from drl.envs.wrappers.abstract import RewardWrapper
+from drl.envs.wrappers.common.abstract import RewardWrapper
 
 ATARI_LOW = -1.0
 ATARI_HIGH = 1.0
@@ -14,7 +11,7 @@ class ClipRewardWrapper(RewardWrapper):
         :param low (float): Minimum value for clipped reward.
         :param high (float): Maximum value for clipped reward.
         """
-        super().__init__(self, env)
+        super().__init__(env)
         self._low = low
         self._high = high
 
