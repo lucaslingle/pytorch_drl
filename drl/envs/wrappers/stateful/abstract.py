@@ -31,7 +31,7 @@ class StatefulWrapper(Module, Wrapper, metaclass=abc.ABCMeta):
              f"{self._prefix}_suffix0": self._suffix0,
              f"{self._prefix}_suffix1": self._suffix1,
              ...
-         })
+        })
         """
         pass
 
