@@ -11,7 +11,7 @@ from drl.envs.wrappers.common import (
     ClipRewardWrapper,
     FrameStackWrapper
 )
-from drl.envs.wrappers.atari.constants import (
+from drl.envs.atari.constants import (
     ACTION_RESET_SEQUENCE,
     REWARD_CLIP_LOW,
     REWARD_CLIP_HIGH,
@@ -27,7 +27,6 @@ from drl.envs.wrappers.atari.constants import (
     USE_GRAYSCALE,
     SCALE_FACTOR,
 )
-from drl.utils.typing_util import Env
 
 
 def make_atari(env_id, max_episode_steps=None):

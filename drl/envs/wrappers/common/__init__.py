@@ -23,5 +23,6 @@ __all__ = [
     "NoopResetWrapper",
     "ResizeWrapper",
     "ScaleObservationsWrapper",
+    "TimeLimitWrapper",
     "ToTensorWrapper"
 ]
