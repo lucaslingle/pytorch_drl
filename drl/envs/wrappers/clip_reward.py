@@ -29,7 +29,7 @@ class ClipRewardWrapper(RewardWrapper):
 
     def _set_reward_range(self):
         self.reward_range = gym.spaces.Box(
-            low=self._low, high=self._high, dtype=np.float32)
+            low=self._low, high=self._high, shape=(1,), dtype=np.float32)
 
     def reward(self, reward):
         return max(self._low, min(reward, self._high))
