@@ -1,13 +1,17 @@
+import numpy as np
+
 from drl.envs.wrappers.abstract import Wrapper
 
-import numpy as np
+
+ATARI_NUM_SKIP = 4
+ATARI_APPLY_MAX = True
 
 
 class MaxAndSkipWrapper(Wrapper):
     """
     Skip frames and optionally apply max-pooling to the last two frames.
     """
-    def __init__(self, env, num_skip=4, apply_max=True):
+    def __init__(self, env, num_skip, apply_max):
         """
         :param env (gym.core.Env): OpenAI gym environment instance.
         :param num_skip (int): Number of frames to skip over.
