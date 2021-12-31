@@ -4,22 +4,23 @@ import numpy as np
 import gym
 
 from drl.envs.wrappers.common.abstract import Wrapper
+from drl.utils.typing_util import Env
 
 
 class FrameStackWrapper(Wrapper):
-    def __init__(self, env, num_frames):
+    def __init__(self, env, num_stack):
         """
-        :param env (gym.core.Env): OpenAI gym environment instance.
-        :param num_frames (int): num_frames
+        :param env (Env): OpenAI gym environment instance.
+        :param num_stack (int): Number of frames to stack.
         """
         super().__init__(env)
-        self._num_frames = num_frames
+        self._num_stack = num_stack
         self._frames = deque([], maxlen=self._num_frames)
         self._set_observation_space()
 
     def _set_observation_space(self):
         start_shape = self.env.observation_space.shape
-        stacked_shape = (*start_shape[:-1], start_shape[-1] * self._num_frames)
+        stacked_shape = (*start_shape[:-1], start_shape[-1] * self._num_stack)
         dtype = self.env.observation_space.dtype
         self.observation_space = gym.spaces.Box(
             low=0, high=255, shape=stacked_shape, dtype=dtype)
@@ -36,7 +37,7 @@ class FrameStackWrapper(Wrapper):
         return self._get_obs(), reward, done, info
 
     def _get_obs(self):
-        assert len(self.frames) == self._num_frames
+        assert len(self.frames) == self._num_stack
         return LazyFrames(list(self.frames))
 
 

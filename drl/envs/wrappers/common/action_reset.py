@@ -1,7 +1,5 @@
 from drl.envs.wrappers.common.abstract import Wrapper
-
-
-ATARI_ACTION_SEQUENCE = [1, 2]
+from drl.utils.typing_util import Env
 
 
 class ActionResetWrapper(Wrapper):
@@ -11,7 +9,7 @@ class ActionResetWrapper(Wrapper):
     """
     def __init__(self, env, action_sequence):
         """
-        :param env (gym.core.Env): OpenAI gym environment instance.
+        :param env (Env): OpenAI gym environment instance.
         :param action_sequence (List[int]): List of actions to perform.
         """
         super().__init__(env)

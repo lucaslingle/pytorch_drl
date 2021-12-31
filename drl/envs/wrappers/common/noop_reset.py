@@ -1,9 +1,5 @@
 from drl.envs.wrappers.common.abstract import Wrapper
-
-
-ATARI_NOOP_ACTION = 0
-ATARI_MIN_NOOPS = 30
-ATARI_MAX_NOOPS = 30
+from drl.utils.typing_util import Env
 
 
 class NoopResetWrapper(Wrapper):
@@ -12,7 +8,7 @@ class NoopResetWrapper(Wrapper):
     """
     def __init__(self, env, noop_action, noop_min, noop_max):
         """
-        :param env (gym.core.Env): OpenAI gym environment instance.
+        :param env (Env): OpenAI gym environment instance.
         :param noop_action (int): No-op action.
         :param noop_min (int): Minimum number of no-op actions to take.
         :param noop_max (int): Maximum number of no-op actions to take.

@@ -3,10 +3,7 @@ import gym
 import cv2
 
 from drl.envs.wrappers.common.abstract import ObservationWrapper
-
-ATARI_TARGET_HEIGHT = 84
-ATARI_TARGET_WIDTH = 84
-ATARI_USE_GRAYSCALE = True
+from drl.utils.typing_util import Env
 
 
 class ResizeWrapper(ObservationWrapper):
@@ -15,7 +12,7 @@ class ResizeWrapper(ObservationWrapper):
     """
     def __init__(self, env, width, height, grayscale):
         """
-        :param env (gym.core.Env): OpenAI gym environment instance.
+        :param env (Env): OpenAI gym environment instance.
         :param width (int): Target image height.
         :param height (int): Target image height.
         :param grayscale (bool): Convert to grayscale?

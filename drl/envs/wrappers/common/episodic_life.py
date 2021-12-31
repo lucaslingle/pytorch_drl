@@ -1,8 +1,5 @@
 from drl.envs.wrappers.common.abstract import Wrapper
-
-
-ATARI_LIVES_FN = lambda env: env.unwrapped.ale.lives()
-ATARI_NOOP_ACTION = 0
+from drl.utils.typing_util import Env
 
 
 class EpisodicLifeWrapper(Wrapper):
@@ -11,7 +8,7 @@ class EpisodicLifeWrapper(Wrapper):
     """
     def __init__(self, env, lives_fn, noop_action):
         """
-        :param env (gym.core.Env): OpenAI gym environment instance.
+        :param env (Env): OpenAI gym environment instance.
         :param lives_fn (Callable[[Env], int]): Function to obtain num lives.
         :param noop_action (int): Any no-op action.
         """

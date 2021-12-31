@@ -1,13 +1,11 @@
 from drl.envs.wrappers.common.abstract import RewardWrapper
-
-ATARI_LOW = -1.0
-ATARI_HIGH = 1.0
+from drl.utils.typing_util import Env
 
 
 class ClipRewardWrapper(RewardWrapper):
     def __init__(self, env, low, high):
         """
-        :param env (gym.core.Env): OpenAI gym environment instance.
+        :param env (Env): OpenAI gym environment instance.
         :param low (float): Minimum value for clipped reward.
         :param high (float): Maximum value for clipped reward.
         """
