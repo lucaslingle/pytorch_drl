@@ -28,9 +28,8 @@ class NoopResetWrapper(Wrapper):
         noops = self.unwrapped.np_random.randint(low, high)
         if noops == 0:
             return obs
-        else:
-            for _ in range(noops):
-                obs, _, done, _ = self.env.step(self._noop_action)
-                if done:
-                    obs = self.env.reset(**kwargs)
-            return obs
+        for _ in range(noops):
+            obs, _, done, _ = self.env.step(self._noop_action)
+            if done:
+                obs = self.env.reset(**kwargs)
+        return obs
