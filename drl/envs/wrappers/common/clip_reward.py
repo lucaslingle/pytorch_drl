@@ -5,9 +5,10 @@ from drl.utils.typing_util import Env
 class ClipRewardWrapper(RewardWrapper):
     def __init__(self, env, low, high):
         """
-        :param env (Env): OpenAI gym environment instance.
-        :param low (float): Minimum value for clipped reward.
-        :param high (float): Maximum value for clipped reward.
+        Args:
+            env (Env): OpenAI gym environment instance.
+            low (float): Minimum value for clipped reward.
+            high (float): Maximum value for clipped reward.
         """
         super().__init__(env)
         self._low = low

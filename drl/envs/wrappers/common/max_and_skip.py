@@ -10,10 +10,11 @@ class MaxAndSkipWrapper(Wrapper):
     """
     def __init__(self, env, num_skip, apply_max):
         """
-        :param env (Env): OpenAI gym environment instance.
-        :param num_skip (int): Number of frames to skip over.
-        :param apply_max (bool): Apply max-pooling to the last two frames?
-            This can reduce artifacts in some environments, such as the ALE.
+        Args:
+            env (Env): OpenAI gym environment instance.
+            num_skip (int): Number of frames to skip over.
+            apply_max (bool): Apply max-pooling to the last two frames?
+                This can reduce artifacts in some environments, such as the ALE.
         """
         super().__init__(env)
         self._num_skip = num_skip

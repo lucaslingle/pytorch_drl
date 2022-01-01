@@ -8,10 +8,11 @@ class NoopResetWrapper(Wrapper):
     """
     def __init__(self, env, noop_action, noop_min, noop_max):
         """
-        :param env (Env): OpenAI gym environment instance.
-        :param noop_action (int): No-op action.
-        :param noop_min (int): Minimum number of no-op actions to take.
-        :param noop_max (int): Maximum number of no-op actions to take.
+        Args:
+            env (Env): OpenAI gym environment instance.
+            noop_action (int): No-op action.
+            noop_min (int): Minimum number of no-op actions to take.
+            noop_max (int): Maximum number of no-op actions to take.
         """
         super().__init__(env)
         assert env.unwrapped.get_action_meanings()[noop_action] == 'NOOP'

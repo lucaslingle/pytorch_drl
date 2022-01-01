@@ -1,4 +1,5 @@
 import torch as tc
+import numpy as np
 
 from drl.envs.wrappers.common.abstract import ObservationWrapper
 
@@ -9,9 +10,10 @@ class ToTensorWrapper(ObservationWrapper):
     """
     def __init__(self, env):
         """
-        :param env (gym.core.Env): OpenAI gym environment instance.
+        Args:
+            env (Env): OpenAI gym environment instance.
         """
         super().__init__(env)
 
     def observation(self, obs):
-        return tc.tensor(obs).float()
+        return tc.tensor(obs.astype(np.int32)).float()

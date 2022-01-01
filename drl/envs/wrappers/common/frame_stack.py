@@ -10,8 +10,9 @@ from drl.utils.typing_util import Env
 class FrameStackWrapper(Wrapper):
     def __init__(self, env, num_stack):
         """
-        :param env (Env): OpenAI gym environment instance.
-        :param num_stack (int): Number of frames to stack.
+        Args:
+            env (Env): OpenAI gym environment instance.
+            num_stack (int): Number of frames to stack.
         """
         super().__init__(env)
         self._num_stack = num_stack
@@ -47,7 +48,8 @@ class LazyFrames:
     """
     def __init__(self, frames):
         """
-        :param frames (List[np.ndarray]): List of observations.
+        Args:
+            frames (List[np.ndarray]): List of observations.
         """
         self._frames = frames
         self._out = None

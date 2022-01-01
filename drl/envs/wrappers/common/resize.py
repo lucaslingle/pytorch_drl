@@ -12,10 +12,11 @@ class ResizeWrapper(ObservationWrapper):
     """
     def __init__(self, env, width, height, grayscale):
         """
-        :param env (Env): OpenAI gym environment instance.
-        :param width (int): Target image height.
-        :param height (int): Target image height.
-        :param grayscale (bool): Convert to grayscale?
+        Args:
+            env (Env): OpenAI gym environment instance.
+            width (int): Target image height.
+            height (int): Target image height.
+            grayscale (bool): Convert to grayscale?
         """
         super().__init__(env)
         _ = cv2.ocl.setUseOpenCL(False)

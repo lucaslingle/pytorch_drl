@@ -8,9 +8,10 @@ class EpisodicLifeWrapper(Wrapper):
     """
     def __init__(self, env, lives_fn, noop_action):
         """
-        :param env (Env): OpenAI gym environment instance.
-        :param lives_fn (Callable[[Env], int]): Function to obtain num lives.
-        :param noop_action (int): Any no-op action.
+        Args:
+            env (Env): OpenAI gym environment instance.
+            lives_fn (Callable[[Env], int]): Function to obtain num lives.
+            noop_action (int): Any no-op action.
         """
         super().__init__(env)
         self._was_real_done = True

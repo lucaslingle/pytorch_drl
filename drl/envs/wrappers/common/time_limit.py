@@ -7,8 +7,9 @@ from drl.utils.typing_util import Env
 class TimeLimitWrapper(Wrapper):
     def __init__(self, env, max_episode_steps):
         """
-        :param env (Env): OpenAI gym environment instance.
-        :param max_episode_steps (int): Maximum number of env steps.
+        Args:
+            env (Env): OpenAI gym environment instance.
+            max_episode_steps (int): Maximum number of env steps.
         """
         super().__init__(env)
         self._max_episode_steps = max_episode_steps
