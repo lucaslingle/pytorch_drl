@@ -20,7 +20,6 @@ class StatefulWrapper(Module, Wrapper, metaclass=abc.ABCMeta):
         Module.__init__(self)
 
     @abc.abstractmethod
-    @property
     def get_checkpointables(self):
         """
         in subclasses, permit nesting by doing something like
