@@ -26,7 +26,7 @@ class Normalizer(tc.nn.Module):
     def stddev(self):
         return self._stddev
 
-    def __call__(self, item):
+    def __call__(self, item, eps=1e-4):
         steps = self.steps+1
 
         mean = self.mean
@@ -36,7 +36,7 @@ class Normalizer(tc.nn.Module):
         var = tc.square(self.stddev)
         var *= ((steps-1) / steps)
         var += (1 / steps) * tc.square(item-mean)
-        stddev = tc.sqrt(var)
+        stddev = tc.sqrt(var + eps)
 
         self.register_buffer(self._steps, tc.tensor(steps))
         self.register_buffer(self._mean, mean)
