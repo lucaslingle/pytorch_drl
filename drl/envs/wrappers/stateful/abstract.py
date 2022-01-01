@@ -18,7 +18,7 @@ class StatefulWrapper(Module, Wrapper, metaclass=abc.ABCMeta):
     def __init__(self, env: Env, **kwargs: Dict[str, Any]):
         Wrapper.__init__(self, env)
         Module.__init__(self)
-
+        
     @abc.abstractmethod
     def get_checkpointables(self):
         """
