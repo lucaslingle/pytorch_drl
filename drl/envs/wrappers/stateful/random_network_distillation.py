@@ -48,6 +48,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             #  non-TrainableWrappers between TrainableWrappers. How to fix?
             checkpointables.update(self.env.get_checkpointables())
         checkpointables.update({
+            'rnd_observation_normalizer': self._normalizer,
             'rnd_teacher_net': self._teacher_net,
             'rnd_student_net': self._student_net,
             'rnd_optimizer': self._optimizer
