@@ -5,6 +5,8 @@ Abstract wrapper definitions.
 from typing import Optional
 import abc
 
+import gym
+
 from drl.utils.typing_util import Env
 
 
@@ -86,6 +88,16 @@ class Wrapper(metaclass=abc.ABCMeta):
     @property
     def unwrapped(self):
         return self.env.unwrapped
+
+    def get_checkpointables(self):
+        checkpointables = {}
+        if isinstance(self.env, gym.core.Env):
+            return checkpointables
+        elif isinstance(self.env, Wrapper):
+            checkpointables.update(self.env.get_checkpointables())
+            return checkpointables
+        else:
+            raise NotImplementedError
 
 
 class ObservationWrapper(Wrapper, metaclass=abc.ABCMeta):
