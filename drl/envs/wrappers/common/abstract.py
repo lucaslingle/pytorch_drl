@@ -2,16 +2,14 @@
 Abstract wrapper definitions.
 """
 
-from typing import Optional
+from typing import Optional, Union
 import abc
 
 import gym
 
-from drl.utils.typing_util import Env
-
 
 class Wrapper(metaclass=abc.ABCMeta):
-    def __init__(self, env: Env):
+    def __init__(self, env: Union[gym.core.Env, 'Wrapper']):
         self.env = env
         self._action_space = None
         self._observation_space = None

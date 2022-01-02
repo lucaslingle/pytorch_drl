@@ -16,7 +16,6 @@ class TeacherNetwork(tc.nn.Module):
     def __init__(self, data_shape):
         super().__init__()
         self._data_shape = data_shape
-        # todo(lucaslingle): finish this.
 
 
 class StudentNetwork(tc.nn.Module):
@@ -61,7 +60,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         if isinstance(self.env, Wrapper):
             checkpointables.update(self.env.get_checkpointables())
         checkpointables.update({
-            'rnd_observation_normalizer': self._synched_normalizer,
+            'rnd_observation_normalizer': self._synced_normalizer,
             'rnd_teacher_net': self._teacher_net,
             'rnd_student_net': self._student_net,
             'rnd_optimizer': self._optimizer
