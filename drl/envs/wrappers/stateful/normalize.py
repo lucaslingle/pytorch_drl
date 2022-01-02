@@ -17,7 +17,7 @@ class Normalizer(tc.nn.Module):
 
     @steps.setter
     def steps(self, value):
-        self.register_buffer(self._steps, tc.tensor(value).int())
+        self.register_buffer(self._steps, tc.tensor(value).long())
 
     @property
     def mean(self):
