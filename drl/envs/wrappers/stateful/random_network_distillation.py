@@ -1,7 +1,10 @@
+from typing import Dict, Any
+
 import numpy as np
 import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+from drl.utils.typing_util import Env
 from drl.envs.wrappers.common.abstract import Wrapper
 from drl.envs.wrappers.stateful.abstract import TrainableWrapper
 from drl.envs.wrappers.stateful.normalize import Normalizer
@@ -106,19 +109,19 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
     """
     def __init__(
             self,
-            env,
-            rnd_optimizer_cls_name,
-            rnd_optimizer_args,
-            world_size,
-            widening
+            env: Env,
+            rnd_optimizer_cls_name: str,
+            rnd_optimizer_args: Dict[str, Any],
+            world_size: int,
+            widening: int
     ):
         """
         Args:
-            env (Env): OpenAI gym environment instance.
-            rnd_optimizer_cls_name (str): Optimizer class name.
-            rnd_optimizer_args (Dict[str, Any]): Optimizer args.
-            world_size (int): Number of processes.
-            widening (int): Channel multiplier for student net.
+            env: OpenAI gym environment instance.
+            rnd_optimizer_cls_name: Optimizer class name.
+            rnd_optimizer_args: Optimizer args.
+            world_size: Number of processes.
+            widening: Channel multiplier for student net.
         """
         super().__init__(env)
         self._data_shape = (84, 84, 4)
