@@ -18,7 +18,6 @@ class Wrapper(metaclass=abc.ABCMeta):
         self.env = env
         self._action_space = None
         self._observation_space = None
-        self._reward_range = None
         self._metadata = None
 
     def __getattr__(self, name):
@@ -43,16 +42,6 @@ class Wrapper(metaclass=abc.ABCMeta):
     @observation_space.setter
     def observation_space(self, space):
         self._observation_space = space
-
-    @property
-    def reward_range(self):
-        if self._reward_range is None:
-            return self.env.reward_range
-        return self._reward_range
-
-    @reward_range.setter
-    def reward_range(self, value):
-        self._reward_range = value
 
     @property
     def metadata(self):

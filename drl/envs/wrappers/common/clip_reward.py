@@ -3,7 +3,7 @@ from drl.utils.typing_util import Env
 
 
 class ClipRewardWrapper(RewardWrapper):
-    def __init__(self, env, low, high):
+    def __init__(self, env, low, high, key=None):
         """
         Args:
             env (Env): OpenAI gym environment instance.
@@ -13,6 +13,7 @@ class ClipRewardWrapper(RewardWrapper):
         super().__init__(env)
         self._low = low
         self._high = high
+        self._key = key
         self._run_checks()
         self._set_reward_range()
 
@@ -22,8 +23,12 @@ class ClipRewardWrapper(RewardWrapper):
             msg = "Low value must be less than high value."
             raise ValueError(msg)
 
-    def _set_reward_range(self):
-        self.reward_range = (self._low, self._high)
-
     def reward(self, reward):
+        if self._key:
+            if not isinstance(reward, dict):
+                msg = "Keyed ClipRewardWrapper expected reward to be a dict."
+                raise TypeError(msg)
+            selected_reward = reward[self._key]
+            reward[self._key] = max(self._low, min(selected_reward, self._high))
+            return reward
         return max(self._low, min(reward, self._high))
