@@ -4,7 +4,8 @@ from drl.utils.checkpoint_util import save_checkpoints, maybe_load_checkpoints
 
 
 class Algo(metaclass=abc.ABCMeta):
-    def __init__(self, config):
+    def __init__(self, rank, config):
+        self._rank = rank
         self._config = config
 
     @abc.abstractmethod
@@ -16,11 +17,11 @@ class Algo(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def _train_loop(self):
+    def training_loop(self):
         pass
 
     @abc.abstractmethod
-    def _evaluation_loop(self):
+    def evaluation_loop(self):
         pass
 
     def _save_checkpoints(self, checkpointables, step):

@@ -1,5 +1,4 @@
 from drl.envs.wrappers.common.abstract import RewardWrapper
-from drl.utils.typing_util import Env
 
 
 class ClipRewardWrapper(RewardWrapper):
@@ -15,7 +14,6 @@ class ClipRewardWrapper(RewardWrapper):
         self._high = high
         self._key = key
         self._run_checks()
-        self._set_reward_range()
 
     def _run_checks(self):
         cond = self._low < self._high

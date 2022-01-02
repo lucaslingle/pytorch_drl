@@ -1,0 +1,19 @@
+backend: gloo
+world_size: 1
+master_addr: localhost
+master_port: '12345'
+algo_cls_name: PPO
+policy_net:
+    preprocessing_spec:
+        ToChannelMajor: {}
+    architecture_cls_name: AsyncCNN
+    architecture_cls_args: {img_channels: 1}
+    head_cls_name: LinearCategoricalPolicyHead
+    head_cls_args: {num_features: 256, num_actions: 18}
+    optimizer_cls_name: Adam
+    optimizer_cls_args: {lr: 0.001, eps: 0.00001}
+value_net:
+    use_shared_architecture: True
+    head_cls_name: LinearValueHead
+    head_cls_args: {num_features: 256}
+env_id: 'PongNoFrameskip-v4'

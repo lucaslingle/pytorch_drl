@@ -1,6 +1,7 @@
 .idea
 checkpoints
-models_dir
+models_dir/*/checkpoints
+models_dir/*/tensorboard_logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

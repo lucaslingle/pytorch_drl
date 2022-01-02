@@ -7,11 +7,10 @@ from drl.agents.preprocessing.abstract import Preprocessing
 
 
 def get_preprocessing(
-        module_name: str,
         cls_name: str,
         cls_args: Dict[str, Any]
 ) -> Preprocessing:
-    module = importlib.import_module(module_name)
+    module = importlib.import_module('drl.agents.preprocessing')
     cls = getattr(module, cls_name)
     return cls(**cls_args)
 
@@ -29,12 +28,9 @@ class EndToEndPreprocessing(Preprocessing):
 
     def _build(self):
         preprocessing_stack = list()
-        for fq_cls_name, cls_args in self._preprocessing_spec:
-            module_name, _, cls_name = fq_cls_name.rpartition(".")
+        for cls_name, cls_args in self._preprocessing_spec.items():
             preprocessing = get_preprocessing(
-                module_name=module_name,
-                cls_name=cls_name,
-                cls_args=cls_args)
+                cls_name=cls_name, cls_args=cls_args)
             preprocessing_stack.append(preprocessing)
         return tc.nn.Sequential(*preprocessing_stack)
 

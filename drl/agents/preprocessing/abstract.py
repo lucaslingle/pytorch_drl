@@ -1,7 +1,9 @@
 import abc
 
+import torch as tc
 
-class Preprocessing(metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    def preprocessed(self, x):
-        pass
+
+class Preprocessing(tc.nn.Module, metaclass=abc.ABCMeta):
+    """
+    Runs preprocessing ops.
+    """

@@ -1,5 +1,4 @@
 from drl.envs.wrappers.common.abstract import ObservationWrapper
-from drl.utils.typing_util import Env
 
 
 class ScaleObservationsWrapper(ObservationWrapper):
