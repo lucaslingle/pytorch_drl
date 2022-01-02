@@ -96,7 +96,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         self._data_shape = (84, 84, 4)
         self._world_size = world_size
         self._synced_normalizer = Normalizer(self._data_shape, -5, 5)
-        self._unsynced_normalizer = Normalizer(self._data_shape, -5, -5)
+        self._unsynced_normalizer = Normalizer(self._data_shape, -5, 5)
         self._teacher_net = DDP(TeacherNetwork(self._data_shape))
         self._student_net = DDP(StudentNetwork(self._data_shape, widening))
         self._optimizer = get_optimizer(
