@@ -71,6 +71,7 @@ class StudentNetwork(tc.nn.Module):
             tc.nn.ReLU(),
             tc.nn.Linear(256 * widening, 512)
         )
+        self._init_weights()
 
     def _init_weights(self):
         for m in self._network:
