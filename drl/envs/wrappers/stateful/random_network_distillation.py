@@ -104,12 +104,19 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
     This class supports distributed data parallel training,
     and synchronizes normalization statistics across processes.
     """
-    def __init__(self, env, rnd_opt_cls_name, rnd_opt_args, world_size, widening):
+    def __init__(
+            self,
+            env,
+            rnd_optimizer_cls_name,
+            rnd_optimizer_args,
+            world_size,
+            widening
+    ):
         """
         Args:
             env (Env): OpenAI gym environment instance.
-            rnd_opt_cls_name (str): Optimizer class name.
-            rnd_opt_args (Dict[str, Any]): Optimizer args.
+            rnd_optimizer_cls_name (str): Optimizer class name.
+            rnd_optimizer_args (Dict[str, Any]): Optimizer args.
             world_size (int): Number of processes.
             widening (int): Channel multiplier for student net.
         """
@@ -122,8 +129,8 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         self._student_net = DDP(StudentNetwork(self._data_shape, widening))
         self._optimizer = get_optimizer(
             model=self._student_net,
-            optimizer_cls_name=rnd_opt_cls_name,
-            optimizer_args=rnd_opt_args)
+            optimizer_cls_name=rnd_optimizer_cls_name,
+            optimizer_args=rnd_optimizer_args)
         self._run_checks()
         self._sync_normalizers()
 
