@@ -29,8 +29,7 @@ from drl.envs.atari.constants import (
 )
 
 
-def make_atari(env_id, max_episode_steps=None):
-    env = gym.make(env_id)
+def make_atari(env, max_episode_steps=None):
     assert 'NoFrameskip' in env.spec.id
     env = NoopResetWrapper(
         env=env,
@@ -47,7 +46,7 @@ def make_atari(env_id, max_episode_steps=None):
     return env
 
 
-def wrap_deepmind(env, episode_life, clip_rewards, scale, frame_stack):  # ppo sets frame_stack to false O_o
+def wrap_deepmind(env, episode_life=True, clip_rewards=True, scale=True, frame_stack=True):  # ppo sets frame_stack to false O_o
     """
     Configure environment for DeepMind-style Atari.
 

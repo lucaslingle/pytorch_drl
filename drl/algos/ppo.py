@@ -1,13 +1,17 @@
-import abc
+import warnings
 
+import gym
 import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from drl.algos.abstract import Algo
 from drl.agents.preprocessing.common import EndToEndPreprocessing
-from drl.agents.architectures import get_architecture
-from drl.agents.integration import dynamic_mixin
+from drl.agents.integration import (
+    IntegratedAgent, get_architecture_cls, get_head_cls, dynamic_mixin
+)
 from drl.utils.optim_util import get_optimizer
+from drl.envs.atari.make import make_atari, wrap_deepmind
+from drl.envs.wrappers.stateful import RandomNetworkDistillationWrapper
 
 
 class PPO(Algo):
@@ -15,51 +19,107 @@ class PPO(Algo):
         super().__init__(config)
         self._learning_system = self._get_learning_system()
 
-    @abc.abstractmethod
-    def _get_learning_system(self):
-        preprocessing_spec = self.config.get('preprocessing')
-        preprocessing = EndToEndPreprocessing(preprocessing_spec) # maybe do mixin for preprocessing too
-
-        policy_config = self._config.get('policy_net')
-        policy_config.get('architecture_cls_name')
-        policy_architecture = get_architecture(
-            cls_name=policy_config.get('architecture_cls_name'),
+    @staticmethod
+    def _get_policy_net(policy_config):
+        policy_net = IntegratedAgent()
+        dynamic_mixin(
+            obj=policy_net,
+            cls=EndToEndPreprocessing,
+            cls_args=policy_config.get('preprocessing_spec'))
+        dynamic_mixin(
+            obj=policy_net,
+            cls=get_architecture_cls(
+                policy_config.get('architecture_cls_name')),
             cls_args=policy_config.get('architecture_cls_args'))
         dynamic_mixin(
-            obj=policy_architecture,
-            cls=get_head_cls(cls_name=policy_config.get('head_cls_name')),
+            obj=policy_net,
+            cls=get_head_cls(policy_config.get('head_cls_name')),
             cls_args=policy_config.get('head_cls_args'))
+        return policy_net
 
-        value_config = self._config.get('value_net')
-        if value_config.get('use_separate_architecture'):
-            value_architecture = get_architecture(
-                cls_name=value_config.get('architecture_cls_name'),
-                cls_args=value_config.get('architecture_cls_args'))
+    @staticmethod
+    def _get_value_net(value_config, policy_net):
+        shared = value_config.get('use_shared_architecture')
+        if shared:
+            value_net = policy_net
         else:
-            value_architecture = policy_architecture
+            value_net = IntegratedAgent()
+            dynamic_mixin(
+                obj=value_net,
+                cls=EndToEndPreprocessing,
+                cls_args=value_config.get('preprocessing_spec'))
+            dynamic_mixin(
+                obj=value_net,
+                cls=get_architecture_cls(
+                    value_config.get('architecture_cls_name')),
+                cls_args=value_config.get('architecture_cls_args'))
         dynamic_mixin(
-            obj=value_architecture,
-            cls=get_head_cls(cls_name=value_config.get('head_cls_name')),
+            obj=value_net,
+            cls=get_head_cls(value_config.get('head_cls_name')),
             cls_args=value_config.get('head_cls_args'))
+        return None if shared else value_net
+
+    @staticmethod
+    def _get_policy_optimizer(policy_config, policy_net):
+        policy_optimizer = get_optimizer(
+            model=policy_net,
+            optimizer_cls_name=policy_config.get('optimizer_cls_name'),
+            optimizer_args=policy_config.get('optimizer_args'))
+        return policy_optimizer
+
+    @staticmethod
+    def _get_value_optimizer(value_config, value_net):
+        shared = value_config.get('use_shared_architecture')
+        if shared:
+            return None
+        value_optimizer = get_optimizer(
+            model=value_net,
+            optimizer_cls_name=value_config.get('optimizer_cls_name'),
+            optimizer_args=value_config.get('optimizer_args'))
+        return value_optimizer
+
+    def _get_learning_system(self):
+        policy_config = self._config.get('policy_net')
+        value_config = self._config.get('value_net')
+
+        policy_net = self._get_policy_net(policy_config)
+        value_net = self._get_value_net(policy_config)
+
+        policy_net = DDP(policy_net)
+        if value_net:
+            value_net = DDP(value_net)
+
+        policy_optimizer = self._get_policy_optimizer(policy_config, policy_net)
+        value_optimizer = self._get_value_optimizer(value_config, value_net)
 
         # todo(lucaslingle):
-        #   figure out a good way to mixin the preprocessing too.
-        #   technically it comes first,
-        #   but i kinda dont want the architecture to be a mixin.
-        #   alternatively, maybe i start with an empty class and mix everything into it.
+        #  In the future, make AtariWrapper and DeepmindWrapper composite wrappers,
+        #  Then change this section to support for wrapping via config,
+        #    similar to pytorch_ddp_resnet for transforms.
+        warnings.warn("PPO currently only supports atari games!", UserWarning)
+        env = gym.make(self._config.get('env_id'))
+        env = wrap_deepmind(make_atari(env), frame_stack=False)
 
-    @abc.abstractmethod
+        return {
+            'policy_net': policy_net,
+            'value_net': value_net,
+            'policy_optimizer': policy_optimizer,
+            'value_optimizer': value_optimizer
+        }
+
+    def _compute_losses(self, mb):
+        # todo(lucaslingle): when defining compute losses,
+        #  be sure to check config.use_separate_architecture
+        raise NotImplementedError
+
     def _train_loop(self):
-        pass
+        raise NotImplementedError
 
-    @abc.abstractmethod
     def _evaluation_loop(self):
-        pass
+        raise NotImplementedError
 
-    @abc.abstractmethod
     def _save_checkpoints(self):
-        pass
+        raise NotImplementedError
 
-    @abc.abstractmethod
     def _maybe_load_checkpoints(self):
-        pass
+        raise NotImplementedError

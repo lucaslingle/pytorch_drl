@@ -10,6 +10,10 @@ class Algo(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
+    def _compute_losses(self, mb):
+        pass
+
+    @abc.abstractmethod
     def _train_loop(self):
         pass
 

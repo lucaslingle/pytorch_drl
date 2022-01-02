@@ -7,5 +7,5 @@ class ToChannelMajor(Preprocessing):
     def __init__(self):
         super().__init__()
 
-    def forward(self, x):
+    def preprocessed(self, x):
         return x.permute(0, 3, 1, 2)
