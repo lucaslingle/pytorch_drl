@@ -16,7 +16,7 @@ class FrameStackWrapper(Wrapper):
         """
         super().__init__(env)
         self._num_stack = num_stack
-        self._frames = deque([], maxlen=self._num_frames)
+        self._frames = deque(maxlen=self._num_frames)
         self._set_observation_space()
 
     def _set_observation_space(self):

@@ -19,6 +19,7 @@ class MaxAndSkipWrapper(Wrapper):
         super().__init__(env)
         self._num_skip = num_skip
         self._apply_max = apply_max
+        self._run_checks()
 
     def _run_checks(self):
         cond1 = isinstance(self._num_skip, int)

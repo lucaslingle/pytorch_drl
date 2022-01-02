@@ -13,7 +13,6 @@ class ClipRewardWrapper(RewardWrapper):
         super().__init__(env)
         self._low = low
         self._high = high
-
         self._run_checks()
         self._set_reward_range()
 

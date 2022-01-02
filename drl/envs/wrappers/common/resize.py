@@ -23,7 +23,6 @@ class ResizeWrapper(ObservationWrapper):
         self._width = width
         self._height = height
         self._grayscale = grayscale
-
         self._run_checks()
         self._set_observation_space()
 

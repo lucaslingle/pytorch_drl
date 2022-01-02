@@ -15,10 +15,17 @@ class NoopResetWrapper(Wrapper):
             noop_max (int): Maximum number of no-op actions to take.
         """
         super().__init__(env)
-        assert env.unwrapped.get_action_meanings()[noop_action] == 'NOOP'
         self._noop_action = noop_action
         self._noop_min = noop_min
         self._noop_max = noop_max
+        self._run_checks()
+
+    def _run_checks(self):
+        meanings = self.env.unwrapped.get_action_meanings()
+        cond = meanings[self._noop_action] == 'NOOP'
+        if not cond:
+            msg = "Chosen no-op action does not have meaning 'NOOP'."
+            raise ValueError(msg)
 
     def reset(self, **kwargs):
         """
