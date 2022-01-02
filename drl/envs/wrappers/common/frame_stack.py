@@ -26,6 +26,10 @@ class FrameStackWrapper(Wrapper):
         self.observation_space = gym.spaces.Box(
             low=0, high=255, shape=stacked_shape, dtype=dtype)
 
+    def _get_obs(self):
+        assert len(self.frames) == self._num_stack
+        return LazyFrames(list(self.frames))
+
     def reset(self, **kwargs):
         obs = self.env.reset()
         for _ in range(self.k):
@@ -36,10 +40,6 @@ class FrameStackWrapper(Wrapper):
         ob, reward, done, info = self.env.step(action)
         self.frames.append(ob)
         return self._get_obs(), reward, done, info
-
-    def _get_obs(self):
-        assert len(self.frames) == self._num_stack
-        return LazyFrames(list(self.frames))
 
 
 class LazyFrames:
