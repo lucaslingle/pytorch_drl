@@ -1,4 +1,5 @@
 from typing import Dict, Any
+import warnings
 
 import numpy as np
 import torch as tc
@@ -104,7 +105,6 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             optimizer_cls_name=rnd_optimizer_cls_name,
             optimizer_args=rnd_optimizer_args)
         self._run_checks()
-        self._sync_normalizers()
 
     def _run_checks(self):
         space = self.env.observation_space
@@ -117,16 +117,19 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             msg = f"Attempted to wrap env with unsupported shape {space.shape}."
             raise ValueError(msg)
 
-    def _sync_normalizers(self):
+    def _sync_normalizers_local(self):
+        self._unsynced_normalizer.steps = self._synced_normalizer.steps
+        self._unsynced_normalizer.mean = self._synced_normalizer.mean
+        self._unsynced_normalizer.var = self._synced_normalizer.var
+
+    def _sync_normalizers_global(self):
         self._synced_normalizer.steps = global_mean(
             self._unsynced_normalizer.steps, self._world_size)
         self._synced_normalizer.mean = global_mean(
             self._unsynced_normalizer.mean, self._world_size)
         self._synced_normalizer.var = global_mean(
             self._unsynced_normalizer.var, self._world_size)
-        self._unsynced_normalizer.steps = self._synced_normalizer.steps
-        self._unsynced_normalizer.mean = self._synced_normalizer.mean
-        self._unsynced_normalizer.var = self._synced_normalizer.var
+        self._sync_normalizers_local()
 
     def get_checkpointables(self):
         checkpointables = dict()
@@ -141,6 +144,8 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         return checkpointables
 
     def step(self, ac):
+        if self._unsynced_normalizer.step == 0:
+            self._sync_normalizers_local()
         obs, rew, done, info = self.env.step(ac)
         normalized = self._synced_normalizer(obs.unsqueeze(0))
         _ = self._unsynced_normalizer.update(obs)
@@ -159,4 +164,4 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         loss.backward()
         self._optimizer.step()
         self._optimizer.zero_grad()
-        self._sync_normalizers()
+        self._sync_normalizers_global()
