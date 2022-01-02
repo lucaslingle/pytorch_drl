@@ -20,29 +20,11 @@ class RNDNetwork(tc.nn.Module):
         self._widening = widening
         self._network = tc.nn.Sequential(
             ToChannelMajor(),
-            tc.nn.Conv2d(
-                in_channels=self._input_channels,
-                out_channels=16 * widening,
-                kernel_size=(8,8),
-                stride=(4,4),
-                padding=(0,0)
-            ),
+            tc.nn.Conv2d(self._input_channels, 16 * widening, (8,8), (4,4), (0,0)),
             tc.nn.LeakyReLU(negative_slope=0.2),
-            tc.nn.Conv2d(
-                in_channels=16 * widening,
-                out_channels=32 * widening,
-                kernel_size=(4,4),
-                stride=(2,2),
-                padding=(0,0)
-            ),
+            tc.nn.Conv2d(16 * widening, 32 * widening, (4,4), (2,2), (0,0)),
             tc.nn.LeakyReLU(negative_slope=0.2),
-            tc.nn.Conv2d(
-                in_channels=32 * widening,
-                out_channels=32 * widening,
-                kernel_size=(4,4),
-                stride=(1,1),
-                padding=(0,0)
-            ),
+            tc.nn.Conv2d(32 * widening, 32 * widening, (4,4), (1,1), (0,0)),
             tc.nn.LeakyReLU(negative_slope=0.2),
             tc.nn.Flatten()
         )
@@ -64,7 +46,7 @@ class TeacherNetwork(tc.nn.Module):
         self._data_shape = data_shape
         self._network = tc.nn.Sequential(
             RNDNetwork(data_shape=data_shape, widening=1),
-            tc.nn.Linear(in_features=1152, out_features=512)
+            tc.nn.Linear(1152, 512)
         )
         self._init_weights()
 
