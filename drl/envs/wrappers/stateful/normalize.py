@@ -35,7 +35,7 @@ class Normalizer(tc.nn.Module):
     def var(self, tensor):
         self.register_buffer(self._var, tensor)
 
-    def step(self, item):
+    def update(self, item):
         # updates a streaming, asymptotically-unbiased estimator of mean and var
         steps = self.steps+1
 
@@ -51,7 +51,7 @@ class Normalizer(tc.nn.Module):
         self.mean = mean
         self.var = var
 
-    def apply(self, item, eps=1e-4):
+    def forward(self, item, eps=1e-4):
         normalized = (item - self.mean) * tc.rsqrt(self.var + eps)
         if self._clip_low is not None:
             lows = tc.ones_like(normalized) * self._clip_low
