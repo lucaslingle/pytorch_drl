@@ -124,8 +124,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             self._unsynced_normalizer.mean, self._world_size)
         self._synced_normalizer.var = global_mean(
             self._unsynced_normalizer.var, self._world_size)
-        self._sync_normalizers_local()
-    
+
     def _sync_normalizers_local(self):
         self._unsynced_normalizer.steps = self._synced_normalizer.steps
         self._unsynced_normalizer.mean = self._synced_normalizer.mean
@@ -165,3 +164,4 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         self._optimizer.step()
         self._optimizer.zero_grad()
         self._sync_normalizers_global()
+        self._sync_normalizers_local()
