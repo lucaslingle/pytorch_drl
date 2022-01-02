@@ -9,7 +9,7 @@ class Normalizer(tc.nn.Module):
         self._clip_high = clip_high
         self.register_buffers("_steps", tc.tensor(0))
         self.register_buffers("_mean", tc.zeros(data_shape, dtype=tc.float32))
-        self.register_buffers("_stddev", tc.zeros(data_shape, dtype=tc.float32))
+        self.register_buffers("_var", tc.zeros(data_shape, dtype=tc.float32))
 
     @property
     def steps(self):
@@ -28,31 +28,31 @@ class Normalizer(tc.nn.Module):
         self.register_buffer(self._mean, tensor)
 
     @property
-    def stddev(self):
-        return self._stddev
+    def var(self):
+        return self._var
 
-    @stddev.setter
-    def stddev(self, tensor):
-        self.register_buffer(self._stddev, tensor)
+    @var.setter
+    def var(self, tensor):
+        self.register_buffer(self._var, tensor)
 
-    def step(self, item, eps=1e-4):
+    def step(self, item):
+        # updates a streaming, asymptotically-unbiased estimator of mean and var
         steps = self.steps+1
 
         mean = self.mean
         mean *= ((steps-1) / steps)
         mean += (1 / steps) * item
 
-        var = tc.square(self.stddev)
+        var = self.var
         var *= ((steps-1) / steps)
         var += (1 / steps) * tc.square(item-mean)
-        stddev = tc.sqrt(var + eps)
 
         self.steps = steps
         self.mean = mean
-        self.stddev = stddev
+        self.var = var
 
-    def apply(self, item):
-        normalized = (item - self.mean) / self.stddev
+    def apply(self, item, eps=1e-4):
+        normalized = (item - self.mean) * tc.rsqrt(self.var + eps)
         if self._clip_low is not None:
             lows = tc.ones_like(normalized) * self._clip_low
             normalized = tc.max(lows, normalized)

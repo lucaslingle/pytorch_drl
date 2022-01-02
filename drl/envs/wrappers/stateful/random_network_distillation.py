@@ -122,11 +122,11 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             self._unsynced_normalizer.steps, self._world_size)
         self._synced_normalizer.mean = global_mean(
             self._unsynced_normalizer.mean, self._world_size)
-        self._synced_normalizer.stddev = global_mean(
-            self._unsynced_normalizer.stddev, self._world_size)
+        self._synced_normalizer.var = global_mean(
+            self._unsynced_normalizer.var, self._world_size)
         self._unsynced_normalizer.steps = self._synced_normalizer.steps
         self._unsynced_normalizer.mean = self._synced_normalizer.mean
-        self._unsynced_normalizer.stddev = self._synced_normalizer.stddev
+        self._unsynced_normalizer.var = self._synced_normalizer.var
 
     def get_checkpointables(self):
         checkpointables = dict()
@@ -145,7 +145,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         normalized = self._synced_normalizer.apply(obs).unsqueeze(0)
         _ = self._unsynced_normalizer.step(obs)
         y, yhat = self._teacher_net(normalized), self._student_net(normalized)
-        rewards_dict = {'rnd_intrinsic': tc.square(y-yhat).sum(dim=-1)}
+        rewards_dict = {'rnd_intrinsic': tc.square(y-yhat).sum(dim=-1).item()}
         if isinstance(rew, dict):
             rewards_dict.update(rew)
         else:
