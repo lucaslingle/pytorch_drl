@@ -142,7 +142,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
 
     def step(self, ac):
         obs, rew, done, info = self.env.step(ac)
-        normalized = self._synced_normalizer(obs).unsqueeze(0)
+        normalized = self._synced_normalizer(obs.unsqueeze(0))
         _ = self._unsynced_normalizer.update(obs)
         y, yhat = self._teacher_net(normalized), self._student_net(normalized)
         rewards_dict = {'rnd_intrinsic': tc.square(y-yhat).sum(dim=-1).item()}
