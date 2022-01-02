@@ -84,16 +84,11 @@ class PPO(Algo):
         if value_net:
             value_net = DDP(value_net)
 
-        # got spooky error here:
-        # "AssertionError: DistributedDataParallel is not needed when a module doesn't have any parameter that requires a gradient."
-        # todo(lucaslingle): fix by using architecture as wrapper class for preprocessing, get rid of integratedagent.
-
         policy_optimizer = self._get_policy_optimizer(policy_config, policy_net)
         value_optimizer = self._get_value_optimizer(value_config, value_net)
 
         # todo(lucaslingle):
-        #  In the future, make AtariWrapper and DeepmindWrapper composite wrappers,
-        #  Then change this section to support for wrapping via config,
+        #  Support for wrapping via config,
         #    similar to pytorch_ddp_resnet for transforms.
         warnings.warn("PPO currently only supports atari games!", UserWarning)
         env = gym.make(self._config.get('env_id'))
