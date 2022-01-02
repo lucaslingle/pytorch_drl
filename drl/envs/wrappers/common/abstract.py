@@ -8,6 +8,11 @@ import abc
 import gym
 
 
+# todo(lucaslingle):
+#   figure out a good way to establish a partial ordering over subtypes of
+#   Union[gym.core.Env, 'Wrapper']...
+#   Use it to prevent wrappers from being ordered impermissably.
+
 class Wrapper(metaclass=abc.ABCMeta):
     def __init__(self, env: Union[gym.core.Env, 'Wrapper']):
         self.env = env
@@ -88,12 +93,10 @@ class Wrapper(metaclass=abc.ABCMeta):
         return self.env.unwrapped
 
     def get_checkpointables(self):
-        checkpointables = {}
         if isinstance(self.env, gym.core.Env):
-            return checkpointables
+            return dict()
         elif isinstance(self.env, Wrapper):
-            checkpointables.update(self.env.get_checkpointables())
-            return checkpointables
+            return self.env.get_checkpointables()
         else:
             raise NotImplementedError
 
