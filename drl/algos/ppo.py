@@ -112,11 +112,11 @@ class PPO(Algo):
 
         return {
             'global_step': global_step,
+            'env': env,
             'policy_net': policy_net,
             'value_net': value_net,
             'policy_optimizer': policy_optimizer,
-            'value_optimizer': value_optimizer,
-            'env': env
+            'value_optimizer': value_optimizer
         }
 
     def _compute_losses(self, mb):
