@@ -1,5 +1,7 @@
 import abc
 
+from drl.utils.checkpoint_util import save_checkpoints, maybe_load_checkpoints
+
 
 class Algo(metaclass=abc.ABCMeta):
     def __init__(self, config):
@@ -21,10 +23,16 @@ class Algo(metaclass=abc.ABCMeta):
     def _evaluation_loop(self):
         pass
 
-    @abc.abstractmethod
-    def _maybe_load_checkpoints(self):
-        pass
+    def _save_checkpoints(self, checkpointables, step):
+        save_checkpoints(
+            checkpoint_dir=self._config.get('checkpoint_dir'),
+            checkpointables=checkpointables,
+            steps=step)
 
-    @abc.abstractmethod
-    def _save_checkpoints(self):
-        pass
+    def _maybe_load_checkpoints(self, checkpointables, step):
+        global_step = maybe_load_checkpoints(
+            checkpoint_dir=self._config.get('checkpoint_dir'),
+            checkpointables=checkpointables,
+            map_location='cpu',
+            steps=step)
+        return global_step

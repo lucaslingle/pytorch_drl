@@ -1,17 +1,18 @@
 import warnings
 
 import gym
-import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from drl.algos.abstract import Algo
-from drl.agents.preprocessing.common import EndToEndPreprocessing
+from drl.agents.preprocessing import EndToEndPreprocessing
 from drl.agents.integration import (
     IntegratedAgent, get_architecture_cls, get_head_cls, dynamic_mixin
 )
 from drl.utils.optim_util import get_optimizer
-from drl.envs.atari.make import make_atari, wrap_deepmind
-from drl.envs.wrappers.stateful import RandomNetworkDistillationWrapper
+from drl.envs.wrappers.atari import AtariWrapper, DeepmindWrapper
+# todo(lucaslingle):
+#    bubble all wrappers up to the wrappers __init__ level,
+#    so that the import has only three levels
 
 
 class PPO(Algo):
@@ -98,13 +99,23 @@ class PPO(Algo):
         #    similar to pytorch_ddp_resnet for transforms.
         warnings.warn("PPO currently only supports atari games!", UserWarning)
         env = gym.make(self._config.get('env_id'))
-        env = wrap_deepmind(make_atari(env), frame_stack=False)
+        env = DeepmindWrapper(AtariWrapper(env), frame_stack=False)
+
+        checkpointables = {
+            'policy_net': policy_net,
+            'value_net': value_net,
+            'policy_optimizer': policy_optimizer,
+            'value_optimizer': value_optimizer
+        }
+        checkpointables.update(env.get_checkpointables())
+        global_step = self._maybe_load_checkpoints(checkpointables, step=None)
 
         return {
             'policy_net': policy_net,
             'value_net': value_net,
             'policy_optimizer': policy_optimizer,
-            'value_optimizer': value_optimizer
+            'value_optimizer': value_optimizer,
+            'global_step': global_step
         }
 
     def _compute_losses(self, mb):
@@ -116,10 +127,4 @@ class PPO(Algo):
         raise NotImplementedError
 
     def _evaluation_loop(self):
-        raise NotImplementedError
-
-    def _save_checkpoints(self):
-        raise NotImplementedError
-
-    def _maybe_load_checkpoints(self):
         raise NotImplementedError
