@@ -1,3 +1,4 @@
+import numpy as np
 import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -12,50 +13,88 @@ from drl.utils.optim_util import get_optimizer
 class RNDNetwork(tc.nn.Module):
     def __init__(self, data_shape, widening):
         super().__init__()
+        self._input_channels = data_shape[-1]
         self._widening = widening
-        self._preprocessing = ToChannelMajor()
-        self._network = tc.nn.Sequential()
+        self._network = tc.nn.Sequential(
+            ToChannelMajor(),
+            tc.nn.Conv2d(
+                in_channels=self._input_channels,
+                out_channels=16 * widening,
+                kernel_size=(8,8),
+                stride=(4,4),
+                padding=(0,0)
+            ),
+            tc.nn.LeakyReLU(negative_slope=0.2),
+            tc.nn.Conv2d(
+                in_channels=16 * widening,
+                out_channels=32 * widening,
+                kernel_size=(4,4),
+                stride=(2,2),
+                padding=(0,0)
+            ),
+            tc.nn.LeakyReLU(negative_slope=0.2),
+            tc.nn.Conv2d(
+                in_channels=32 * widening,
+                out_channels=32 * widening,
+                kernel_size=(4,4),
+                stride=(1,1),
+                padding=(0,0)
+            ),
+            tc.nn.LeakyReLU(negative_slope=0.2),
+            tc.nn.Flatten()
+        )
+        self._init_weights()
 
     def _init_weights(self):
-        # todo(lucaslingle): use the good init from OpenAI repo here.
-        raise NotImplementedError
+        for m in self._network:
+            if isinstance(m, tc.nn.Conv2d):
+                tc.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+                tc.nn.init.zeros_(m.bias)
 
-    def forward(self):
-        raise NotImplementedError
+    def forward(self, x):
+        return self._network(x)
 
 
 class TeacherNetwork(tc.nn.Module):
-    """
-    Teacher network for Random Network Distillation.
-    Assumes input image has dimension 84x84x4.
-    """
-    def __init__(self, data_shape, widening=1):
+    def __init__(self, data_shape):
         super().__init__()
         self._data_shape = data_shape
         self._network = tc.nn.Sequential(
-            RNDNetwork(data_shape, widening),
+            RNDNetwork(data_shape=data_shape, widening=1),
+            tc.nn.Linear(in_features=1152, out_features=512)
         )
-        # todo(lucaslingle): add flat, maybe act, and proj
+        self._init_weights()
+
+    def _init_weights(self):
+        for m in self._network:
+            if isinstance(m, tc.nn.Linear):
+                tc.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+                tc.nn.init.zeros_(m.bias)
 
     def forward(self, x):
-        raise NotImplementedError
+        return self._network(x)
 
 
 class StudentNetwork(tc.nn.Module):
-    """
-    Student network for Random Network Distillation.
-    Assumes input image has dimension 84x84x4.
-    """
     def __init__(self, data_shape, widening=1):
         super().__init__()
         self._network = tc.nn.Sequential(
-            RNDNetwork(data_shape, widening),
+            RNDNetwork(data_shape, widening=widening),
+            tc.nn.Linear(1152 * widening, 256 * widening),
+            tc.nn.ReLU(),
+            tc.nn.Linear(256 * widening, 256 * widening),
+            tc.nn.ReLU(),
+            tc.nn.Linear(256 * widening, 512)
         )
-        # todo(lucaslingle):
-        #    add flat, maybe act, and fc layers as per github impl from OpenAI.
+
+    def _init_weights(self):
+        for m in self._network:
+            if isinstance(m, tc.nn.Linear):
+                tc.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+                tc.nn.init.zeros_(m.bias)
 
     def forward(self, x):
-        raise NotImplementedError
+        return self._network(x)
 
 
 class RandomNetworkDistillationWrapper(TrainableWrapper):
@@ -72,14 +111,14 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             rnd_opt_cls_name (str): Optimizer class name.
             rnd_opt_args (Dict[str, Any]): Optimizer args.
             world_size (int): Number of processes.
-            widening (int): Channel multiplier for networks.
+            widening (int): Channel multiplier for student net.
         """
         super().__init__(env)
         self._data_shape = (84, 84, 4)
         self._world_size = world_size
         self._synced_normalizer = Normalizer(self._data_shape, -5, 5)
         self._unsynced_normalizer = Normalizer(self._data_shape, -5, -5)
-        self._teacher_net = DDP(TeacherNetwork(self._data_shape, widening))
+        self._teacher_net = DDP(TeacherNetwork(self._data_shape))
         self._student_net = DDP(StudentNetwork(self._data_shape, widening))
         self._optimizer = get_optimizer(
             model=self._student_net,
