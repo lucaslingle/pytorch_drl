@@ -145,7 +145,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         normalized = self._synced_normalizer(obs.unsqueeze(0))
         _ = self._unsynced_normalizer.update(obs)
         y, yhat = self._teacher_net(normalized), self._student_net(normalized)
-        rewards_dict = {'rnd': tc.square(y-yhat).sum(dim=-1).clone().item()}
+        rewards_dict = {'intrinsic_rnd': tc.square(y-yhat).sum(dim=-1).item()}
         if isinstance(rew, dict):
             rewards_dict.update(rew)
         else:
