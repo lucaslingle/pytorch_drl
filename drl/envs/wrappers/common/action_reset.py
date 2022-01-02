@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 
 from drl.envs.wrappers.common.abstract import Wrapper
-from drl.utils.typing_util import Env
+from drl.utils.types_util import Env
 
 
 class ActionResetWrapper(Wrapper):

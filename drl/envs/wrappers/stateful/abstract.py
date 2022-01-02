@@ -4,8 +4,6 @@ Abstract wrapper definitions.
 
 import abc
 
-import torch as tc
-
 from drl.envs.wrappers.common import Wrapper
 
 
