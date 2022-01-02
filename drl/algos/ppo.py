@@ -10,6 +10,7 @@ from drl.agents.integration import (
 )
 from drl.utils.optim_util import get_optimizer
 from drl.envs.wrappers.atari import AtariWrapper, DeepmindWrapper
+from drl.envs.wrappers.common import ToTensorWrapper
 # todo(lucaslingle):
 #    bubble all wrappers up to the wrappers __init__ level,
 #    so that the import has only three levels
@@ -96,7 +97,7 @@ class PPO(Algo):
         #    similar to pytorch_ddp_resnet for transforms.
         warnings.warn("PPO currently only supports atari games!", UserWarning)
         env = gym.make(self._config.get('env_id'))
-        env = DeepmindWrapper(AtariWrapper(env), frame_stack=False)
+        env = ToTensorWrapper(DeepmindWrapper(AtariWrapper(env), frame_stack=False))
 
         checkpointables = {
             'policy_net': policy_net,

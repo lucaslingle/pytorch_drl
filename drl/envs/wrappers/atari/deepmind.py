@@ -43,7 +43,6 @@ class DeepmindWrapper(ws.Wrapper):
             env = ws.ClipRewardWrapper(
                 env=env, low=acs.REWARD_CLIP_LOW, high=acs.REWARD_CLIP_HIGH)
         if self._scale:
-            env = ws.ToTensorWrapper(env=env)
             env = ws.ScaleObservationsWrapper(
                 env=env, scale_factor=acs.SCALE_FACTOR)
         if self._frame_stack:
