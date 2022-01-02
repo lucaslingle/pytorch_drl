@@ -107,17 +107,10 @@ class PPO(Algo):
             'policy_optimizer': policy_optimizer,
             'value_optimizer': value_optimizer
         }
-        checkpointables.update(env.get_checkpointables())
-        global_step = self._maybe_load_checkpoints(checkpointables, step=None)
-
-        return {
-            'global_step': global_step,
-            'env': env,
-            'policy_net': policy_net,
-            'value_net': value_net,
-            'policy_optimizer': policy_optimizer,
-            'value_optimizer': value_optimizer
-        }
+        checkpointables_ = {k: v for k,v in checkpointables.items()}
+        checkpointables_.update(env.get_checkpointables())
+        global_step = self._maybe_load_checkpoints(checkpointables_, step=None)
+        return {'global_step': global_step, 'env': env, **checkpointables}
 
     def _compute_losses(self, mb):
         # todo(lucaslingle): when defining compute losses,
