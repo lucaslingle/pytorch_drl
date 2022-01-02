@@ -115,14 +115,6 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             world_size: int,
             widening: int
     ):
-        """
-        Args:
-            env: OpenAI gym environment instance.
-            rnd_optimizer_cls_name: Optimizer class name.
-            rnd_optimizer_args: Optimizer args.
-            world_size: Number of processes.
-            widening: Channel multiplier for student net.
-        """
         super().__init__(env)
         self._data_shape = (84, 84, 4)
         self._world_size = world_size
