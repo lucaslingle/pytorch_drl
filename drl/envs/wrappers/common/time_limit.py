@@ -1,7 +1,7 @@
 from typing import Optional
 
 from drl.envs.wrappers.common.abstract import Wrapper
-from drl.utils.types_util import Env
+from drl.utils.typing_util import Env
 
 
 class TimeLimitWrapper(Wrapper):

@@ -5,7 +5,7 @@ Learning rate scheduler util.
 from typing import Optional, Dict, Any
 import importlib
 
-from drl.utils.types_util import Module, Optimizer, Scheduler
+from drl.utils.typing_util import Module, Optimizer, Scheduler
 
 
 def get_optimizer(

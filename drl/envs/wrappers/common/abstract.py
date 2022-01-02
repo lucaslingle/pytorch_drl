@@ -7,7 +7,7 @@ import abc
 
 import gym
 
-from drl.utils.types_util import Env
+from drl.utils.typing_util import Env
 
 
 class Wrapper(metaclass=abc.ABCMeta):

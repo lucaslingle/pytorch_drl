@@ -3,7 +3,7 @@ import gym
 import cv2
 
 from drl.envs.wrappers.common.abstract import ObservationWrapper
-from drl.utils.types_util import Env
+from drl.utils.typing_util import Env
 
 
 class ResizeWrapper(ObservationWrapper):

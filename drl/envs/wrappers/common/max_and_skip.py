@@ -1,7 +1,7 @@
 import numpy as np
 
 from drl.envs.wrappers.common.abstract import Wrapper
-from drl.utils.types_util import Env
+from drl.utils.typing_util import Env
 
 
 class MaxAndSkipWrapper(Wrapper):
