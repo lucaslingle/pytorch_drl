@@ -117,11 +117,6 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             msg = f"Attempted to wrap env with unsupported shape {space.shape}."
             raise ValueError(msg)
 
-    def _sync_normalizers_local(self):
-        self._unsynced_normalizer.steps = self._synced_normalizer.steps
-        self._unsynced_normalizer.mean = self._synced_normalizer.mean
-        self._unsynced_normalizer.var = self._synced_normalizer.var
-
     def _sync_normalizers_global(self):
         self._synced_normalizer.steps = global_mean(
             self._unsynced_normalizer.steps, self._world_size)
@@ -130,6 +125,11 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         self._synced_normalizer.var = global_mean(
             self._unsynced_normalizer.var, self._world_size)
         self._sync_normalizers_local()
+    
+    def _sync_normalizers_local(self):
+        self._unsynced_normalizer.steps = self._synced_normalizer.steps
+        self._unsynced_normalizer.mean = self._synced_normalizer.mean
+        self._unsynced_normalizer.var = self._synced_normalizer.var
 
     def get_checkpointables(self):
         checkpointables = dict()
