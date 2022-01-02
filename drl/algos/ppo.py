@@ -111,12 +111,12 @@ class PPO(Algo):
         global_step = self._maybe_load_checkpoints(checkpointables, step=None)
 
         return {
-            'env': env,
+            'global_step': global_step,
             'policy_net': policy_net,
             'value_net': value_net,
             'policy_optimizer': policy_optimizer,
             'value_optimizer': value_optimizer,
-            'global_step': global_step,
+            'env': env
         }
 
     def _compute_losses(self, mb):
