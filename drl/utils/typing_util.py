@@ -1,3 +1,7 @@
+"""
+Typing util.
+"""
+
 from typing import Union
 
 import torch as tc

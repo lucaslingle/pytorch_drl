@@ -1,7 +1,9 @@
 import torch as tc
 
+from drl.agents.preprocessing.abstract import Preprocessing
 
-class ToChannelMajor(tc.nn.Module):
+
+class ToChannelMajor(Preprocessing):
     def __init__(self):
         super().__init__()
 

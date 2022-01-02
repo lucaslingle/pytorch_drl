@@ -1,5 +1,5 @@
 """
-Learning rate scheduler util.
+Optimization util.
 """
 
 from typing import Optional, Dict, Any
