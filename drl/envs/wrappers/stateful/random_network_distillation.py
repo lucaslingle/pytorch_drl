@@ -101,12 +101,6 @@ class StudentNetwork(tc.nn.Module):
 
 
 class RandomNetworkDistillationWrapper(TrainableWrapper):
-    """
-    Random Network Distillation wrapper. See Burda et al., 2018 for details.
-
-    This class supports distributed data parallel training,
-    and synchronizes normalization statistics across processes.
-    """
     def __init__(
             self,
             env: Env,
