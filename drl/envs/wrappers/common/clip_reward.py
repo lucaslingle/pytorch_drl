@@ -23,6 +23,7 @@ class ClipRewardWrapper(RewardWrapper):
 
     def reward(self, reward):
         if self._key:
+            assert self._key != 'extrinsic_raw', 'Must be preserved for logging'
             if not isinstance(reward, dict):
                 msg = "Keyed ClipRewardWrapper expected reward to be a dict."
                 raise TypeError(msg)
