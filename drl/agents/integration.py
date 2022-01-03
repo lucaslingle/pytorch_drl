@@ -8,16 +8,16 @@ from drl.agents.architectures import Architecture
 from drl.agents.heads import Head
 
 
-def get_preprocessing_ops(cls_name, cls_args):
+def get_preprocessing(cls_name, cls_args):
     module = importlib.import_module('drl.agents.preprocessing')
     cls = getattr(module, cls_name)
     return cls(**cls_args)
 
 
-def get_preprocessing(**preprocessing_spec: Dict[str, Dict[str, Any]]):
+def get_preprocessings(**preprocessing_spec: Dict[str, Dict[str, Any]]):
     preprocessing_stack = list()
     for cls_name, cls_args in preprocessing_spec.items():
-        preprocessing = get_preprocessing_ops(
+        preprocessing = get_preprocessing(
             cls_name=cls_name, cls_args=cls_args)
         preprocessing_stack.append(preprocessing)
     return EndToEndPreprocessing(tc.nn.Sequential(*preprocessing_stack))
