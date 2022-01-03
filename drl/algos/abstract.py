@@ -1,6 +1,6 @@
 import abc
 
-from drl.utils.checkpoint_util import save_checkpoints, maybe_load_checkpoints
+from drl.utils.checkpointing import save_checkpoints, maybe_load_checkpoints
 
 
 class Algo(metaclass=abc.ABCMeta):

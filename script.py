@@ -6,7 +6,7 @@ import importlib
 
 import torch as tc
 
-from drl.utils.config_util import ConfigParser
+from drl.utils.configuration import ConfigParser
 
 
 def create_argparser():

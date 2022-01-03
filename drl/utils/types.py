@@ -9,7 +9,6 @@ import gym
 
 from drl.envs.wrappers.common.abstract import Wrapper
 
-
 Env = Union[gym.core.Env, Wrapper]
 Module = tc.nn.Module
 Optimizer = tc.optim.Optimizer

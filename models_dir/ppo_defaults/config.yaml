@@ -6,8 +6,8 @@ algo_cls_name: PPO
 env:
     id: 'PongNoFrameskip-v4'
     wrappers:
-        AtariWrapper: {frame_stack=False}
-        DeepmindWrapper: {}
+        AtariWrapper: {}
+        DeepmindWrapper: {frame_stack: False}
         ToTensorWrapper: {}
 policy_net:
     preprocessing:

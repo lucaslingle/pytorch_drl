@@ -1,16 +1,16 @@
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
+import gym
 import numpy as np
 import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from drl.utils.typing_util import Env
 from drl.envs.wrappers.common.abstract import Wrapper
 from drl.envs.wrappers.stateful.abstract import TrainableWrapper
 from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.agents.preprocessing import ToChannelMajor
 from drl.algos.metrics import global_mean
-from drl.utils.optim_util import get_optimizer
+from drl.utils.integration import get_optimizer
 
 
 class RNDNetwork(tc.nn.Module):
@@ -86,7 +86,7 @@ class StudentNetwork(tc.nn.Module):
 class RandomNetworkDistillationWrapper(TrainableWrapper):
     def __init__(
             self,
-            env: Env,
+            env: Union[gym.core.Env, Wrapper],
             rnd_optimizer_cls_name: str,
             rnd_optimizer_args: Dict[str, Any],
             world_size: int,
