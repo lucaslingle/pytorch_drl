@@ -29,7 +29,7 @@ class PPO(Algo):
     @staticmethod
     def _get_env(env_config):
         env = gym.make(env_config.get('id'))
-        env = get_wrappers(env, **env_config.get('wrappers'))
+        env = get_wrappers(env=env, **env_config.get('wrappers'))
         return env
 
     def _get_learning_system(self):
