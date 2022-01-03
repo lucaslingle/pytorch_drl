@@ -2,14 +2,11 @@ import gym
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from drl.algos.abstract import Algo
-from drl.utils.integration import (
-    get_wrappers,
-    get_preprocessings,
-    get_architecture,
-    get_predictors,
-    Agent,
-    get_optimizer,
+from drl.envs.wrappers.integration import get_wrappers
+from drl.agents.integration import (
+    Agent, get_preprocessings, get_architecture, get_predictors
 )
+from drl.utils.optimization import get_optimizer
 
 
 class PPO(Algo):

@@ -10,7 +10,7 @@ from drl.envs.wrappers.stateful.abstract import TrainableWrapper
 from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.agents.preprocessing import ToChannelMajor
 from drl.algos.metrics import global_mean
-from drl.utils.integration import get_optimizer
+from drl.utils.optimization import get_optimizer
 
 
 class RNDNetwork(tc.nn.Module):

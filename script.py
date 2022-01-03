@@ -37,11 +37,9 @@ def get_config(args):
 
 
 def get_algo(rank, config):
-    cls_name = config.get('algo_cls_name')
     module = importlib.import_module('drl.algos')
-    cls = getattr(module, cls_name)
-    algo = cls(rank, config)
-    return algo
+    algo = getattr(module, config.get('algo_cls_name'))
+    return algo(rank, config)
 
 
 def setup(rank, config):
@@ -51,7 +49,8 @@ def setup(rank, config):
         backend=config.get('backend'),
         world_size=config.get('world_size'),
         rank=rank)
-    return get_algo(rank, config)
+    algo = get_algo(rank, config)
+    return algo
 
 
 def cleanup():
