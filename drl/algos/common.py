@@ -18,6 +18,9 @@ def trajectory_segment_generator(env, nets, segment_length):
     t = 0
     o_t = env.reset()
 
+    # todo(lucaslingle):
+    #   consider making a reward spec field in Wrapper
+    #   and replacing this generator with a TrajectorObserver class.
     observations = list()
     actions = list()
     rewards = dict()
@@ -44,7 +47,7 @@ def trajectory_segment_generator(env, nets, segment_length):
                 }
                 observations = list()
                 actions = list()
-                rewards = list()
+                rewards = dict()
                 dones = list()
                 ep_lens = list()
                 ep_rets = list()
@@ -70,10 +73,16 @@ def trajectory_segment_generator(env, nets, segment_length):
         actions.append(tc.tensor(a_t).long())
         for key in r_t:
             if key != 'extrinsic_raw':
-                rewards[key].append(tc.tensor(r_t[key]).float())
+                # todo(lucaslingle): this should be updated when you make a reward spec
+                #  and make self.rewards a dictionary of tensors.
+                if key not in r_t:
+                    rewards[key] = [tc.tensor(r_t[key]).float()]
+                else:
+                    rewards[key].append(tc.tensor(r_t[key]).float())
         dones.append(tc.tensor(done_t).int())
 
         curr_ep_len += 1
+        curr_ep_len_raw += 1
         curr_ep_ret += r_t['extrinsic']
         curr_ep_ret_raw += r_t['extrinsic_raw']
 
