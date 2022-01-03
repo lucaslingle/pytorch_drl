@@ -30,12 +30,9 @@ class PPO(Algo):
         return DDP(Agent(preprocessing, architecture, predictors))
 
     @staticmethod
-    def _get_optim(net_config, agent):
-        policy_optimizer = get_optimizer(
-            model=agent,
-            optimizer_cls_name=net_config.get('optimizer_cls_name'),
-            optimizer_cls_args=net_config.get('optimizer_cls_args'))
-        return policy_optimizer
+    def _get_opt(opt_config, agent):
+        optimizer = get_optimizer(model=agent, **opt_config)
+        return optimizer
 
     def _get_learning_system(self):
         pol_config = self._config.get('policy_net')
@@ -43,10 +40,13 @@ class PPO(Algo):
         shared = val_config.get('use_shared_architecture')
 
         pol_net = self._get_net(pol_config)
-        val_net = self._get_net(val_config) if not shared else None
+        pol_opt = self._get_opt(pol_config.get('optimizer'), pol_net)
 
-        pol_optim = self._get_optim(pol_config, pol_net)
-        val_optim = self._get_optim(val_config, val_net) if not shared else None
+        val_net = None
+        val_opt = None
+        if not shared:
+            val_net = self._get_net(val_config)
+            val_opt = self._get_opt(val_config.get('optimizer'), val_net)
 
         # todo(lucaslingle):
         #  Support for wrapping via config,
@@ -58,8 +58,8 @@ class PPO(Algo):
         checkpointables = {
             'policy_net': pol_net,
             'value_net': val_net,
-            'policy_optimizer': pol_optim,
-            'value_optimizer': val_optim
+            'policy_optimizer': pol_opt,
+            'value_optimizer': val_opt
         }
         checkpointables_ = {k: v for k,v in checkpointables.items()}
         checkpointables_.update(env.get_checkpointables())

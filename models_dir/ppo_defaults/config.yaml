@@ -16,8 +16,9 @@ policy_net:
         value:
             cls_name: LinearValueHead
             cls_args: {num_features: 256}
-    optimizer_cls_name: Adam
-    optimizer_cls_args: {lr: 0.001, eps: 0.00001}
+    optimizer:
+        cls_name: Adam
+        cls_args: {lr: 0.001, eps: 0.00001}
 value_net:
     use_shared_architecture: True
 env_id: 'PongNoFrameskip-v4'
