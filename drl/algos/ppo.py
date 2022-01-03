@@ -1,5 +1,3 @@
-import warnings
-
 import gym
 from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -8,9 +6,6 @@ from drl.agents.preprocessing import EndToEndPreprocessing
 from drl.agents.integration import get_architecture, get_predictors, Agent
 from drl.utils.optim_util import get_optimizer
 from drl.envs.wrappers.integration import get_wrappers
-# todo(lucaslingle):
-#    bubble all wrappers up to the wrappers __init__ level,
-#    so that the import has only three levels
 
 
 class PPO(Algo):
@@ -34,7 +29,7 @@ class PPO(Algo):
     @staticmethod
     def _get_env(env_config):
         env = gym.make(env_config.get('id'))
-        env = get_wrappers(env, env_config.get('wrappers'))
+        env = get_wrappers(env, **env_config.get('wrappers'))
         return env
 
     def _get_learning_system(self):
