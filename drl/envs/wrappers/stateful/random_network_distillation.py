@@ -128,7 +128,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             keys = copy.deepcopy(self._env.reward_spec.keys)
             keys.append(self._reward_name)
         else:
-            keys = [self._reward_name]
+            keys = ['extrinsic_raw', 'extrinsic', self._reward_name]
         self.reward_spec = RewardSpec(keys)
 
     def _sync_normalizers_global(self):
