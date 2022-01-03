@@ -93,7 +93,7 @@ class TrajectoryManager:
         """
         for net in self._nets.values(): net.eval()
         trajectory = Trajectory(
-            obs_shape=self._o_t,
+            obs_shape=self._o_t.shape,
             rew_keys=self._env.reward_spec.keys,
             seg_len=self._segment_length)
 
