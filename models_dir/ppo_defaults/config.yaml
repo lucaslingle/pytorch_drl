@@ -8,7 +8,6 @@ env:
     wrappers:
         AtariWrapper: {}
         DeepmindWrapper: {frame_stack: False}
-        ToTensorWrapper: {}
 policy_net:
     preprocessing:
         ToChannelMajor: {}

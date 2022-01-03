@@ -116,11 +116,10 @@ class TrajectoryManager:
             predictions = policy_net(
                 tc.tensor(self._o_t).float().unsqueeze(0), predictions=['policy'])
             pi_dist_t = predictions.get('policy')
-            a_t = pi_dist_t.sample()
+            a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
 
             # step environment
-            o_tp1, r_t, done_t, info_t = self._env.step(
-                a_t.squeeze(0).detach().numpy())
+            o_tp1, r_t, done_t, info_t = self._env.step(a_t)
             if not isinstance(r_t, dict):
                 r_t = {'extrinsic_raw': r_t, 'extrinsic': r_t}
 
