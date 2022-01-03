@@ -3,6 +3,8 @@ import copy
 
 import torch as tc
 
+from drl.envs.wrappers import Wrapper
+
 
 def global_mean(metric, world_size):
     global_metric = metric.clone().float().detach()
@@ -84,19 +86,24 @@ class TrajectoryManager:
             }
         )
 
+    def _get_reward_keys(self):
+        def spec_exists():
+            if isinstance(self._env, Wrapper):
+                return self._env.reward_spec is not None
+            return False
+        if spec_exists():
+            return self._env.reward_spec.keys
+        return {'extrinsic_raw', 'extrinsic'}
+
     def generate(self):
         """
         Generate trajectory experience and metadata.
         """
-        for net in self._nets.values():
-            net.eval()
-        if hasattr(self._env, 'reward_spec'):
-            rew_keys = self._env.reward_spec.keys
-        else:
-            rew_keys = {'extrinsic_raw', 'extrinsic'}
+        for net in self._nets.values(): net.eval()
+
         trajectory = Trajectory(
             obs_shape=self._o_t.shape,
-            rew_keys=rew_keys,
+            rew_keys=self._get_reward_keys(),
             seg_len=self._segment_length)
 
         for t in range(0, self._segment_length):
