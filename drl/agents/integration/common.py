@@ -3,9 +3,9 @@ import importlib
 
 import torch as tc
 
-from drl.agents.preprocessing.abstract import Preprocessing
-from drl.agents.architectures.abstract import Architecture
-from drl.agents.heads.abstract import Head
+from drl.agents.preprocessing import Preprocessing
+from drl.agents.architectures import Architecture
+from drl.agents.heads import Head
 
 
 def get_architecture(cls_name, cls_args):
