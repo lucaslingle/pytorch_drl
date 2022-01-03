@@ -9,7 +9,7 @@ from drl.envs.wrappers.common.abstract import Wrapper
 from drl.envs.wrappers.stateful.abstract import TrainableWrapper
 from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.agents.preprocessing import ToChannelMajor
-from drl.algos.metrics import global_mean
+from drl.algos.common import global_mean
 from drl.utils.optimization import get_optimizer
 
 

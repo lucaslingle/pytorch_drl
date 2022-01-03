@@ -29,4 +29,6 @@ class ClipRewardWrapper(RewardWrapper):
             selected_reward = reward[self._key]
             reward[self._key] = max(self._low, min(selected_reward, self._high))
             return reward
-        return max(self._low, min(reward, self._high))
+        else:
+            reward_clipped = max(self._low, min(reward, self._high))
+            return {'extrinsic_raw': reward, 'extrinsic': reward_clipped}
