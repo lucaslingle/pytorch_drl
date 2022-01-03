@@ -91,8 +91,7 @@ class TrajectoryManager:
             })
 
     def generate(self):
-        for net in self._nets.values():
-            net.eval()
+        for net in self._nets.values(): net.eval()
 
         trajectory = Trajectory(
             obs_shape=self._o_t,
@@ -100,11 +99,7 @@ class TrajectoryManager:
             seg_len=self._segment_length)
 
         for t in range(0, self._segment_length):
-            if 'policy_net' in self._nets:
-                policy_net = self._nets.get('policy_net')
-            else:
-                policy_net = self._nets.get('q_network')
-
+            policy_net = self._nets.get('policy_net', self._nets.get('q_network'))
             predictions = policy_net(
                 tc.tensor(self._o_t).float().unsqueeze(0), predictions=['policy'])
             pi_dist_t = predictions.get('policy')
@@ -121,7 +116,8 @@ class TrajectoryManager:
                     'ep_ret': r_t['extrinsic'],
                     'ep_len_raw': 1,
                     'ep_ret_raw': r_t['extrinsic_raw']
-                })
+                }
+            )
 
             if done_t:
                 self._metadata_mgr.present_done(fields=['ep_len', 'ep_ret'])
@@ -133,10 +129,11 @@ class TrajectoryManager:
                     self._metadata_mgr.present_done(
                         fields=['ep_len_raw', 'ep_ret_raw'])
                 o_tp1 = self._env.reset()
-
             self._o_t = o_tp1
 
-        return {
+        results = {
             **trajectory.report(),
             **self._metadata_mgr.past_meta
         }
+        results['observations'][-1] = o_tp1
+        return results
