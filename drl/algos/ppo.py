@@ -38,28 +38,26 @@ class PPO(Algo):
         return env
 
     def _get_learning_system(self):
-        pol_config = self._config.get('policy_net')
-        val_config = self._config.get('value_net')
-        shared = val_config.get('use_shared_architecture')
-
-        pol_net = self._get_net(pol_config)
-        pol_opt = self._get_opt(pol_config.get('optimizer'), pol_net)
-
-        if not shared:
-            val_net = self._get_net(val_config)
-            val_opt = self._get_opt(val_config.get('optimizer'), val_net)
-        else:
-            val_net = None
-            val_opt = None
-
         env_config = self._config.get('env')
         env = self._get_env(env_config)
 
+        policy_config = self._config.get('policy_net')
+        policy_net = self._get_net(policy_config)
+        policy_optimizer_config = policy_config.get('optimizer')
+        policy_optimizer = self._get_opt(policy_optimizer_config, policy_net)
+
+        value_config = self._config.get('value_net')
+        value_net, value_optimizer = None, None
+        if not value_config.get('use_shared_architecture'):
+            value_net = self._get_net(value_config)
+            value_optimizer_config = value_config.get('optimizer')
+            value_optimizer = self._get_opt(value_optimizer_config, value_net)
+
         checkpointables = {
-            'policy_net': pol_net,
-            'value_net': val_net,
-            'policy_optimizer': pol_opt,
-            'value_optimizer': val_opt
+            'policy_net': policy_net,
+            'policy_optimizer': policy_optimizer,
+            'value_net': value_net,
+            'value_optimizer': value_optimizer
         }
         checkpointables_ = {k: v for k,v in checkpointables.items()}
         checkpointables_.update(env.get_checkpointables())
