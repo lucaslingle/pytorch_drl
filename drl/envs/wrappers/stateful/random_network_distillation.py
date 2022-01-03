@@ -167,8 +167,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         if isinstance(rew, dict):
             rewards_dict.update(rew)
         else:
-            rewards_dict['extrinsic_raw'] = rew
-            rewards_dict['extrinsic'] = rew
+            rewards_dict.update({'extrinsic_raw': rew, 'extrinsic': rew})
         return obs, rewards_dict, done, info
 
     def learn(self, obs_batch, **kwargs):
