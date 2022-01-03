@@ -3,6 +3,12 @@ world_size: 1
 master_addr: localhost
 master_port: '12345'
 algo_cls_name: PPO
+env:
+    id: 'PongNoFrameskip-v4'
+    wrappers:
+        AtariWrapper: {frame_stack=False}
+        DeepmindWrapper: {}
+        ToTensorWrapper: {}
 policy_net:
     preprocessing:
         ToChannelMajor: {}
@@ -21,4 +27,3 @@ policy_net:
         cls_args: {lr: 0.001, eps: 0.00001}
 value_net:
     use_shared_architecture: True
-env_id: 'PongNoFrameskip-v4'

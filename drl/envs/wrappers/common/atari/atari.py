@@ -1,5 +1,5 @@
 import drl.envs.wrappers.common as ws
-import drl.envs.wrappers.atari.constants as acs
+import drl.envs.wrappers.common.atari.constants as acs
 
 
 class AtariWrapper(ws.Wrapper):

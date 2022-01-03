@@ -5,12 +5,9 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from drl.algos.abstract import Algo
 from drl.agents.preprocessing import EndToEndPreprocessing
-from drl.agents.integration import (
-    get_architecture, get_predictors, Agent
-)
+from drl.agents.integration import get_architecture, get_predictors, Agent
 from drl.utils.optim_util import get_optimizer
-from drl.envs.wrappers.atari import AtariWrapper, DeepmindWrapper
-from drl.envs.wrappers.common import ToTensorWrapper
+from drl.envs.wrappers.integration import get_wrappers
 # todo(lucaslingle):
 #    bubble all wrappers up to the wrappers __init__ level,
 #    so that the import has only three levels
@@ -34,6 +31,12 @@ class PPO(Algo):
         optimizer = get_optimizer(model=agent, **opt_config)
         return optimizer
 
+    @staticmethod
+    def _get_env(env_config):
+        env = gym.make(env_config.get('id'))
+        env = get_wrappers(env, env_config.get('wrappers'))
+        return env
+
     def _get_learning_system(self):
         pol_config = self._config.get('policy_net')
         val_config = self._config.get('value_net')
@@ -49,12 +52,8 @@ class PPO(Algo):
             val_net = None
             val_opt = None
 
-        # todo(lucaslingle):
-        #  Support for wrapping via config,
-        #    similar to pytorch_ddp_resnet for transforms.
-        warnings.warn("PPO currently only supports atari games!", UserWarning)
-        env = gym.make(self._config.get('env_id'))
-        env = ToTensorWrapper(DeepmindWrapper(AtariWrapper(env), frame_stack=False))
+        env_config = self._config.get('env')
+        env = self._get_env(env_config)
 
         checkpointables = {
             'policy_net': pol_net,

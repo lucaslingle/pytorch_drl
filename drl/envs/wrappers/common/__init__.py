@@ -11,6 +11,7 @@ from drl.envs.wrappers.common.resize import ResizeWrapper
 from drl.envs.wrappers.common.scale_observations import ScaleObservationsWrapper
 from drl.envs.wrappers.common.time_limit import TimeLimitWrapper
 from drl.envs.wrappers.common.to_tensor import ToTensorWrapper
+from drl.envs.wrappers.common.atari import AtariWrapper, DeepmindWrapper
 
 
 __all__ = [
@@ -25,4 +26,6 @@ __all__ = [
     "ScaleObservationsWrapper",
     "TimeLimitWrapper",
     "ToTensorWrapper"
+    "AtariWrapper",
+    "DeepmindWrapper"
 ]
