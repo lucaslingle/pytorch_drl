@@ -42,11 +42,12 @@ class PPO(Algo):
         pol_net = self._get_net(pol_config)
         pol_opt = self._get_opt(pol_config.get('optimizer'), pol_net)
 
-        val_net = None
-        val_opt = None
         if not shared:
             val_net = self._get_net(val_config)
             val_opt = self._get_opt(val_config.get('optimizer'), val_net)
+        else:
+            val_net = None
+            val_opt = None
 
         # todo(lucaslingle):
         #  Support for wrapping via config,
