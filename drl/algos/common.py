@@ -69,8 +69,6 @@ class Trajectory:
         }
 
 
-# todo(lucaslingle):
-#   make a reward spec field in Wrapper
 class TrajectoryManager:
     def __init__(self, env, nets, segment_length):
         self._env = env
@@ -99,20 +97,21 @@ class TrajectoryManager:
         """
         Generate trajectory experience and metadata.
         """
-        for net in self._nets.values(): net.eval()
-
+        # instantiate a trajectory instance
         trajectory = Trajectory(
             obs_shape=self._o_t.shape,
             rew_keys=self._get_reward_keys(),
             seg_len=self._segment_length)
 
-        for t in range(0, self._segment_length):
-            # look for a network that can take actions
-            if 'policy_net' in self._nets:
-                policy_net = self._nets.get('policy_net')
-            else:
-                policy_net = self._nets.get('q_network')
+        # look for a network that can take actions
+        if 'policy_net' in self._nets:
+            policy_net = self._nets.get('policy_net')
+        else:
+            policy_net = self._nets.get('q_network')
+        policy_net.eval()
 
+        # generate a trajectory segment
+        for t in range(0, self._segment_length):
             # choose action
             predictions = policy_net(
                 tc.tensor(self._o_t).float().unsqueeze(0), predictions=['policy'])
