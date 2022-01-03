@@ -1,12 +1,14 @@
 from drl.agents.integration.common import (
-    get_architecture_cls,
-    get_head_cls,
-    dynamic_mixin
+    get_architecture,
+    get_predictor,
+    get_predictors,
+    Agent
 )
 
 
 __all__ = [
-    "get_architecture_cls",
-    "get_head_cls",
-    "dynamic_mixin"
+    "get_architecture",
+    "get_predictor",
+    "get_predictors",
+    "Agent"
 ]

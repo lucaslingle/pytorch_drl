@@ -6,7 +6,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from drl.algos.abstract import Algo
 from drl.agents.preprocessing import EndToEndPreprocessing
 from drl.agents.integration import (
-    get_architecture_cls, get_head_cls, dynamic_mixin
+    get_architecture, get_predictors, Agent
 )
 from drl.utils.optim_util import get_optimizer
 from drl.envs.wrappers.atari import AtariWrapper, DeepmindWrapper
@@ -23,69 +23,30 @@ class PPO(Algo):
         print("Got learning system!!!")
 
     @staticmethod
-    def _get_policy_net(policy_config):
-        preprocessing_spec = policy_config.get('preprocessing_spec')
-        preprocessing = EndToEndPreprocessing(preprocessing_spec)
-        architecture_cls_name = policy_config.get('architecture_cls_name')
-        architecture_cls = get_architecture_cls(architecture_cls_name)
-        policy_net = architecture_cls(
-            preprocessing, **policy_config.get('architecture_cls_args'))
-        dynamic_mixin(
-            obj=policy_net,
-            cls=get_head_cls(policy_config.get('head_cls_name')),
-            cls_args=policy_config.get('head_cls_args'))
-        return policy_net
+    def _get_net(net_config):
+        preprocessing = EndToEndPreprocessing(net_config.get('preprocessing'))
+        architecture = get_architecture(**net_config.get('architecture'))
+        predictors = get_predictors(**net_config.get('predictors'))
+        return DDP(Agent(preprocessing, architecture, predictors))
 
     @staticmethod
-    def _get_value_net(value_config, policy_net):
-        shared = value_config.get('use_shared_architecture')
-        if shared:
-            value_net = policy_net
-        else:
-            preprocessing_spec = value_config.get('preprocessing_spec')
-            preprocessing = EndToEndPreprocessing(preprocessing_spec)
-            architecture_cls_name = value_config.get('architecture_cls_name')
-            architecture_cls = get_architecture_cls(architecture_cls_name)
-            value_net = architecture_cls(
-                preprocessing, **value_config.get('architecture_cls_args'))
-        dynamic_mixin(
-            obj=value_net,
-            cls=get_head_cls(value_config.get('head_cls_name')),
-            cls_args=value_config.get('head_cls_args'))
-        return None if shared else value_net
-
-    @staticmethod
-    def _get_policy_optimizer(policy_config, policy_net):
+    def _get_optim(config, agent):
         policy_optimizer = get_optimizer(
-            model=policy_net,
-            optimizer_cls_name=policy_config.get('optimizer_cls_name'),
-            optimizer_cls_args=policy_config.get('optimizer_cls_args'))
+            model=agent,
+            optimizer_cls_name=config.get('optimizer_cls_name'),
+            optimizer_cls_args=config.get('optimizer_cls_args'))
         return policy_optimizer
 
-    @staticmethod
-    def _get_value_optimizer(value_config, value_net):
-        shared = value_config.get('use_shared_architecture')
-        if shared:
-            return None
-        value_optimizer = get_optimizer(
-            model=value_net,
-            optimizer_cls_name=value_config.get('optimizer_cls_name'),
-            optimizer_cls_args=value_config.get('optimizer_cls_args'))
-        return value_optimizer
-
     def _get_learning_system(self):
-        policy_config = self._config.get('policy_net')
-        value_config = self._config.get('value_net')
+        pol_config = self._config.get('policy_net')
+        val_config = self._config.get('value_net')
+        shared = val_config.get('use_shared_architecture')
 
-        policy_net = self._get_policy_net(policy_config)
-        value_net = self._get_value_net(value_config, policy_net)
+        pol_net = self._get_net(pol_config)
+        val_net = self._get_net(val_config) if not shared else None
 
-        policy_net = DDP(policy_net)
-        if value_net:
-            value_net = DDP(value_net)
-
-        policy_optimizer = self._get_policy_optimizer(policy_config, policy_net)
-        value_optimizer = self._get_value_optimizer(value_config, value_net)
+        pol_optim = self._get_optim(pol_config, pol_net)
+        val_optim = self._get_optim(val_config, val_net) if not shared else None
 
         # todo(lucaslingle):
         #  Support for wrapping via config,
@@ -95,10 +56,10 @@ class PPO(Algo):
         env = ToTensorWrapper(DeepmindWrapper(AtariWrapper(env), frame_stack=False))
 
         checkpointables = {
-            'policy_net': policy_net,
-            'value_net': value_net,
-            'policy_optimizer': policy_optimizer,
-            'value_optimizer': value_optimizer
+            'policy_net': pol_net,
+            'value_net': val_net,
+            'policy_optimizer': pol_optim,
+            'value_optimizer': val_optim
         }
         checkpointables_ = {k: v for k,v in checkpointables.items()}
         checkpointables_.update(env.get_checkpointables())

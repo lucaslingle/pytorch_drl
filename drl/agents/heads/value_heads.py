@@ -1,9 +1,17 @@
+import abc
+
 import torch as tc
 
-from drl.agents.heads.abstract import ValueHeadMixin
+from drl.agents.heads.abstract import Head
 
 
-class LinearValueHead(ValueHeadMixin):
-    def __init__(self, num_features):
+class ValueHead(Head, metaclass=abc.ABCMeta):
+    def forward(self, features):
+        vpred = self._value_head(features).squeeze(-1)
+        return vpred
+
+
+class LinearValueHead(ValueHead):
+    def __init__(self, num_features, **kwargs):
         super().__init__()
-        self.__value_head = tc.nn.Linear(num_features, 1)
+        self._value_head = tc.nn.Linear(num_features, 1)

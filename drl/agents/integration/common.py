@@ -1,21 +1,48 @@
+from typing import Dict, List, Any
 import importlib
 
+import torch as tc
 
-def get_architecture_cls(cls_name):
+from drl.agents.preprocessing.abstract import Preprocessing
+from drl.agents.architectures.abstract import Architecture
+from drl.agents.heads.abstract import Head
+
+
+def get_architecture(cls_name, cls_args):
     module = importlib.import_module('drl.agents.architectures')
     cls = getattr(module, cls_name)
-    return cls
+    return cls(**cls_args)
 
 
-def get_head_cls(cls_name):
+def get_predictor(cls_name, cls_args):
     module = importlib.import_module('drl.agents.heads')
     cls = getattr(module, cls_name)
-    return cls
+    return cls(**cls_args)
 
 
-def dynamic_mixin(obj, cls, cls_args):
-    """Apply mixins to a class instance after creation"""
-    base_cls = obj.__class__
-    base_cls_name = obj.__class__.__name__
-    cls_args_ = {} if not cls_args else cls_args
-    obj.__class__ = type(base_cls_name, (base_cls, cls), cls_args_)
+def get_predictors(**predictors_spec: Dict[str, Dict[str, Any]]):
+    predictors = dict()
+    for key, spec in predictors_spec.items():
+        predictors[key] = get_predictor(**spec)
+    return predictors
+
+
+class Agent(tc.nn.Module):
+    def __init__(
+            self,
+            preprocessing: Preprocessing,
+            architecture: Architecture,
+            predictors: Dict[str, Head]
+    ):
+        super().__init__()
+        self._preprocessing = preprocessing
+        self._architecture = architecture
+        self._predictors = predictors
+
+    def forward(self, x: tc.Tensor, predict: List[str]) -> Dict[str, tc.Tensor]:
+        preproc = self._preprocessing(x)
+        features = self._architecture(preproc)
+        predictions = {
+            key: self._predictors[key](features) for key in predict
+        }
+        return predictions

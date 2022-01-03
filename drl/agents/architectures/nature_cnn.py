@@ -8,8 +8,8 @@ class NatureCNN(Architecture):
     Implements the convolutional torso of the agent from Mnih et al., 2015
     - 'Human Level Control through Deep Reinforcement Learning'.
     """
-    def __init__(self, preprocessing, img_channels):
-        super().__init__(preprocessing)
+    def __init__(self, img_channels):
+        super().__init__()
         self._num_features = 512
         self._network = tc.nn.Sequential(
             tc.nn.Conv2d(img_channels, 32, kernel_size=(8,8), stride=(4,4)),
@@ -26,7 +26,3 @@ class NatureCNN(Architecture):
     @property
     def output_dim(self):
         return self._num_features
-
-    def features(self, x):
-        features = self._network(self._preprocessing(x))
-        return features

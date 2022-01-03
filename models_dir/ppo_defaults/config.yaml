@@ -4,16 +4,20 @@ master_addr: localhost
 master_port: '12345'
 algo_cls_name: PPO
 policy_net:
-    preprocessing_spec:
+    preprocessing:
         ToChannelMajor: {}
-    architecture_cls_name: AsyncCNN
-    architecture_cls_args: {img_channels: 1}
-    head_cls_name: LinearCategoricalPolicyHead
-    head_cls_args: {num_features: 256, num_actions: 18}
+    architecture:
+        cls_name: AsyncCNN
+        cls_args: {img_channels: 1}
+    predictors:
+        policy:
+            cls_name: LinearCategoricalPolicyHead
+            cls_args: {num_features: 256, num_actions: 18}
+        value:
+            cls_name: LinearValueHead
+            cls_args: {num_features: 256}
     optimizer_cls_name: Adam
     optimizer_cls_args: {lr: 0.001, eps: 0.00001}
 value_net:
     use_shared_architecture: True
-    head_cls_name: LinearValueHead
-    head_cls_args: {num_features: 256}
 env_id: 'PongNoFrameskip-v4'

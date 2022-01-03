@@ -8,8 +8,8 @@ class AsyncCNN(Architecture):
     Implements the convolutional torso of the agent from Mnih et al., 2016
     - 'Asynchronous Methods for Deep Reinforcement Learning'.
     """
-    def __init__(self, preprocessing, img_channels):
-        super().__init__(preprocessing)
+    def __init__(self, img_channels):
+        super().__init__()
         self._num_features = 256
         self._network = tc.nn.Sequential(
             tc.nn.Conv2d(img_channels, 16, kernel_size=(8,8), stride=(4,4)),
@@ -23,8 +23,4 @@ class AsyncCNN(Architecture):
 
     @property
     def output_dim(self):
-        return self._feature_dim
-
-    def features(self, x):
-        features = self._network(self._preprocessing(x))
-        return features
+        return self._num_features
