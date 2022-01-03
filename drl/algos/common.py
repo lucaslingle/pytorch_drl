@@ -1,4 +1,5 @@
 from collections import Counter
+import copy
 
 import torch as tc
 
@@ -14,95 +15,128 @@ def global_means(metrics, world_size):
     return Counter({k: global_mean(v, world_size) for k, v in metrics.items()})
 
 
-def trajectory_segment_generator(env, nets, segment_length):
-    t = 0
-    o_t = env.reset()
+class MetadataManager:
+    def __init__(self, present_meta):
+        self._fields = present_meta.keys()
+        self._present_defaults = copy.deepcopy(present_meta)
+        self._present_meta = present_meta
+        self._past_meta = {key: list() for key in self._fields}
 
-    # todo(lucaslingle):
+    def update_present(self, deltas):
+        for key in deltas:
+            self._present_meta[key] += deltas[key]
+
+    def present_done(self, fields):
+        for key in fields:
+            self._past_meta[key].append(self._present_meta[key])
+            self._present_meta[key] = copy.deepcopy(self._present_defaults[key])
+
+    def new_present(self):
+        return {key: 0 for key in self._fields}
+
+    @property
+    def present_meta(self):
+        return self._present_meta
+
+    @property
+    def past_meta(self):
+        return self._past_meta
+
+
+class Trajectory:
+    def __init__(self, obs_shape, rew_keys, seg_len):
+        self._rew_keys = rew_keys
+        self._seg_len = seg_len
+        self._observations = tc.zeros((seg_len+1, obs_shape), dtype=tc.float32)
+        self._actions = tc.zeros(seg_len, dtype=tc.float32)
+        self._rewards = {
+            k: tc.zeros(seg_len, dtype=tc.float32) for k in rew_keys
+        }
+        self._dones = tc.zeros(rew_keys, dtype=tc.float32)
+
+    def record(self, t, o_t, a_t, r_t, d_t):
+        i = t % self._seg_len
+        self._observations[i] = tc.tensor(o_t).float()
+        self._actions[i] = tc.tensor(a_t).long()
+        for key in self._rew_keys:
+            self._rewards[key][i] = tc.tensor(r_t[key]).float()
+        self._dones[i] = tc.tensor(d_t).float()
+
+    def report(self):
+        return {
+            'observations': self._observations,
+            'actions': self._actions,
+            'rewards': self._rewards,
+            'dones': self._dones
+        }
+
+
+# todo(lucaslingle):
     #   consider making a reward spec field in Wrapper
     #   and replacing this generator with a TrajectorObserver class.
-    observations = list()
-    actions = list()
-    rewards = dict()
-    dones = list()
 
-    ep_lens, curr_ep_len = list(), 0
-    ep_rets, curr_ep_ret = list(), 0.
-    ep_lens_raw, curr_ep_len_raw = list(), 0
-    ep_rets_raw, curr_ep_ret_raw = list(), 0.
+class TrajectoryManager:
+    def __init__(self, env, nets, segment_length):
+        self._env = env
+        self._nets = nets
+        self._segment_length = segment_length
+        self._o_t = env.reset()
 
-    while True:
-        if t % segment_length == 0:
-            if t > 0:
-                observations.append(o_t)
-                yield {
-                    "observations": tc.tensor(observations).clone(),
-                    "actions": tc.tensor(actions).clone(),
-                    "rewards": tc.tensor(rewards).clone(),
-                    "dones": tc.tensor(dones).clone(),
-                    "ep_lens": ep_lens,
-                    "ep_rets": ep_rets,
-                    "ep_lens_raw": ep_lens_raw,
-                    "ep_rets_raw": ep_rets_raw
-                }
-                observations = list()
-                actions = list()
-                rewards = dict()
-                dones = list()
-                ep_lens = list()
-                ep_rets = list()
-                ep_lens_raw = list()
-                ep_rets_raw = list()
+        self._metadata_mgr = MetadataManager(
+            present_meta={
+                'ep_len': 0,
+                'ep_ret': 0.,
+                'ep_len_raw': 0,
+                'ep_ret_raw': 0.
+            })
 
-        for net in nets.values():
+    def generate(self):
+        for net in self._nets.values():
             net.eval()
-        if 'policy_net' in nets:
-            policy_net = nets.get('policy_net')
-        else:
-            policy_net = nets.get('q_network')
-        predictions = policy_net(
-            x=tc.FloatTensor(o_t).unsqueeze(0), predictions=['policy'])
-        pi_dist_t = predictions.get('policy')
-        a_t = pi_dist_t.sample()
-        o_tp1, r_t, done_t, info_t = env.step(a_t.squeeze(0).detach().numpy())
-        if not isinstance(r_t, dict):
-            r_t = dict({'extrinsic_raw': r_t, 'extrinsic': r_t})
-        r_t_raw, r_t = r_t['extrinsic_raw'], r_t['extrinsic']
 
-        observations.append(tc.tensor(o_t).float())
-        actions.append(tc.tensor(a_t).long())
-        for key in r_t:
-            if key != 'extrinsic_raw':
-                # todo(lucaslingle): this should be updated when you make a reward spec
-                #  and make self.rewards a dictionary of tensors.
-                if key not in r_t:
-                    rewards[key] = [tc.tensor(r_t[key]).float()]
-                else:
-                    rewards[key].append(tc.tensor(r_t[key]).float())
-        dones.append(tc.tensor(done_t).int())
+        trajectory = Trajectory(
+            obs_shape=self._o_t,
+            rew_keys=self._env.reward_spec.keys,
+            seg_len=self._segment_length)
 
-        curr_ep_len += 1
-        curr_ep_len_raw += 1
-        curr_ep_ret += r_t['extrinsic']
-        curr_ep_ret_raw += r_t['extrinsic_raw']
+        for t in range(0, self._segment_length):
+            if 'policy_net' in self._nets:
+                policy_net = self._nets.get('policy_net')
+            else:
+                policy_net = self._nets.get('q_network')
 
-        if done_t:
-            ep_lens.append(curr_ep_len)
-            ep_rets.append(curr_ep_ret)
-            curr_ep_len = 0
-            curr_ep_ret = 0.
+            predictions = policy_net(
+                tc.tensor(self._o_t).float().unsqueeze(0), predictions=['policy'])
+            pi_dist_t = predictions.get('policy')
+            a_t = pi_dist_t.sample()
+            o_tp1, r_t, done_t, info_t = self._env.step(
+                a_t.squeeze(0).detach().numpy())
+            if not isinstance(r_t, dict):
+                r_t = {'extrinsic_raw': r_t, 'extrinsic': r_t}
 
-            def was_real_done():
-                if 'ale.lives' in info_t:
-                    return info_t['ale.lives'] == 0
-                return True
-            if was_real_done():
-                ep_lens_raw.append(curr_ep_len_raw)
-                ep_rets_raw.append(curr_ep_ret_raw)
-                curr_ep_len_raw = 0
-                curr_ep_ret_raw = 0.
-            o_tp1 = env.reset()
-            # note: episodic life wrapper blocks true reset if not true done
+            trajectory.record(t, self._o_t, a_t, r_t, done_t)
+            self._metadata_mgr.update_present(
+                deltas={
+                    'ep_len': 1,
+                    'ep_ret': r_t['extrinsic'],
+                    'ep_len_raw': 1,
+                    'ep_ret_raw': r_t['extrinsic_raw']
+                })
 
-        t += 1
-        o_t = o_tp1
+            if done_t:
+                self._metadata_mgr.present_done(fields=['ep_len', 'ep_ret'])
+                def was_real_done():
+                    if 'ale.lives' in info_t:
+                        return info_t['ale.lives'] == 0
+                    return True
+                if was_real_done():
+                    self._metadata_mgr.present_done(
+                        fields=['ep_len_raw', 'ep_ret_raw'])
+                o_tp1 = self._env.reset()
+
+            self._o_t = o_tp1
+
+        return {
+            **trajectory.report(),
+            **self._metadata_mgr.past_meta
+        }
