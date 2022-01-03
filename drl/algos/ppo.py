@@ -4,7 +4,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from drl.algos.abstract import Algo
 from drl.envs.wrappers.integration import get_wrappers
 from drl.agents.integration import (
-    Agent, get_preprocessings, get_architecture, get_predictors
+    Agent, get_preprocessing, get_architecture, get_predictors
 )
 from drl.utils.optimization import get_optimizer
 
@@ -17,7 +17,7 @@ class PPO(Algo):
 
     @staticmethod
     def _get_net(net_config):
-        preprocessing = get_preprocessings(**net_config.get('preprocessing'))
+        preprocessing = get_preprocessing(**net_config.get('preprocessing'))
         architecture = get_architecture(**net_config.get('architecture'))
         predictors = get_predictors(**net_config.get('predictors'))
         return DDP(Agent(preprocessing, architecture, predictors))
