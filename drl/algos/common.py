@@ -11,7 +11,6 @@ def global_mean(metric, world_size):
 
 
 def global_means(metrics, world_size):
-    # for logging purposes only!
     return Counter({k: global_mean(v, world_size) for k, v in metrics.items()})
 
 
@@ -72,43 +71,52 @@ class Trajectory:
 
 
 # todo(lucaslingle):
-    #   consider making a reward spec field in Wrapper
-    #   and replacing this generator with a TrajectorObserver class.
-
+#   make a reward spec field in Wrapper
 class TrajectoryManager:
     def __init__(self, env, nets, segment_length):
         self._env = env
         self._nets = nets
         self._segment_length = segment_length
         self._o_t = env.reset()
-
         self._metadata_mgr = MetadataManager(
             present_meta={
                 'ep_len': 0,
                 'ep_ret': 0.,
                 'ep_len_raw': 0,
                 'ep_ret_raw': 0.
-            })
+            }
+        )
 
     def generate(self):
+        """
+        Generate trajectory experience and metadata.
+        """
         for net in self._nets.values(): net.eval()
-
         trajectory = Trajectory(
             obs_shape=self._o_t,
             rew_keys=self._env.reward_spec.keys,
             seg_len=self._segment_length)
 
         for t in range(0, self._segment_length):
-            policy_net = self._nets.get('policy_net', self._nets.get('q_network'))
+            # look for a network that can take actions
+            if 'policy_net' in self._nets:
+                policy_net = self._nets.get('policy_net')
+            else:
+                policy_net = self._nets.get('q_network')
+
+            # choose action
             predictions = policy_net(
                 tc.tensor(self._o_t).float().unsqueeze(0), predictions=['policy'])
             pi_dist_t = predictions.get('policy')
             a_t = pi_dist_t.sample()
+
+            # step environment
             o_tp1, r_t, done_t, info_t = self._env.step(
                 a_t.squeeze(0).detach().numpy())
             if not isinstance(r_t, dict):
                 r_t = {'extrinsic_raw': r_t, 'extrinsic': r_t}
 
+            # record everything
             trajectory.record(t, self._o_t, a_t, r_t, done_t)
             self._metadata_mgr.update_present(
                 deltas={
@@ -119,6 +127,7 @@ class TrajectoryManager:
                 }
             )
 
+            # handle metadata for episode boundaries
             if done_t:
                 self._metadata_mgr.present_done(fields=['ep_len', 'ep_ret'])
                 def was_real_done():
@@ -129,8 +138,11 @@ class TrajectoryManager:
                     self._metadata_mgr.present_done(
                         fields=['ep_len_raw', 'ep_ret_raw'])
                 o_tp1 = self._env.reset()
+
+            # save next observation
             self._o_t = o_tp1
 
+        # return results with next timestep observation included
         results = {
             **trajectory.report(),
             **self._metadata_mgr.past_meta
