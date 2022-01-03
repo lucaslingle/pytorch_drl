@@ -30,11 +30,11 @@ class PPO(Algo):
         return DDP(Agent(preprocessing, architecture, predictors))
 
     @staticmethod
-    def _get_optim(config, agent):
+    def _get_optim(net_config, agent):
         policy_optimizer = get_optimizer(
             model=agent,
-            optimizer_cls_name=config.get('optimizer_cls_name'),
-            optimizer_cls_args=config.get('optimizer_cls_args'))
+            optimizer_cls_name=net_config.get('optimizer_cls_name'),
+            optimizer_cls_args=net_config.get('optimizer_cls_args'))
         return policy_optimizer
 
     def _get_learning_system(self):
