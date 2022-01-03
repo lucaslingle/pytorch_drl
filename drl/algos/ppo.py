@@ -2,8 +2,9 @@ import gym
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from drl.algos.abstract import Algo
-from drl.agents.preprocessing import EndToEndPreprocessing
-from drl.agents.integration import get_architecture, get_predictors, Agent
+from drl.agents.integration import (
+    get_preprocessings, get_architecture, get_predictors, Agent
+)
 from drl.utils.optim_util import get_optimizer
 from drl.envs.wrappers.integration import get_wrappers
 
@@ -16,7 +17,7 @@ class PPO(Algo):
 
     @staticmethod
     def _get_net(net_config):
-        preprocessing = EndToEndPreprocessing(net_config.get('preprocessing'))
+        preprocessing = get_preprocessings(**net_config.get('preprocessing'))
         architecture = get_architecture(**net_config.get('architecture'))
         predictors = get_predictors(**net_config.get('predictors'))
         return DDP(Agent(preprocessing, architecture, predictors))

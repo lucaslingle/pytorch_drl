@@ -1,4 +1,6 @@
 from drl.agents.integration.common import (
+    get_preprocessing,
+    get_preprocessings,
     get_architecture,
     get_predictor,
     get_predictors,
@@ -7,6 +9,8 @@ from drl.agents.integration.common import (
 
 
 __all__ = [
+    "get_preprocessing",
+    "get_preprocessings",
     "get_architecture",
     "get_predictor",
     "get_predictors",
