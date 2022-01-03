@@ -1,5 +1,5 @@
 from drl.envs.wrappers.common.abstract import (
-    Wrapper, ObservationWrapper, RewardWrapper, ActionWrapper
+    RewardSpec, Wrapper, ObservationWrapper, ActionWrapper, RewardWrapper
 )
 from drl.envs.wrappers.common.action_reset import ActionResetWrapper
 from drl.envs.wrappers.common.clip_reward import ClipRewardWrapper
@@ -15,7 +15,8 @@ from drl.envs.wrappers.common.atari import AtariWrapper, DeepmindWrapper
 
 
 __all__ = [
-    "Wrapper", "ObservationWrapper", "RewardWrapper", "ActionWrapper",
+    "RewardSpec", "Wrapper",
+    "ObservationWrapper", "ActionWrapper", "RewardWrapper"
     "ActionResetWrapper",
     "ClipRewardWrapper",
     "EpisodicLifeWrapper",
@@ -25,7 +26,7 @@ __all__ = [
     "ResizeWrapper",
     "ScaleObservationsWrapper",
     "TimeLimitWrapper",
-    "ToTensorWrapper"
+    "ToTensorWrapper",
     "AtariWrapper",
     "DeepmindWrapper"
 ]

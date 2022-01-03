@@ -1,4 +1,5 @@
 from drl.envs.wrappers.common import (
+    RewardSpec,
     Wrapper,
     ObservationWrapper,
     RewardWrapper,
@@ -22,6 +23,7 @@ from drl.envs.wrappers.stateful import (
 
 
 __all__ = [
+    "RewardSpec",
     "Wrapper",
     "ObservationWrapper",
     "RewardWrapper",

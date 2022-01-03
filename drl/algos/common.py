@@ -30,9 +30,6 @@ class MetadataManager:
             self._past_meta[key].append(self._present_meta[key])
             self._present_meta[key] = copy.deepcopy(self._present_defaults[key])
 
-    def new_present(self):
-        return {key: 0 for key in self._fields}
-
     @property
     def present_meta(self):
         return self._present_meta
@@ -91,10 +88,15 @@ class TrajectoryManager:
         """
         Generate trajectory experience and metadata.
         """
-        for net in self._nets.values(): net.eval()
+        for net in self._nets.values():
+            net.eval()
+        if hasattr(self._env, 'reward_spec'):
+            rew_keys = self._env.reward_spec.keys
+        else:
+            rew_keys = {'extrinsic_raw', 'extrinsic'}
         trajectory = Trajectory(
             obs_shape=self._o_t.shape,
-            rew_keys=self._env.reward_spec.keys,
+            rew_keys=rew_keys,
             seg_len=self._segment_length)
 
         for t in range(0, self._segment_length):

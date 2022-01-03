@@ -8,20 +8,35 @@ import abc
 import gym
 
 
-# todo(lucaslingle):
-#   figure out a good way to establish a partial ordering over subtypes of
-#   Union[gym.core.Env, 'Wrapper']...
-#   Use it to prevent wrappers from being ordered impermissably.
+class RewardSpec:
+    def __init__(self, keys):
+        self._keys = keys
+
+    @property
+    def keys(self):
+        return self._keys
+
 
 class Wrapper(metaclass=abc.ABCMeta):
     def __init__(self, env: Union[gym.core.Env, 'Wrapper']):
         self.env = env
-        self._action_space = None
         self._observation_space = None
+        self._action_space = None
+        self._reward_spec = None
         self._metadata = None
 
     def __getattr__(self, name):
         return getattr(self.env, name)
+
+    @property
+    def observation_space(self):
+        if self._observation_space is None:
+            return self.env.observation_space
+        return self._observation_space
+
+    @observation_space.setter
+    def observation_space(self, space):
+        self._observation_space = space
 
     @property
     def action_space(self):
@@ -34,14 +49,14 @@ class Wrapper(metaclass=abc.ABCMeta):
         self._action_space = space
 
     @property
-    def observation_space(self):
-        if self._observation_space is None:
-            return self.env.observation_space
-        return self._observation_space
+    def reward_spec(self):
+        if self._reward_spec is None:
+            return self.env.reward_spec
+        return self._reward_spec
 
-    @observation_space.setter
-    def observation_space(self, space):
-        self._observation_space = space
+    @reward_spec.setter
+    def reward_spec(self, spec):
+        self._reward_spec = spec
 
     @property
     def metadata(self):
@@ -103,16 +118,6 @@ class ObservationWrapper(Wrapper, metaclass=abc.ABCMeta):
         return self.observation(observation), reward, done, info
 
 
-class RewardWrapper(Wrapper, metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    def reward(self, reward):
-        raise NotImplementedError
-
-    def step(self, action):
-        observation, reward, done, info = self.env.step(action)
-        return observation, self.reward(reward), done, info
-
-
 class ActionWrapper(Wrapper, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def action(self, action):
@@ -124,3 +129,13 @@ class ActionWrapper(Wrapper, metaclass=abc.ABCMeta):
 
     def step(self, action):
         return self.env.step(self.action(action))
+
+
+class RewardWrapper(Wrapper, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def reward(self, reward):
+        raise NotImplementedError
+
+    def step(self, action):
+        observation, reward, done, info = self.env.step(action)
+        return observation, self.reward(reward), done, info

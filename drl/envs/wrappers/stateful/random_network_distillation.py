@@ -1,11 +1,12 @@
 from typing import Dict, Any, Union
+import copy
 
 import gym
 import numpy as np
 import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from drl.envs.wrappers.common.abstract import Wrapper
+from drl.envs.wrappers.common.abstract import Wrapper, RewardSpec
 from drl.envs.wrappers.stateful.abstract import TrainableWrapper
 from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.agents.preprocessing import ToChannelMajor
@@ -101,9 +102,11 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         self._student_net = DDP(StudentNetwork(self._data_shape, widening))
         self._optimizer = get_optimizer(
             model=self._student_net,
-            optimizer_cls_name=rnd_optimizer_cls_name,
-            optimizer_args=rnd_optimizer_args)
+            cls_name=rnd_optimizer_cls_name,
+            cls_args=rnd_optimizer_args)
+        self._reward_name = 'intrinsic_rnd'
         self._run_checks()
+        self._set_reward_spec()
 
     def _run_checks(self):
         space = self.env.observation_space
@@ -115,6 +118,18 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         if not cond2:
             msg = f"Attempted to wrap env with unsupported shape {space.shape}."
             raise ValueError(msg)
+
+    def _set_reward_spec(self):
+        def spec_exists():
+            if isinstance(self._env, Wrapper):
+                return self._env.reward_spec is not None
+            return False
+        if spec_exists:
+            keys = copy.deepcopy(self._env.reward_spec.keys)
+            keys.append(self._reward_name)
+        else:
+            keys = [self._reward_name]
+        self.reward_spec = RewardSpec(keys)
 
     def _sync_normalizers_global(self):
         self._synced_normalizer.steps = global_mean(
@@ -148,10 +163,11 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         normalized = self._synced_normalizer(obs.unsqueeze(0))
         _ = self._unsynced_normalizer.update(obs)
         y, yhat = self._teacher_net(normalized), self._student_net(normalized)
-        rewards_dict = {'intrinsic_rnd': tc.square(y-yhat).sum(dim=-1).item()}
+        rewards_dict = {self._reward_name: tc.square(y-yhat).sum(dim=-1).item()}
         if isinstance(rew, dict):
             rewards_dict.update(rew)
         else:
+            rewards_dict['extrinsic_raw'] = rew
             rewards_dict['extrinsic'] = rew
         return obs, rewards_dict, done, info
 
