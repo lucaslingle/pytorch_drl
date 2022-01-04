@@ -4,8 +4,11 @@ master_addr: localhost
 master_port: '12345'
 algo:
     cls_name: PPO
-    clip_param: 0.1
-    ent_coef: 0.01
+    segment_length: 256
+    ppo_opt_epochs: 4
+    ppo_learner_batch_size: 64
+    ppo_clip_param: 0.1
+    ppo_ent_coef: 0.01
     gae_lambda:
         extrinsic: 0.95
     discount_gamma:

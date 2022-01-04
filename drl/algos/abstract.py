@@ -53,11 +53,11 @@ class Algo(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def _annotate(self):
+    def _annotate(self, trajectory, **kwargs):
         pass
 
     @abc.abstractmethod
-    def _compute_losses(self, mb):
+    def _compute_losses(self, mb, **kwargs):
         pass
 
     @abc.abstractmethod

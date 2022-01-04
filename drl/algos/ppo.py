@@ -1,12 +1,21 @@
 import torch as tc
+from torch.utils.tensorboard import SummaryWriter
+import numpy as np
 
 from drl.algos.abstract import Algo
+from drl.algos.common import TrajectoryManager, global_means
 
 
 class PPO(Algo):
     def __init__(self, rank, config):
         super().__init__(rank, config)
         self._learning_system = self._get_learning_system()
+        self._trajectory_mgr = TrajectoryManager(
+            env=self._learning_system['env'],
+            policy_net=self._learning_system['policy_net'],
+            segment_length=self._config['algo']['segment_length'])
+        if self._rank == 0:
+            self._writer = SummaryWriter(self._config.get('log_dir'))
 
     def _get_learning_system(self):
         env_config = self._config.get('env')
@@ -36,7 +45,7 @@ class PPO(Algo):
         return {'global_step': global_step, 'env': env, **checkpointables}
 
     @tc.no_grad()
-    def _annotate(self, policy_net, value_net, trajectory):
+    def _annotate(self, trajectory, policy_net, value_net):
         algo_config = self._config.get('algo')
 
         # get trajectory variables.
@@ -100,16 +109,123 @@ class PPO(Algo):
             'td_lambda_returns': td_lam_rets
         }
 
-    def _compute_losses(self, mb):
-        raise NotImplementedError
+    def _slice_minibatch(self, trajectory, indices):
+        results = dict()
+        for field in trajectory:
+            if isinstance(trajectory[field], dict):
+                slice = {k: v[indices] for k,v in trajectory[field].items()}
+            else:
+                slice = trajectory[field][indices]
+            results[field] = slice
+        return results
+
+    def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef):
+        # decide who should predict what.
+        reward_keys = mb['rewards'].keys()
+        relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
+        policy_predict = ['policy']
+        value_predict = [f'value_{k}' for k in relevant_reward_keys]
+        if value_net is None:
+            policy_predict.extend(value_predict)
+
+        # compute logprobs of actions.
+        predictions_new = policy_net(mb['observations'], policy_predict)
+        pi_new = predictions_new.get('policy')
+        logprobs_new = pi_new.log_prob(mb['actions'])
+
+        # compute value estimates.
+        if value_net is None:
+            vpreds_new = {k: predictions_new[k] for k in value_predict}
+        else:
+            vpreds_new = value_net(mb['observations'], value_predict)
+        vpreds_new = {k.partition('_')[2]: vpreds_new[k] for k in vpreds_new}
+
+        # entropy
+        entropies = pi_new.entropy()
+        mean_entropy = tc.mean(entropies)
+        policy_entropy_bonus = ent_coef * mean_entropy
+
+        # ppo policy loss, value loss
+        policy_ratio = tc.exp(logprobs_new - mb['logprobs'])
+        clipped_policy_ratio = tc.clip(policy_ratio, 1-clip_param, 1+clip_param)
+        policy_surrogate_objective = 0.
+        vf_loss = 0.
+        clipfrac = 0.
+        for reward_id, key in enumerate(relevant_reward_keys):
+            surr1 = mb['advantages'][key] * policy_ratio
+            surr2 = mb['advantages'][key] * clipped_policy_ratio
+            ppo_surr_for_reward = tc.mean(tc.min(surr1, surr2))
+            vf_loss_for_reward = tc.mean(tc.square(mb['td_lambda'][key] - vpreds_new[key]))
+            clipfrac_for_reward = tc.mean(tc.greater(surr1, surr2).float())
+            if len(relevant_reward_keys) == 1:
+                policy_surrogate_objective += ppo_surr_for_reward
+                vf_loss += vf_loss_for_reward
+            else:
+                weight = self._config['algo']['reward_weightings'][key]
+                policy_surrogate_objective += weight * ppo_surr_for_reward  # this weighting is equiv to using weight on the rewards
+                vf_loss += tc.square(weight) * vf_loss_for_reward  # todo(lucaslingle): investigate if official implementation of rnd uses this weighting
+            clipfrac += clipfrac_for_reward
+
+        policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)
+        if value_net is None:
+            weight = self._config['algo']['vf_loss_weight']
+        else:
+            weight = 1.
+        composite_loss = policy_loss + weight * vf_loss
+        return {
+            'policy_loss': policy_loss,
+            'value_loss': vf_loss,
+            'composite_loss': composite_loss,
+            'meanent': mean_entropy,
+            'clipfrac': clipfrac / len(relevant_reward_keys)
+        }
 
     def training_loop(self):
         policy_net = self._learning_system.get('policy_net')
+        policy_optimizer = self._learning_system.get('policy_optimizer')
         value_net = self._learning_system.get('value_net')
-        max_steps = self._config.get('algo').get('max_steps')
+        value_optimizer = self._learning_system.get('value_optimizer')
+
+        algo_config = self._config.get('algo')
+        max_steps = algo_config.get('max_steps')
+        seg_len = algo_config.get('segment_length')
+        ppo_opt_epochs = algo_config.get('ppo_opt_epochs')
+        batch_size = algo_config.get('ppo_learner_batch_size')
 
         while self._learning_system.get('global_step') < max_steps:
-           # finish this
+            # generate trajectory.
+            trajectory = self._trajectory_mgr.generate()
+            metadata = trajectory.get('metadata')
+            annotated = self._annotate(policy_net, value_net, trajectory)
+
+            # update policy.
+            for opt_epoch in range(ppo_opt_epochs):
+                indices = np.random.permutation(seg_len)
+                for i in range(0, seg_len, batch_size):
+                    mb_indices = indices[i:i+batch_size]
+                    mb = self._slice_minibatch(annotated, mb_indices)
+                    losses = self._compute_losses(
+                        mb=mb, policy_net=policy_net, value_net=value_net,
+                        ent_coef=algo_config.get('ent_coef'),
+                        clip_param=algo_config.get('clip_param')) # todo(lucaslingle): add support for annealing clipfrac.
+
+                    policy_optimizer.zero_grad()
+                    losses.get('composite_loss').backward()
+                    policy_optimizer.step()
+
+                    if value_net:
+                        value_optimizer.zero_grad()
+                        losses.get('composite_loss').backward()
+                        value_optimizer.step()
+
+            self._learning_system['global_step'] += seg_len
+            global_metadata = global_means(metadata, self._config['world_size'])
+            if self._rank == 0:
+                for name in global_metadata:
+                    self._writer.add_scalar(
+                        tag=f"training/{name}",
+                        scalar_value=global_metadata[name],
+                        global_step=self._learning_system['global_step'])
 
     def evaluation_loop(self):
         raise NotImplementedError
