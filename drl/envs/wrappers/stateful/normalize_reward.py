@@ -49,13 +49,19 @@ class NormalizeRewardWrapper(TrainableWrapper):
         obs, rew, done, info = self.env.step(ac)
 
         if self._key:
-            assert self._key != 'extrinsic_raw', 'Must be preserved for logging'
+            if self._key == 'extrinsic_raw':
+                msg = "The key 'extrinsic_raw' must be preserved for logging."
+                raise ValueError(msg)
             if not isinstance(rew, dict):
-                msg = "Keyed ClipRewardWrapper expected reward to be a dict."
+                msg = "Can't use non-keyed reward with keyed normalization wrapper."
                 raise TypeError(msg)
         else:
-            self._key = 'extrinsic'
+            if isinstance(rew, dict):
+                msg = "Can't use keyed reward w/ non-keyed normalization wrapper."
+                raise TypeError(msg)
 
+        # todo(lucaslingle): add support here and in ClipRewardWrapper
+        #  for 'all' key or perhaps change None to mean 'all'.
         reward = rew if not isinstance(rew, dict) else rew[self._key]
         reward = tc.tensor([reward]).float()
         normalized = self._synced_normalizer(reward.unsqueeze(0)).item()
