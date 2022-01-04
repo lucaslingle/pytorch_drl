@@ -94,6 +94,7 @@ class PPO(Algo):
             'actions': actions,
             'rewards': rewards,
             'dones': dones,
+            'logprobs': logprobs,
             'vpreds': vpreds,
             'advantages': advantages,
             'td_lambda_returns': td_lam_rets
