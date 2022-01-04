@@ -130,7 +130,6 @@ class PPO(Algo):
         results = {
             **trajectory,
             'advantages': advantages,
-            'vpreds': vpreds,
             'td_lam_rets': td_lam_rets
         }
         return self._slice_minibatch(results, np.arange(seg_len))
