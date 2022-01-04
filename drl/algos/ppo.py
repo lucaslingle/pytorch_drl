@@ -189,12 +189,14 @@ class PPO(Algo):
         policy_optimizer = self._learning_system.get('policy_optimizer')
         value_net = self._learning_system.get('value_net')
         value_optimizer = self._learning_system.get('value_optimizer')
+        env = self._learning_system.get('env')
 
         algo_config = self._config.get('algo')
         max_steps = algo_config.get('max_steps')
         seg_len = algo_config.get('segment_length')
         opt_epochs = algo_config.get('opt_epochs')
         batch_size = algo_config.get('learner_batch_size')
+        checkpoint_frequency = algo_config.get('checkpoint_frequency')
 
         while self._learning_system.get('global_step') < max_steps:
             # generate trajectory.
@@ -242,6 +244,18 @@ class PPO(Algo):
                         tag=f"metadata/{name}",
                         scalar_value=global_metadata[name],
                         global_step=self._learning_system['global_step'])
+
+                global_step = self._learning_system['global_step']
+                if (global_step // seg_len) % checkpoint_frequency == 0:
+                    self._save_checkpoints(
+                        checkpointables={
+                            'policy_net': policy_net,
+                            'policy_optimizer': policy_optimizer,
+                            'value_net': value_net,
+                            'value_optimizer': value_optimizer,
+                            **env.get_checkpointables()
+                        },
+                        step=global_step)
 
     def evaluation_loop(self):
         raise NotImplementedError

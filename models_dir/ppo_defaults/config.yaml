@@ -13,6 +13,7 @@ algo:
         extrinsic: 0.95
     discount_gamma:
         extrinsic: 0.99
+    checkpoint_frequency: 100
     max_steps: 11000000
 env:
     id: 'PongNoFrameskip-v4'
