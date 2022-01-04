@@ -1,37 +1,12 @@
-import gym
-from torch.nn.parallel import DistributedDataParallel as DDP
+import torch as tc
 
 from drl.algos.abstract import Algo
-from drl.envs.wrappers.integration import get_wrappers
-from drl.agents.integration import (
-    Agent, get_preprocessings, get_architecture, get_predictors
-)
-from drl.utils.optimization import get_optimizer
 
 
 class PPO(Algo):
     def __init__(self, rank, config):
         super().__init__(rank, config)
         self._learning_system = self._get_learning_system()
-        print("Got learning system!!!")
-
-    @staticmethod
-    def _get_net(net_config):
-        preprocessing = get_preprocessings(**net_config.get('preprocessing'))
-        architecture = get_architecture(**net_config.get('architecture'))
-        predictors = get_predictors(**net_config.get('predictors'))
-        return DDP(Agent(preprocessing, architecture, predictors))
-
-    @staticmethod
-    def _get_opt(opt_config, agent):
-        optimizer = get_optimizer(model=agent, **opt_config)
-        return optimizer
-
-    @staticmethod
-    def _get_env(env_config):
-        env = gym.make(env_config.get('id'))
-        env = get_wrappers(env=env, **env_config.get('wrappers'))
-        return env
 
     def _get_learning_system(self):
         env_config = self._config.get('env')
@@ -60,13 +35,80 @@ class PPO(Algo):
         global_step = self._maybe_load_checkpoints(checkpointables_, step=None)
         return {'global_step': global_step, 'env': env, **checkpointables}
 
+    @tc.no_grad()
+    def _annotate(self, policy_net, value_net, trajectory):
+        algo_config = self._config.get('algo')
+
+        # get trajectory variables.
+        observations = trajectory.get('observations')
+        actions = trajectory.get('actions')
+        rewards = trajectory.get('rewards')
+        dones = trajectory.get('dones')
+
+        # decide who should predict what.
+        reward_keys = rewards.keys()
+        relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
+        policy_predict = ['policy']
+        value_predict = []
+        for key in relevant_reward_keys:
+            value_predict.append(f'value_{key}')
+        if value_net is None:
+            policy_predict.extend(value_predict)
+
+        # compute logprobs of actions.
+        predictions = policy_net(observations, policy_predict)
+        logprobs = predictions.get('policy').log_prob(actions)
+        logprobs = logprobs[0:-1]
+
+        # compute value estimates.
+        if value_net is None:
+            vpreds = {k: predictions[k] for k in value_predict}
+        else:
+            vpreds = value_net(observations, value_predict)
+        vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
+
+        # compute GAE(lambda), TD(lambda) estimators.
+        seg_len = algo_config.get('segment_length')
+        lam = algo_config.get('gae_lambda')
+        gamma = algo_config.get('discount_gamma')
+        advantages = {
+            k: tc.zeros(seg_len+1, dtype=tc.float32)
+            for k in relevant_reward_keys
+        }
+        for k in relevant_reward_keys:
+            for t in reversed(range(0, seg_len)):  # T-1, ..., 0
+                r_t = rewards[k][t]
+                V_t = vpreds[k][t]
+                V_tp1 = vpreds[k][t+1]
+                A_tp1 = advantages[k][t+1]
+                delta_t = -V_t + r_t + gamma[k] * V_tp1
+                A_t = delta_t + gamma[k] * lam * A_tp1
+                advantages[k][t] = A_t
+        advantages = {k: advantages[k][0:-1] for k in advantages}
+        vpreds = {k: vpreds[k][0:-1] for k in vpreds}
+        td_lam_rets = {k: advantages[k] + vpreds[k] for k in advantages}
+        observations = observations[0:-1]
+
+        return {
+            'observations': observations,
+            'actions': actions,
+            'rewards': rewards,
+            'dones': dones,
+            'vpreds': vpreds,
+            'advantages': advantages,
+            'td_lambda_returns': td_lam_rets
+        }
+
     def _compute_losses(self, mb):
-        # todo(lucaslingle): when defining compute losses,
-        #  be sure to check config.use_separate_architecture
         raise NotImplementedError
 
     def training_loop(self):
-        raise NotImplementedError
+        policy_net = self._learning_system.get('policy_net')
+        value_net = self._learning_system.get('value_net')
+        max_steps = self._config.get('algo').get('max_steps')
+
+        while self._learning_system.get('global_step') < max_steps:
+           # finish this
 
     def evaluation_loop(self):
         raise NotImplementedError

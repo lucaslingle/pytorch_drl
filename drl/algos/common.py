@@ -70,9 +70,9 @@ class Trajectory:
 
 
 class TrajectoryManager:
-    def __init__(self, env, nets, segment_length):
+    def __init__(self, env, policy_net, segment_length):
         self._env = env
-        self._nets = nets
+        self._policy_net = policy_net
         self._segment_length = segment_length
         self._o_t = env.reset()
         self._metadata_mgr = MetadataManager(
@@ -103,18 +103,16 @@ class TrajectoryManager:
             rew_keys=self._get_reward_keys(),
             seg_len=self._segment_length)
 
-        # look for a network that can take actions
-        if 'policy_net' in self._nets:
-            policy_net = self._nets.get('policy_net')
-        else:
-            policy_net = self._nets.get('q_network')
-        policy_net.eval()
+        # turn off dropout, batchnorm, etc.
+        # these should only be used to *train* off-policy algorithms, if at all.
+        # note if we implement noisy nets it will be in a way that is unaffected by this.
+        self._policy_net.eval()
 
         # generate a trajectory segment
         for t in range(0, self._segment_length):
             # choose action
-            predictions = policy_net(
-                tc.tensor(self._o_t).float().unsqueeze(0), predictions=['policy'])
+            predictions = self._policy_net(
+                tc.tensor(self._o_t).float().unsqueeze(0), predictions=['policy'])  # todo(lucaslingle): edit EpsilonGreedyCategoricalPolicy to require an inputted schedule during creation
             pi_dist_t = predictions.get('policy')
             a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
 
@@ -152,7 +150,7 @@ class TrajectoryManager:
         # return results with next timestep observation included
         results = {
             **trajectory.report(),
-            **self._metadata_mgr.past_meta
+            'metadata': self._metadata_mgr.past_meta
         }
         results['observations'][-1] = o_tp1
         return results

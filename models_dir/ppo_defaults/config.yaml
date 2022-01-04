@@ -2,7 +2,13 @@ backend: gloo
 world_size: 1
 master_addr: localhost
 master_port: '12345'
-algo_cls_name: PPO
+algo:
+    cls_name: PPO
+    clip_param: 0.1
+    ent_coef: 0.01
+    gae_lambda: 0.95
+    discount_gamma: 0.99
+    max_steps: 11000000
 env:
     id: 'PongNoFrameskip-v4'
     wrappers:
@@ -18,7 +24,7 @@ policy_net:
         policy:
             cls_name: LinearCategoricalPolicyHead
             cls_args: {num_features: 256, num_actions: 18}
-        value:
+        value_extrinsic:
             cls_name: LinearValueHead
             cls_args: {num_features: 256}
     optimizer:

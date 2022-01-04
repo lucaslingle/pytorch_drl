@@ -38,7 +38,7 @@ def get_config(args):
 
 def get_algo(rank, config):
     module = importlib.import_module('drl.algos')
-    algo = getattr(module, config.get('algo_cls_name'))
+    algo = getattr(module, config.get('algo').get('cls_name'))
     return algo(rank, config)
 
 

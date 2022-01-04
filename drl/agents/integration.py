@@ -61,6 +61,10 @@ class Agent(tc.nn.Module):
         self._architecture = architecture
         self._predictors = predictors
 
+    @property
+    def keys(self):
+        return self._predictors.keys()
+
     def forward(
             self,
             x: tc.Tensor,
