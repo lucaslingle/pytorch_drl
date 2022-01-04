@@ -45,7 +45,7 @@ class Trajectory:
     def __init__(self, obs_shape, rew_keys, seg_len):
         self._rew_keys = rew_keys
         self._seg_len = seg_len
-        self._observations = tc.zeros((seg_len+1, obs_shape), dtype=tc.float32)
+        self._observations = tc.zeros((seg_len+1, *obs_shape), dtype=tc.float32)
         self._actions = tc.zeros(seg_len, dtype=tc.float32)
         self._rewards = {
             k: tc.zeros(seg_len, dtype=tc.float32) for k in rew_keys
