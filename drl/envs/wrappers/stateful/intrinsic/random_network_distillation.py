@@ -6,7 +6,7 @@ import numpy as np
 import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from drl.envs.wrappers.common.abstract import Wrapper, RewardSpec
+from drl.envs.wrappers.stateless.abstract import Wrapper, RewardSpec
 from drl.envs.wrappers.stateful.abstract import TrainableWrapper
 from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.agents.preprocessing import ToChannelMajor

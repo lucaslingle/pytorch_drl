@@ -1,0 +1,71 @@
+import torch as tc
+
+from drl.envs.wrappers.stateless.abstract import Wrapper, RewardSpec
+from drl.envs.wrappers.stateful.abstract import TrainableWrapper
+from drl.envs.wrappers.stateful.normalize import Normalizer
+from drl.algos.common import global_mean
+
+
+class NormalizeRewardWrapper(TrainableWrapper):
+    def __init__(self, env, key=None):
+        super().__init__(env)
+        self._synced_normalizer = Normalizer((1,), -5, 5)
+        self._unsynced_normalizer = Normalizer((1,), -5, 5)
+        self._key = key
+        self._set_reward_spec()
+
+    def _set_reward_spec(self):
+        def spec_exists():
+            if isinstance(self._env, Wrapper):
+                return self._env.reward_spec is not None
+            return False
+        if not spec_exists():
+            keys = ['extrinsic_raw', 'extrinsic']
+            self.reward_spec = RewardSpec(keys)
+
+    def _sync_normalizers_global(self):
+        self._synced_normalizer.steps = global_mean(
+            self._unsynced_normalizer.steps, self._world_size)
+        self._synced_normalizer.mean = global_mean(
+            self._unsynced_normalizer.mean, self._world_size)
+        self._synced_normalizer.var = global_mean(
+            self._unsynced_normalizer.var, self._world_size)
+
+    def _sync_normalizers_local(self):
+        self._unsynced_normalizer.steps = self._synced_normalizer.steps
+        self._unsynced_normalizer.mean = self._synced_normalizer.mean
+        self._unsynced_normalizer.var = self._synced_normalizer.var
+
+    def get_checkpointables(self):
+        checkpointables = dict()
+        if isinstance(self.env, Wrapper):
+            checkpointables.update(self.env.get_checkpointables())
+        checkpointables.update({'reward_normalizer': self._synced_normalizer})
+        return checkpointables
+
+    def step(self, ac):
+        if self._unsynced_normalizer.step < self._synced_normalizer.step:
+            self._sync_normalizers_local()
+        obs, rew, done, info = self.env.step(ac)
+
+        if self._key:
+            assert self._key != 'extrinsic_raw', 'Must be preserved for logging'
+            if not isinstance(rew, dict):
+                msg = "Keyed ClipRewardWrapper expected reward to be a dict."
+                raise TypeError(msg)
+        else:
+            self._key = 'extrinsic'
+
+        reward = rew if not isinstance(rew, dict) else rew[self._key]
+        reward = tc.tensor([reward]).float()
+        normalized = self._synced_normalizer(reward.unsqueeze(0)).item()
+        _ = self._unsynced_normalizer.update(reward)
+        if isinstance(rew, dict):
+            rew[self._key] = normalized
+        else:
+            rew = {'extrinsic_raw': reward, 'extrinsic': normalized}
+        return obs, rew, done, info
+
+    def learn(self, **kwargs):
+        self._sync_normalizers_global()
+        self._sync_normalizers_local()

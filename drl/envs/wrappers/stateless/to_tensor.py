@@ -2,7 +2,7 @@ import torch as tc
 import numpy as np
 import gym
 
-from drl.envs.wrappers.common.abstract import ObservationWrapper
+from drl.envs.wrappers.stateless.abstract import ObservationWrapper
 
 
 class ToTensorWrapper(ObservationWrapper):

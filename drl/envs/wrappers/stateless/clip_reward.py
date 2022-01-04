@@ -1,4 +1,4 @@
-from drl.envs.wrappers.common.abstract import RewardWrapper
+from drl.envs.wrappers.stateless.abstract import RewardWrapper
 
 
 class ClipRewardWrapper(RewardWrapper):

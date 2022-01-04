@@ -2,7 +2,7 @@ import numpy as np
 import gym
 import cv2
 
-from drl.envs.wrappers.common.abstract import ObservationWrapper
+from drl.envs.wrappers.stateless.abstract import ObservationWrapper
 
 
 class ResizeWrapper(ObservationWrapper):

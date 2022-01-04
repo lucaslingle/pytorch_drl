@@ -103,12 +103,8 @@ class TrajectoryManager:
             rew_keys=self._get_reward_keys(),
             seg_len=self._segment_length)
 
-        # turn off dropout, batchnorm, etc.
-        # these should only be used to *train* off-policy algorithms, if at all.
-        # note if we implement noisy nets it will be in a way that is unaffected by this.
-        self._policy_net.eval()
-
         # generate a trajectory segment
+        self._policy_net.eval()
         for t in range(0, self._segment_length):
             # choose action
             predictions = self._policy_net(

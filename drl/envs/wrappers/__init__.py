@@ -1,4 +1,4 @@
-from drl.envs.wrappers.common import (
+from drl.envs.wrappers.stateless import (
     RewardSpec,
     Wrapper,
     ObservationWrapper,

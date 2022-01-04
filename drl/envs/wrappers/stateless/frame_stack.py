@@ -3,7 +3,7 @@ from collections import deque
 import numpy as np
 import gym
 
-from drl.envs.wrappers.common.abstract import Wrapper
+from drl.envs.wrappers.stateless.abstract import Wrapper
 
 
 class FrameStackWrapper(Wrapper):

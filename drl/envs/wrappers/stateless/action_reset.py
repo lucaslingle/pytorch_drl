@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 
-from drl.envs.wrappers.common.abstract import Wrapper
+from drl.envs.wrappers.stateless.abstract import Wrapper
 
 
 class ActionResetWrapper(Wrapper):

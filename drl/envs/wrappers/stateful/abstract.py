@@ -4,7 +4,7 @@ Abstract wrapper definitions.
 
 import abc
 
-from drl.envs.wrappers.common import Wrapper
+from drl.envs.wrappers.stateless import Wrapper
 
 
 class TrainableWrapper(Wrapper, metaclass=abc.ABCMeta):

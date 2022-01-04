@@ -1,4 +1,4 @@
-from drl.envs.wrappers.common.abstract import Wrapper
+from drl.envs.wrappers.stateless.abstract import Wrapper
 
 
 class NoopResetWrapper(Wrapper):
