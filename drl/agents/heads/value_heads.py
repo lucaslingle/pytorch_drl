@@ -6,7 +6,7 @@ from drl.agents.heads.abstract import Head
 
 
 class ValueHead(Head, metaclass=abc.ABCMeta):
-    def forward(self, features):
+    def forward(self, features, **kwargs):
         vpred = self._value_head(features).squeeze(-1)
         return vpred
 

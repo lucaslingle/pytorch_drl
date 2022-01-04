@@ -5,7 +5,9 @@ import torch as tc
 
 from drl.agents.preprocessing import Preprocessing, EndToEndPreprocessing
 from drl.agents.architectures import Architecture
-from drl.agents.heads import Head
+from drl.agents.heads import (
+    Head, CategoricalActionValueHead, EpsilonGreedyCategoricalPolicyHead
+)
 
 
 def get_preprocessing(cls_name, cls_args):
@@ -38,6 +40,11 @@ def get_predictor(cls_name, cls_args):
 def get_predictors(**predictors_spec: Dict[str, Dict[str, Any]]):
     predictors = dict()
     for key, spec in predictors_spec.items():
+        predictor = get_predictor(**spec)
+        if isinstance(predictor, CategoricalActionValueHead):
+            policy_predictor = EpsilonGreedyCategoricalPolicyHead(
+                action_value_head=predictor)
+            predictors['policy'] = policy_predictor
         predictors[key] = get_predictor(**spec)
     return predictors
 
@@ -54,10 +61,23 @@ class Agent(tc.nn.Module):
         self._architecture = architecture
         self._predictors = predictors
 
-    def forward(self, x: tc.Tensor, predict: List[str]) -> Dict[str, tc.Tensor]:
+    def forward(
+            self,
+            x: tc.Tensor,
+            predict: List[str],
+            **kwargs: Dict[str, Any]
+    ) -> Dict[str, tc.Tensor]:
+        """
+        Args:
+            x: Batch of observations
+            predict: Names of predictors to apply.
+            **kwargs: Keyword arguments to pass to predictors.
+        Returns:
+            Dictionary of predictions.
+        """
         preproc = self._preprocessing(x)
         features = self._architecture(preproc)
         predictions = {
-            key: self._predictors[key](features) for key in predict
+            key: self._predictors[key](features, **kwargs) for key in predict
         }
         return predictions
