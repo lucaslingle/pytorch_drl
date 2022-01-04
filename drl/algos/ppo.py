@@ -89,7 +89,7 @@ class PPO(Algo):
             vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
 
             return {
-                **self._slice_minibatch(trajectory, np.arange(seg_len)),
+                **self._slice_minibatch(trajectory, slice(0, seg_len)),
                 'logprobs': logprobs,
                 'entropies': entropies,
                 'vpreds': vpreds
@@ -132,7 +132,7 @@ class PPO(Algo):
             'advantages': advantages,
             'td_lam_rets': td_lam_rets
         }
-        return self._slice_minibatch(results, np.arange(seg_len))
+        return self._slice_minibatch(results, slice(0, seg_len))
 
     def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef):
         mb_new = self._annotate(mb, policy_net, value_net, no_grad=False)
