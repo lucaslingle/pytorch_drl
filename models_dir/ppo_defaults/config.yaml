@@ -6,8 +6,10 @@ algo:
     cls_name: PPO
     clip_param: 0.1
     ent_coef: 0.01
-    gae_lambda: 0.95
-    discount_gamma: 0.99
+    gae_lambda:
+        extrinsic: 0.95
+    discount_gamma:
+        extrinsic: 0.99
     max_steps: 11000000
 env:
     id: 'PongNoFrameskip-v4'

@@ -82,7 +82,7 @@ class PPO(Algo):
                 V_tp1 = vpreds[k][t+1]
                 A_tp1 = advantages[k][t+1]
                 delta_t = -V_t + r_t + gamma[k] * V_tp1
-                A_t = delta_t + gamma[k] * lam * A_tp1
+                A_t = delta_t + gamma[k] * lam[k] * A_tp1
                 advantages[k][t] = A_t
         advantages = {k: advantages[k][0:-1] for k in advantages}
         vpreds = {k: vpreds[k][0:-1] for k in vpreds}
