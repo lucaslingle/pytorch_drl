@@ -121,10 +121,10 @@ class PPO(Algo):
             for t in reversed(range(0, seg_len)):  # T-1, ..., 0
                 r_t = rewards[k][t]
                 V_t = vpreds[k][t]
-                V_tp1 = vpreds[k][t + 1]
-                A_tp1 = advantages[k][t + 1]
-                delta_t = -V_t + r_t + (1. - dones[t]) * gamma[k] * V_tp1
-                A_t = delta_t + (1. - dones[t]) * gamma[k] * lam[k] * A_tp1
+                V_tp1 = vpreds[k][t+1]
+                A_tp1 = advantages[k][t+1]
+                delta_t = -V_t + r_t + (1.-dones[t]) * gamma[k] * V_tp1
+                A_t = delta_t + (1.-dones[t]) * gamma[k] * lam[k] * A_tp1
                 advantages[k][t] = A_t
         td_lam_rets = {k: advantages[k] + vpreds[k] for k in advantages}
         results = {
@@ -184,6 +184,8 @@ class PPO(Algo):
         }
 
     def training_loop(self):
+        world_size = self._config['world_size']
+
         policy_net = self._learning_system.get('policy_net')
         policy_optimizer = self._learning_system.get('policy_optimizer')
         value_net = self._learning_system.get('value_net')
@@ -225,7 +227,7 @@ class PPO(Algo):
                         losses.get('composite_loss').backward()
                         value_optimizer.step()
 
-                    global_metrics = global_means(losses, self._config['world_size'])
+                    global_metrics = global_means(losses, world_size)
                     if self._rank == 0:
                         for name in global_metrics:
                             self._writer.add_scalar(
@@ -233,7 +235,7 @@ class PPO(Algo):
                                 scalar_value=global_metrics[name],
                                 global_step=self._learning_system['global_step'])
 
-            global_metadata = global_means(metadata, self._config['world_size'])
+            global_metadata = global_means(metadata, world_size)
             if self._rank == 0:
                 for name in global_metadata:
                     self._writer.add_scalar(
