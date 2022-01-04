@@ -192,8 +192,8 @@ class PPO(Algo):
         algo_config = self._config.get('algo')
         max_steps = algo_config.get('max_steps')
         seg_len = algo_config.get('segment_length')
-        ppo_opt_epochs = algo_config.get('ppo_opt_epochs')
-        batch_size = algo_config.get('ppo_learner_batch_size')
+        opt_epochs = algo_config.get('opt_epochs')
+        batch_size = algo_config.get('learner_batch_size')
 
         while self._learning_system.get('global_step') < max_steps:
             # generate trajectory.
@@ -203,7 +203,7 @@ class PPO(Algo):
             self._learning_system['global_step'] += seg_len
 
             # update policy.
-            for opt_epoch in range(ppo_opt_epochs):
+            for opt_epoch in range(opt_epochs):
                 indices = np.random.permutation(seg_len)
                 for i in range(0, seg_len, batch_size):
                     mb_indices = indices[i:i+batch_size]
