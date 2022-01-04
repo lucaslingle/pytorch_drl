@@ -50,20 +50,42 @@ class Algo(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def _get_learning_system(self):
+        """
+        Parse a config file to create the relevant env and networks.
+        """
         pass
 
     @abc.abstractmethod
-    def _annotate(self, trajectory, **kwargs):
+    def _annotate(self, trajectory, no_grad, **kwargs):
+        """
+        Forward pass through the networks.
+        """
+        pass
+
+    @abc.abstractmethod
+    def _credit_assignment(self, trajectory):
+        """
+        Assign credit backwards in time.
+        """
         pass
 
     @abc.abstractmethod
     def _compute_losses(self, mb, **kwargs):
+        """
+        Compute losses for learning.
+        """
         pass
 
     @abc.abstractmethod
     def training_loop(self):
+        """
+        Training loop.
+        """
         pass
 
     @abc.abstractmethod
     def evaluation_loop(self):
+        """
+        Evaluation loop.
+        """
         pass

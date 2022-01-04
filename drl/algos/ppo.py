@@ -1,3 +1,5 @@
+from contextlib import ExitStack
+
 import torch as tc
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
@@ -44,42 +46,69 @@ class PPO(Algo):
         global_step = self._maybe_load_checkpoints(checkpointables_, step=None)
         return {'global_step': global_step, 'env': env, **checkpointables}
 
-    @tc.no_grad()
-    def _annotate(self, trajectory, policy_net, value_net):
-        # todo(lucaslingle):
-        #    consider extending the functionality of this to make it reusable
-        #    within _compute_losses to compute the updated quantities.
-        #    you'd have to use contextlib.ExitStack to conditionally apply
-        #    tc.no_grad() as a context manager.
-        algo_config = self._config.get('algo')
+    def _slice_minibatch(self, trajectory, indices):
+        results = dict()
+        for field in trajectory:
+            if isinstance(trajectory[field], dict):
+                slice = {k: v[indices] for k,v in trajectory[field].items()}
+            else:
+                slice = trajectory[field][indices]
+            results[field] = slice
+        return results
 
+    def _annotate(self, trajectory, policy_net, value_net, no_grad):
+        with tc.no_grad() if no_grad else ExitStack():
+            # get config variables
+            algo_config = self._config.get('algo')
+            seg_len = algo_config.get('segment_length')
+
+            # get trajectory variables.
+            observations = trajectory.get('observations')
+            actions = trajectory.get('actions')
+            rewards = trajectory.get('rewards')
+            dones = trajectory.get('dones')
+
+            # decide who should predict what.
+            reward_keys = rewards.keys()
+            relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
+            policy_predict = ['policy']
+            value_predict = [f'value_{k}' for k in relevant_reward_keys]
+            if value_net is None:
+                policy_predict.extend(value_predict)
+
+            # compute logprobs of actions.
+            predictions = policy_net(observations, policy_predict)
+            pi = predictions.get('policy')
+            logprobs = pi.log_prob(actions)
+            entropies = pi.entropy()
+
+            # compute value estimates.
+            if value_net is None:
+                vpreds = {k: predictions[k] for k in value_predict}
+            else:
+                vpreds = value_net(observations, value_predict)
+            vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
+
+            return {
+                **self._slice_minibatch(trajectory, np.arange(seg_len)),
+                'logprobs': logprobs,
+                'vpreds': vpreds,
+                'entropies': entropies
+            }
+
+    @tc.no_grad()
+    def _credit_assignment(self, trajectory):
         # get trajectory variables.
-        observations = trajectory.get('observations')
-        actions = trajectory.get('actions')
         rewards = trajectory.get('rewards')
         dones = trajectory.get('dones')
+        vpreds = trajectory.get('vpreds')
 
-        # decide who should predict what.
+        # get reward keys.
         reward_keys = rewards.keys()
         relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
-        policy_predict = ['policy']
-        value_predict = [f'value_{k}' for k in relevant_reward_keys]
-        if value_net is None:
-            policy_predict.extend(value_predict)
 
-        # compute logprobs of actions.
-        predictions = policy_net(observations, policy_predict)
-        logprobs = predictions.get('policy').log_prob(actions)
-        logprobs = logprobs[0:-1]
-
-        # compute value estimates.
-        if value_net is None:
-            vpreds = {k: predictions[k] for k in value_predict}
-        else:
-            vpreds = value_net(observations, value_predict)
-        vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
-
-        # compute GAE(lambda), TD(lambda) estimators.
+        # assign credit.
+        algo_config = self._config.get('algo')
         seg_len = algo_config.get('segment_length')
         lam = algo_config.get('gae_lambda')
         gamma = algo_config.get('discount_gamma')
@@ -91,65 +120,34 @@ class PPO(Algo):
             for t in reversed(range(0, seg_len)):  # T-1, ..., 0
                 r_t = rewards[k][t]
                 V_t = vpreds[k][t]
-                V_tp1 = vpreds[k][t+1]
-                A_tp1 = advantages[k][t+1]
+                V_tp1 = vpreds[k][t + 1]
+                A_tp1 = advantages[k][t + 1]
                 delta_t = -V_t + r_t + (1. - dones[t]) * gamma[k] * V_tp1
                 A_t = delta_t + (1. - dones[t]) * gamma[k] * lam[k] * A_tp1
                 advantages[k][t] = A_t
-        advantages = {k: advantages[k][0:-1] for k in advantages}
-        vpreds = {k: vpreds[k][0:-1] for k in vpreds}
         td_lam_rets = {k: advantages[k] + vpreds[k] for k in advantages}
-        observations = observations[0:-1]
-
-        return {
-            'observations': observations,
-            'actions': actions,
-            'rewards': rewards,
-            'dones': dones,
-            'logprobs': logprobs,
-            'vpreds': vpreds,
+        results = {
+            **trajectory,
             'advantages': advantages,
-            'td_lambda_returns': td_lam_rets
+            'vpreds': vpreds,
+            'td_lam_rets': td_lam_rets
         }
-
-    def _slice_minibatch(self, trajectory, indices):
-        results = dict()
-        for field in trajectory:
-            if isinstance(trajectory[field], dict):
-                slice = {k: v[indices] for k,v in trajectory[field].items()}
-            else:
-                slice = trajectory[field][indices]
-            results[field] = slice
-        return results
+        return self._slice_minibatch(results, np.arange(seg_len))
 
     def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef):
-        # decide who should predict what.
-        reward_keys = mb['rewards'].keys()
+        mb_new = self._annotate(mb, policy_net, value_net, no_grad=False)
+
+        # get reward keys.
+        reward_keys = mb_new['rewards'].keys()
         relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
-        policy_predict = ['policy']
-        value_predict = [f'value_{k}' for k in relevant_reward_keys]
-        if value_net is None:
-            policy_predict.extend(value_predict)
-
-        # compute logprobs of actions.
-        predictions_new = policy_net(mb['observations'], policy_predict)
-        pi_new = predictions_new.get('policy')
-        logprobs_new = pi_new.log_prob(mb['actions'])
-
-        # compute value estimates.
-        if value_net is None:
-            vpreds_new = {k: predictions_new[k] for k in value_predict}
-        else:
-            vpreds_new = value_net(mb['observations'], value_predict)
-        vpreds_new = {k.partition('_')[2]: vpreds_new[k] for k in vpreds_new}
 
         # entropy
-        entropies = pi_new.entropy()
+        entropies = mb_new['entropies']
         mean_entropy = tc.mean(entropies)
         policy_entropy_bonus = ent_coef * mean_entropy
 
         # ppo policy loss, value loss
-        policy_ratio = tc.exp(logprobs_new - mb['logprobs'])
+        policy_ratio = tc.exp(mb_new['logprobs'] - mb['logprobs'])
         clipped_policy_ratio = tc.clip(policy_ratio, 1-clip_param, 1+clip_param)
         policy_surrogate_objective = 0.
         vf_loss = 0.
@@ -158,7 +156,9 @@ class PPO(Algo):
             surr1 = mb['advantages'][key] * policy_ratio
             surr2 = mb['advantages'][key] * clipped_policy_ratio
             ppo_surr_for_reward = tc.mean(tc.min(surr1, surr2))
-            vf_loss_for_reward = tc.mean(tc.square(mb['td_lambda'][key] - vpreds_new[key]))
+            vf_loss_for_reward = tc.mean(
+                tc.square(mb['td_lambda'][key] - mb_new['vpreds'][key])
+            )
             clipfrac_for_reward = tc.mean(tc.greater(surr1, surr2).float())
             if len(relevant_reward_keys) == 1:
                 policy_surrogate_objective += ppo_surr_for_reward
@@ -196,8 +196,10 @@ class PPO(Algo):
         while self._learning_system.get('global_step') < max_steps:
             # generate trajectory.
             trajectory = self._trajectory_mgr.generate()
-            metadata = trajectory.get('metadata')
-            annotated = self._annotate(policy_net, value_net, trajectory)
+            metadata = trajectory.pop('metadata')
+            trajectory = self._annotate(
+                trajectory, policy_net, value_net, no_grad=True)
+            trajectory = self._credit_assignment(trajectory)
             self._learning_system['global_step'] += seg_len
 
             # update policy.
@@ -205,7 +207,7 @@ class PPO(Algo):
                 indices = np.random.permutation(seg_len)
                 for i in range(0, seg_len, batch_size):
                     mb_indices = indices[i:i+batch_size]
-                    mb = self._slice_minibatch(annotated, mb_indices)
+                    mb = self._slice_minibatch(trajectory, mb_indices)
                     losses = self._compute_losses(
                         mb=mb, policy_net=policy_net, value_net=value_net,
                         ent_coef=algo_config.get('ent_coef'),
