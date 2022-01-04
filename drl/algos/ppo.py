@@ -91,10 +91,10 @@ class PPO(Algo):
 
             # compute value estimates.
             if value_net is None:
-                vpreds = {k: predictions.get(k) for k in value_predict}
+                vpreds = {k: predictions[k] for k in value_predict}
             else:
                 vpreds = value_net(observations, value_predict)
-            vpreds = {k.partition('_')[2]: v for k,v in vpreds.items()}
+            vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
 
             return {
                 **self._slice_minibatch(trajectory, slice(0, seg_len)),
