@@ -66,7 +66,6 @@ class PPO(Algo):
             observations = trajectory.get('observations')
             actions = trajectory.get('actions')
             rewards = trajectory.get('rewards')
-            dones = trajectory.get('dones')
 
             # decide who should predict what.
             reward_keys = rewards.keys()
@@ -98,6 +97,12 @@ class PPO(Algo):
 
     @tc.no_grad()
     def _credit_assignment(self, trajectory):
+        # get config variables
+        algo_config = self._config.get('algo')
+        seg_len = algo_config.get('segment_length')
+        lam = algo_config.get('gae_lambda')
+        gamma = algo_config.get('discount_gamma')
+
         # get trajectory variables.
         rewards = trajectory.get('rewards')
         dones = trajectory.get('dones')
@@ -108,10 +113,6 @@ class PPO(Algo):
         relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
 
         # assign credit.
-        algo_config = self._config.get('algo')
-        seg_len = algo_config.get('segment_length')
-        lam = algo_config.get('gae_lambda')
-        gamma = algo_config.get('discount_gamma')
         advantages = {
             k: tc.zeros(seg_len+1, dtype=tc.float32)
             for k in relevant_reward_keys
@@ -165,14 +166,15 @@ class PPO(Algo):
                 vf_loss += vf_loss_for_reward
             else:
                 weight = self._config['algo']['reward_weightings'][key]
-                policy_surrogate_objective += weight * ppo_surr_for_reward  # this weighting is equiv to using weight on the rewards
-                vf_loss += tc.square(weight) * vf_loss_for_reward  # todo(lucaslingle): investigate if official implementation of rnd uses this weighting
+                policy_surrogate_objective += weight * ppo_surr_for_reward
+                vf_loss += tc.square(weight) * vf_loss_for_reward
+                # todo(lucaslingle): investigate if official implementation
+                #  of RND uses this value loss weighting
             clipfrac += clipfrac_for_reward
 
         policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)
         weight = 1. if value_net else self._config['algo']['vf_loss_weight']
         composite_loss = policy_loss + weight * vf_loss
-
         return {
             'policy_loss': policy_loss,
             'value_loss': vf_loss,
@@ -211,7 +213,8 @@ class PPO(Algo):
                     losses = self._compute_losses(
                         mb=mb, policy_net=policy_net, value_net=value_net,
                         ent_coef=algo_config.get('ent_coef'),
-                        clip_param=algo_config.get('clip_param')) # todo(lucaslingle): add support for annealing clipfrac.
+                        clip_param=algo_config.get('clip_param'))
+                    # todo(lucaslingle): add support for annealing clipfrac.
 
                     policy_optimizer.zero_grad()
                     losses.get('composite_loss').backward()
