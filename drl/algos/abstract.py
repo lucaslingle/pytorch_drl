@@ -63,7 +63,7 @@ class Algo(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def _credit_assignment(self, trajectory):
+    def _credit_assignment(self, trajectory, **kwargs):
         """
         Assign credit backwards in time.
         """
