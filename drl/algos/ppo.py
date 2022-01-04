@@ -237,6 +237,7 @@ class PPO(Algo):
                                 scalar_value=global_metrics[name],
                                 global_step=self._learning_system['global_step'])
 
+            # save everything.
             global_metadata = global_means(metadata, world_size)
             if self._rank == 0:
                 for name in global_metadata:
