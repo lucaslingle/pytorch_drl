@@ -200,6 +200,7 @@ class PPO(Algo):
             trajectory = self._trajectory_mgr.generate()
             metadata = trajectory.get('metadata')
             annotated = self._annotate(policy_net, value_net, trajectory)
+            self._learning_system['global_step'] += seg_len
 
             # update policy.
             for opt_epoch in range(ppo_opt_epochs):
@@ -221,12 +222,19 @@ class PPO(Algo):
                         losses.get('composite_loss').backward()
                         value_optimizer.step()
 
-            self._learning_system['global_step'] += seg_len
+                    global_metrics = global_means(losses, self._config['world_size'])
+                    if self._rank == 0:
+                        for name in global_metrics:
+                            self._writer.add_scalar(
+                                tag=f"epoch_{opt_epoch}/{name}",
+                                scalar_value=global_metrics[name],
+                                global_step=self._learning_system['global_step'])
+
             global_metadata = global_means(metadata, self._config['world_size'])
             if self._rank == 0:
                 for name in global_metadata:
                     self._writer.add_scalar(
-                        tag=f"training/{name}",
+                        tag=f"metadata/{name}",
                         scalar_value=global_metadata[name],
                         global_step=self._learning_system['global_step'])
 
