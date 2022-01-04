@@ -46,6 +46,11 @@ class PPO(Algo):
 
     @tc.no_grad()
     def _annotate(self, trajectory, policy_net, value_net):
+        # todo(lucaslingle):
+        #    consider extending the functionality of this to make it reusable
+        #    within _compute_losses to compute the updated quantities.
+        #    you'd have to use contextlib.ExitStack to conditionally apply
+        #    tc.no_grad() as a context manager.
         algo_config = self._config.get('algo')
 
         # get trajectory variables.
@@ -58,9 +63,7 @@ class PPO(Algo):
         reward_keys = rewards.keys()
         relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
         policy_predict = ['policy']
-        value_predict = []
-        for key in relevant_reward_keys:
-            value_predict.append(f'value_{key}')
+        value_predict = [f'value_{k}' for k in relevant_reward_keys]
         if value_net is None:
             policy_predict.extend(value_predict)
 
