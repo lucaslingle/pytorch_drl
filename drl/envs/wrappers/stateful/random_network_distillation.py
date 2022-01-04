@@ -157,9 +157,10 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         return checkpointables
 
     def step(self, ac):
-        if self._unsynced_normalizer.step == 0:
+        if self._unsynced_normalizer.step < self._synced_normalizer.step:
             self._sync_normalizers_local()
         obs, rew, done, info = self.env.step(ac)
+        obs = tc.tensor(obs).float()
         normalized = self._synced_normalizer(obs.unsqueeze(0))
         _ = self._unsynced_normalizer.update(obs)
         y, yhat = self._teacher_net(normalized), self._student_net(normalized)
