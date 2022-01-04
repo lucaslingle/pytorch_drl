@@ -216,14 +216,15 @@ class PPO(Algo):
                         ent_coef=algo_config.get('ent_coef'),
                         clip_param=algo_config.get('clip_param'))
                     # todo(lucaslingle): add support for annealing clipfrac.
+                    composite_loss = losses.get('composite_loss')
 
                     policy_optimizer.zero_grad()
-                    losses.get('composite_loss').backward()
+                    composite_loss.backward(retain_graph=value_net is not None)
                     policy_optimizer.step()
 
                     if value_net:
                         value_optimizer.zero_grad()
-                        losses.get('composite_loss').backward()
+                        composite_loss.backward()
                         value_optimizer.step()
 
                     global_metrics = global_means(losses, world_size)

@@ -1,8 +1,6 @@
 from typing import Dict, Any
 import importlib
 
-from drl.envs.wrappers.stateless.abstract import Wrapper
-
 
 def get_wrapper(env, cls_name, cls_args):
     module = importlib.import_module('drl.envs.wrappers')

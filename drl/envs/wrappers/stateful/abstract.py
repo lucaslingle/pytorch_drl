@@ -14,5 +14,3 @@ class TrainableWrapper(Wrapper, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def learn(self, obs_batch, **kwargs):
         pass
-
-
