@@ -180,7 +180,7 @@ class PPO(Algo):
             clipfrac += clipfrac_for_reward
 
         policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)
-        weight = 1. if value_net else self._config['algo']['vf_loss_weight']
+        weight = 1. if value_net else self._config['algo']['vf_loss_coef']
         composite_loss = policy_loss + weight * vf_loss
         return {
             'policy_loss': policy_loss,
@@ -233,13 +233,11 @@ class PPO(Algo):
                     policy_optimizer.zero_grad()
                     composite_loss.backward(retain_graph=value_net is not None)
                     policy_optimizer.step()
-                    policy_scheduler.step()
 
                     if value_net:
                         value_optimizer.zero_grad()
                         composite_loss.backward()
                         value_optimizer.step()
-                        value_scheduler.step()
 
                     global_metrics = global_means(losses, world_size)
                     if self._rank == 0:
@@ -248,6 +246,11 @@ class PPO(Algo):
                                 tag=f"epoch_{opt_epoch}/{name}",
                                 scalar_value=global_metrics[name],
                                 global_step=self._learning_system['global_step'])
+
+            if policy_scheduler:
+                policy_scheduler.step()
+            if value_scheduler:
+                value_scheduler.step()
 
             # save everything.
             global_metadata = global_means(metadata, world_size)

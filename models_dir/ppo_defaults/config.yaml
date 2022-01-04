@@ -1,14 +1,15 @@
 backend: gloo
-world_size: 1
+world_size: 8
 master_addr: localhost
 master_port: '12345'
 algo:
     cls_name: PPO
-    segment_length: 256
-    opt_epochs: 4
-    learner_batch_size: 64
+    segment_length: 128
+    opt_epochs: 3
+    learner_batch_size: 32
     clip_param: 0.1
     ent_coef: 0.01
+    vf_loss_coef: 1.0
     gae_lambda:
         extrinsic: 0.95
     discount_gamma:
