@@ -77,7 +77,7 @@ class PPO(Algo):
 
             # compute logprobs of actions.
             predictions = policy_net(observations, policy_predict)
-            pi = predictions.get('policy')
+            pi = predictions.get('policy')[0:seg_len]
             logprobs = pi.log_prob(actions)
             entropies = pi.entropy()
 
