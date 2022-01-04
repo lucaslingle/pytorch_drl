@@ -126,11 +126,11 @@ class PPO(Algo):
                 delta_t = -V_t + r_t + (1.-dones[t]) * gamma[k] * V_tp1
                 A_t = delta_t + (1.-dones[t]) * gamma[k] * lam[k] * A_tp1
                 advantages[k][t] = A_t
-        td_lam_rets = {k: advantages[k] + vpreds[k] for k in advantages}
+        td_lambda_returns = {k: advantages[k] + vpreds[k] for k in advantages}
         results = {
             **trajectory,
             'advantages': advantages,
-            'td_lam_rets': td_lam_rets
+            'td_lambda_returns': td_lambda_returns
         }
         return self._slice_minibatch(results, slice(0, seg_len))
 
@@ -157,7 +157,7 @@ class PPO(Algo):
             surr2 = mb['advantages'][key] * clipped_policy_ratio
             ppo_surr_for_reward = tc.mean(tc.min(surr1, surr2))
             vf_loss_for_reward = tc.mean(
-                tc.square(mb['td_lambda'][key] - mb_new['vpreds'][key])
+                tc.square(mb['td_lambda_returns'][key] - mb_new['vpreds'][key])
             )
             clipfrac_for_reward = tc.mean(tc.greater(surr1, surr2).float())
             if len(relevant_reward_keys) == 1:
@@ -183,7 +183,7 @@ class PPO(Algo):
         }
 
     def training_loop(self):
-        world_size = self._config['world_size']
+        world_size = self._config.get('world_size')
 
         policy_net = self._learning_system.get('policy_net')
         policy_optimizer = self._learning_system.get('policy_optimizer')
