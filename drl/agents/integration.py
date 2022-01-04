@@ -45,7 +45,7 @@ def get_predictors(**predictors_spec: Dict[str, Dict[str, Any]]):
             policy_predictor = EpsilonGreedyCategoricalPolicyHead(
                 action_value_head=predictor)
             predictors['policy'] = policy_predictor
-        predictors[key] = get_predictor(**spec)
+        predictors[key] = predictor
     return predictors
 
 
