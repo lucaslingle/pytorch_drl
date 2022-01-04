@@ -154,7 +154,7 @@ class PPO(Algo):
         policy_surrogate_objective = 0.
         vf_loss = 0.
         clipfrac = 0.
-        for reward_id, key in enumerate(relevant_reward_keys):
+        for key in relevant_reward_keys:
             surr1 = mb['advantages'][key] * policy_ratio
             surr2 = mb['advantages'][key] * clipped_policy_ratio
             ppo_surr_for_reward = tc.mean(tc.min(surr1, surr2))
