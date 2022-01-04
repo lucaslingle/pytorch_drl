@@ -170,11 +170,9 @@ class PPO(Algo):
             clipfrac += clipfrac_for_reward
 
         policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)
-        if value_net is None:
-            weight = self._config['algo']['vf_loss_weight']
-        else:
-            weight = 1.
+        weight = 1. if value_net else self._config['algo']['vf_loss_weight']
         composite_loss = policy_loss + weight * vf_loss
+
         return {
             'policy_loss': policy_loss,
             'value_loss': vf_loss,
