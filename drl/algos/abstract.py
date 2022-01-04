@@ -7,7 +7,7 @@ from drl.envs.wrappers.integration import get_wrappers
 from drl.agents.integration import (
     Agent, get_preprocessings, get_architecture, get_predictors
 )
-from drl.utils.optimization import get_optimizer
+from drl.utils.optimization import get_optimizer, get_scheduler
 from drl.utils.checkpointing import save_checkpoints, maybe_load_checkpoints
 
 
@@ -17,10 +17,16 @@ class Algo(metaclass=abc.ABCMeta):
         self._config = config
 
     @staticmethod
-    def _get_net(net_config):
+    def _get_env(env_config):
+        env = gym.make(env_config.get('id'))
+        env = get_wrappers(env=env, **env_config.get('wrappers'))
+        return env
+
+    @staticmethod
+    def _get_net(net_config, env):
         preprocessing = get_preprocessings(**net_config.get('preprocessing'))
         architecture = get_architecture(**net_config.get('architecture'))
-        predictors = get_predictors(**net_config.get('predictors'))
+        predictors = get_predictors(env, **net_config.get('predictors'))
         return DDP(Agent(preprocessing, architecture, predictors))
 
     @staticmethod
@@ -29,10 +35,9 @@ class Algo(metaclass=abc.ABCMeta):
         return optimizer
 
     @staticmethod
-    def _get_env(env_config):
-        env = gym.make(env_config.get('id'))
-        env = get_wrappers(env=env, **env_config.get('wrappers'))
-        return env
+    def _get_sched(sched_config, optimizer):
+        scheduler = get_scheduler(optimizer=optimizer, **sched_config)
+        return scheduler
 
     def _save_checkpoints(self, checkpointables, step):
         save_checkpoints(

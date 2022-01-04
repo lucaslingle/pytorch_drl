@@ -2,6 +2,7 @@ from typing import Dict, List, Any
 import importlib
 
 import torch as tc
+import gym
 
 from drl.agents.preprocessing import Preprocessing, EndToEndPreprocessing
 from drl.agents.architectures import Architecture
@@ -37,9 +38,14 @@ def get_predictor(cls_name, cls_args):
     return cls(**cls_args)
 
 
-def get_predictors(**predictors_spec: Dict[str, Dict[str, Any]]):
+def get_predictors(env, **predictors_spec: Dict[str, Dict[str, Any]]):
     predictors = dict()
     for key, spec in predictors_spec.items():
+        if key == 'policy':
+            if isinstance(env.action_space, gym.spaces.Discrete):
+                spec.update({'num_actions': env.action_space.n})
+            elif isinstance(env.action_space, gym.spaces.Box):
+                spec.update({'num_actions': env.action_space.shape[0]})
         predictor = get_predictor(**spec)
         if isinstance(predictor, CategoricalActionValueHead):
             policy_predictor = EpsilonGreedyCategoricalPolicyHead(

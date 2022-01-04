@@ -24,22 +24,30 @@ class PPO(Algo):
         env = self._get_env(env_config)
 
         policy_config = self._config.get('policy_net')
-        policy_net = self._get_net(policy_config)
+        policy_net = self._get_net(policy_config, env)
         policy_optimizer_config = policy_config.get('optimizer')
         policy_optimizer = self._get_opt(policy_optimizer_config, policy_net)
+        policy_scheduler_config = policy_config.get('scheduler')
+        policy_scheduler = self._get_sched(
+            policy_scheduler_config, policy_optimizer)
 
         value_config = self._config.get('value_net')
-        value_net, value_optimizer = None, None
+        value_net, value_optimizer, value_scheduler = None, None, None
         if not value_config.get('use_shared_architecture'):
-            value_net = self._get_net(value_config)
+            value_net = self._get_net(value_config, env)
             value_optimizer_config = value_config.get('optimizer')
             value_optimizer = self._get_opt(value_optimizer_config, value_net)
+            value_scheduler_config = value_config.get('scheduler')
+            value_scheduler = self._get_sched(
+                value_scheduler_config, value_optimizer)
 
         checkpointables = {
             'policy_net': policy_net,
             'policy_optimizer': policy_optimizer,
+            'policy_scheduler': policy_scheduler,
             'value_net': value_net,
-            'value_optimizer': value_optimizer
+            'value_optimizer': value_optimizer,
+            'value_scheduler': value_scheduler
         }
         checkpointables_ = {k: v for k,v in checkpointables.items()}
         checkpointables_.update(env.get_checkpointables())
@@ -187,8 +195,10 @@ class PPO(Algo):
 
         policy_net = self._learning_system.get('policy_net')
         policy_optimizer = self._learning_system.get('policy_optimizer')
+        policy_scheduler = self._learning_system.get('policy_scheduler')
         value_net = self._learning_system.get('value_net')
         value_optimizer = self._learning_system.get('value_optimizer')
+        value_scheduler = self._learning_system.get('value_scheduler')
         env = self._learning_system.get('env')
 
         algo_config = self._config.get('algo')
@@ -223,11 +233,13 @@ class PPO(Algo):
                     policy_optimizer.zero_grad()
                     composite_loss.backward(retain_graph=value_net is not None)
                     policy_optimizer.step()
+                    policy_scheduler.step()
 
                     if value_net:
                         value_optimizer.zero_grad()
                         composite_loss.backward()
                         value_optimizer.step()
+                        value_scheduler.step()
 
                     global_metrics = global_means(losses, world_size)
                     if self._rank == 0:
