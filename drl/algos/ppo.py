@@ -91,8 +91,8 @@ class PPO(Algo):
             return {
                 **self._slice_minibatch(trajectory, np.arange(seg_len)),
                 'logprobs': logprobs,
+                'entropies': entropies,
                 'vpreds': vpreds,
-                'entropies': entropies
             }
 
     @tc.no_grad()
