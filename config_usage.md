@@ -6,7 +6,7 @@ The config file has several components. We detail their usage below.
   - The script currently only supports single-machine training with zero or more GPUs. 
   - If using GPUs, be sure to ```backend``` parameter to ```nccl```, and set the ```world_size``` to the number of GPUs available.
 ### Algorithm:
-  - The class names of available algorithm can be found in the submodules of ```drl/algos/```.
+  - The class names of available algorithms can be found in the submodules of ```drl/algos/```.
   - Currently supported class names are: ```DQN, PPO```.
   - Depending on the algorithm, different parameter names and their values must be supplied. To see example config files for each implemented algorithm, refer to the ```models_dir``` subdirectories in this repo.
   - If any intrinsic rewards are used (discussed later), we require a field ```reward_weights``` to be included. Its value should be a dictionary of positive floats, keyed by reward name.
