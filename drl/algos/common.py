@@ -95,6 +95,9 @@ class TrajectoryManager:
         self._policy_net = policy_net
         self._seg_len = seg_len
         self._extra_steps = extra_steps
+
+        self._o_t = self._env.reset()
+        self._a_t = self._choose_action(self._o_t)
         self._trajectory = Trajectory(
             obs_shape=self._o_t.shape,
             rew_keys=self._get_reward_keys(),
@@ -108,9 +111,7 @@ class TrajectoryManager:
                 'ep_ret_raw': 0.
             }
         )
-        self._o_t = self._env.reset()
-        self._a_t = self._choose_action(self._o_t)
-        self.generate(initial=True)
+        _ = self.generate(initial=True)
 
     def _get_reward_keys(self):
         def spec_exists():
