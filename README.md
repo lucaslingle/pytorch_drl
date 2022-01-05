@@ -87,6 +87,7 @@ The config file has several components. We detail their usage below.
   - We allow a flexible pipeline of wrappers to be applied, similar to the OpenAI gym and baselines libraries. 
   - The class names for these wrappers serve as keys in a dictionary, and their values are class-specific arguments.
   - The class names of available wrappers can be found in the submodules of ```drl/envs/wrappers/```.
+  - Wrappers are applied in the order they are specified. 
 - Intrinsic rewards:
   - Intrinsic rewards can be included by specifying wrappers in ```drl/envs/wrappers/stateful/intrinsic/```. 
   - The name of each reward stream is determined by the property ```reward_name``` in the wrapper it came from. 
@@ -100,7 +101,8 @@ The config file has several components. We detail their usage below.
   - The first of the five arguments under each network is ```preprocessing```.
   - The class names for these preprocessing operations serve as keys in a dictionary, and their values are class-specific arguments.
   - Currently, you should only have to use ```ToChannelMajor``` (for environments with visual observations) or {}, the dictionary with no elements.
-  - In general, preprocessing class names can be found in submodules of ```drl/agents/preprocessing```.  
+  - In general, preprocessing class names can be found in submodules of ```drl/agents/preprocessing```.
+  - Preprocessing operations are applied in the order they are specified. 
 - Architecture:
   - The second of the five arguments under each network is ```architecture```.
   - Under this heading, two values must be specified: cls_name and cls_args.
