@@ -85,7 +85,7 @@ class PPO(Algo):
 
             # compute logprobs of actions.
             predictions = policy_net(observations, policy_predict)
-            pi = predictions.get('policy')[0:seg_len]
+            pi = predictions.get('policy')
             logprobs = pi.log_prob(actions)
             entropies = pi.entropy()
 
@@ -96,10 +96,13 @@ class PPO(Algo):
                 vpreds = value_net(observations, value_predict)
             vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
 
-            return {
-                **self._slice_minibatch(trajectory, slice(0, seg_len)),
+            partial_results = {
+                **trajectory,
                 'logprobs': logprobs,
                 'entropies': entropies,
+            }
+            return {
+                **self._slice_minibatch(partial_results, slice(0, seg_len)),
                 'vpreds': vpreds
             }
 

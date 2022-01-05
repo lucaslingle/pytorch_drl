@@ -184,7 +184,7 @@ class TrajectoryManager:
             self._o_t = o_tp1
             self._a_t = a_tp1
 
-        # return results with next timestep observation included
+        # return results with next timestep observation and action included
         results = {
             **self._trajectory.report(),
             'metadata': self._metadata_mgr.past_meta
