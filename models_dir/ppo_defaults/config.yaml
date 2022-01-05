@@ -43,8 +43,8 @@ networks:
             cls_name: OneCycleLR
             cls_args:
                 max_lr: 0.00025
-                total_steps: 11000000
-                pct_start: 0.0,
+                total_steps: 85938
+                pct_start: 0.0
                 anneal_strategy: linear
                 cycle_momentum: False
                 div_factor: 1.0
