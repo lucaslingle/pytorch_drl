@@ -42,18 +42,28 @@ class MetadataManager:
 
 
 class Trajectory:
-    def __init__(self, obs_shape, rew_keys, seg_len):
+    def __init__(self, obs_shape, rew_keys, seg_len, extra_steps):
+        self._obs_shape = obs_shape
         self._rew_keys = rew_keys
         self._seg_len = seg_len
-        self._observations = tc.zeros((seg_len+1, *obs_shape), dtype=tc.float32)
-        self._actions = tc.zeros(seg_len, dtype=tc.float32)
+        self._extra_steps = extra_steps
+        self._timesteps = seg_len + extra_steps
+        self._observations = None
+        self._actions = None
+        self._rewards = None
+        self._dones = None
+        self._erase()
+
+    def _erase(self):
+        self._observations = tc.zeros((self._timesteps+1, *self._obs_shape), dtype=tc.float32)
+        self._actions = tc.zeros(self._timesteps+1, dtype=tc.float32)
         self._rewards = {
-            k: tc.zeros(seg_len, dtype=tc.float32) for k in rew_keys
+            k: tc.zeros(self._timesteps, dtype=tc.float32) for k in self._rew_keys
         }
-        self._dones = tc.zeros(rew_keys, dtype=tc.float32)
+        self._dones = tc.zeros(self._timesteps, dtype=tc.float32)
 
     def record(self, t, o_t, a_t, r_t, d_t):
-        i = t % self._seg_len
+        i = t % self._timesteps
         self._observations[i] = tc.tensor(o_t).float()
         self._actions[i] = tc.tensor(a_t).long()
         for key in self._rew_keys:
@@ -61,20 +71,35 @@ class Trajectory:
         self._dones[i] = tc.tensor(d_t).float()
 
     def report(self):
-        return {
+        results = {
             'observations': self._observations,
             'actions': self._actions,
             'rewards': self._rewards,
             'dones': self._dones
         }
+        self._erase()
+        if self._extra_steps > 0:
+            src = slice(self._seg_len, self._seg_len + self._extra_steps)
+            dest = slice(0, self._extra_steps)
+            self._observations[dest] = results['observations'][src]
+            self._actions[dest] = results['observations'][src]
+            for k in self._rew_keys:
+                self._rewards[k][dest] = results['rewards'][k][src]
+            self._dones[dest] = results['dones'][src]
+        return results
 
 
 class TrajectoryManager:
-    def __init__(self, env, policy_net, segment_length):
+    def __init__(self, env, policy_net, seg_len, extra_steps):
         self._env = env
         self._policy_net = policy_net
-        self._segment_length = segment_length
-        self._o_t = env.reset()
+        self._seg_len = seg_len
+        self._extra_steps = extra_steps
+        self._trajectory = Trajectory(
+            obs_shape=self._o_t.shape,
+            rew_keys=self._get_reward_keys(),
+            seg_len=self._seg_len,
+            extra_steps=self._extra_steps)
         self._metadata_mgr = MetadataManager(
             present_meta={
                 'ep_len': 0,
@@ -83,6 +108,9 @@ class TrajectoryManager:
                 'ep_ret_raw': 0.
             }
         )
+        self._o_t = self._env.reset()
+        self._a_t = self._choose_action(self._o_t)
+        self.generate(initial=True)
 
     def _get_reward_keys(self):
         def spec_exists():
@@ -93,32 +121,41 @@ class TrajectoryManager:
             return self._env.reward_spec.keys
         return {'extrinsic_raw', 'extrinsic'}
 
-    def generate(self):
-        """
-        Generate trajectory experience and metadata.
-        """
-        # instantiate a trajectory instance
-        trajectory = Trajectory(
-            obs_shape=self._o_t.shape,
-            rew_keys=self._get_reward_keys(),
-            seg_len=self._segment_length)
+    def _choose_action(self, o_t):
+        predictions = self._policy_net(
+            tc.tensor(o_t).float().unsqueeze(0), predictions=['policy'])
+        # todo(lucaslingle):
+        #     edit EpsilonGreedyCategoricalPolicy to require an inputted
+        #     schedule during creation
+        pi_dist_t = predictions.get('policy')
+        a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
+        return a_t
 
-        # generate a trajectory segment
+    def _step_env(self, a_t):
+        # step environment
+        o_tp1, r_t, done_t, info_t = self._env.step(a_t)
+        if not isinstance(r_t, dict):
+            r_t = {'extrinsic_raw': r_t, 'extrinsic': r_t}
+        return o_tp1, r_t, done_t, info_t
+
+    @tc.no_grad()
+    def generate(self, initial=False):
+        # determine the time indices for the trajectory segment to generate
+        if initial:
+            if self._extra_steps == 0:
+                return
+            start_t, end_t = 0, self._extra_steps
+        else:
+            start_t, end_t = self._extra_steps, self._seg_len+self._extra_steps
+
+        # generate a trajectory segment.
         self._policy_net.eval()
-        for t in range(0, self._segment_length):
-            # choose action
-            predictions = self._policy_net(
-                tc.tensor(self._o_t).float().unsqueeze(0), predictions=['policy'])  # todo(lucaslingle): edit EpsilonGreedyCategoricalPolicy to require an inputted schedule during creation
-            pi_dist_t = predictions.get('policy')
-            a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
-
+        for t in range(start_t, end_t):
             # step environment
-            o_tp1, r_t, done_t, info_t = self._env.step(a_t)
-            if not isinstance(r_t, dict):
-                r_t = {'extrinsic_raw': r_t, 'extrinsic': r_t}
+            o_tp1, r_t, done_t, info_t = self._step_env(self._a_t)
 
             # record everything
-            trajectory.record(t, self._o_t, a_t, r_t, done_t)
+            self._trajectory.record(t, self._o_t, self._a_t, r_t, done_t)
             self._metadata_mgr.update_present(
                 deltas={
                     'ep_len': 1,
@@ -140,13 +177,18 @@ class TrajectoryManager:
                         fields=['ep_len_raw', 'ep_ret_raw'])
                 o_tp1 = self._env.reset()
 
-            # save next observation
+            # choose next action
+            a_tp1 = self._choose_action(o_tp1)
+
+            # save next observation and action
             self._o_t = o_tp1
+            self._a_t = a_tp1
 
         # return results with next timestep observation included
         results = {
-            **trajectory.report(),
+            **self._trajectory.report(),
             'metadata': self._metadata_mgr.past_meta
         }
         results['observations'][-1] = o_tp1
+        results['actions'][-1] = a_tp1
         return results
