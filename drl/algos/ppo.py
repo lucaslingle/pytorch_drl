@@ -15,7 +15,8 @@ class PPO(Algo):
         self._trajectory_mgr = TrajectoryManager(
             env=self._learning_system['env'],
             policy_net=self._learning_system['policy_net'],
-            segment_length=self._config['algo']['segment_length'])
+            seg_len=self._config['algo']['segment_length'],
+            extra_steps=0)
         if self._rank == 0:
             self._writer = SummaryWriter(self._config.get('log_dir'))
 
