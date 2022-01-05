@@ -108,6 +108,10 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         self._run_checks()
         self._set_reward_spec()
 
+    @property
+    def reward_name(self):
+        return self._reward_name
+
     def _run_checks(self):
         space = self.env.observation_space
         cond1 = str(space.dtype) == 'float32'
