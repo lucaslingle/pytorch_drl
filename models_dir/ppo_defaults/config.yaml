@@ -1,7 +1,8 @@
-backend: gloo
-world_size: 8
-master_addr: localhost
-master_port: '12345'
+distributed:
+    backend: gloo
+    world_size: 8
+    master_addr: localhost
+    master_port: '12345'
 algo:
     cls_name: PPO
     segment_length: 128
@@ -21,30 +22,31 @@ env:
     wrappers:
         AtariWrapper: {}
         DeepmindWrapper: {frame_stack: False}
-policy_net:
-    preprocessing:
-        ToChannelMajor: {}
-    architecture:
-        cls_name: AsyncCNN
-        cls_args: {img_channels: 1}
-    predictors:
-        policy:
-            cls_name: LinearCategoricalPolicyHead
-            cls_args: {num_features: 256}
-        value_extrinsic:
-            cls_name: LinearValueHead
-            cls_args: {num_features: 256}
-    optimizer:
-        cls_name: Adam
-        cls_args: {lr: 0.00025, eps: 0.00001}
-    scheduler:
-        cls_name: OneCycleLR
-        cls_args:
-            max_lr: 0.00025
-            total_steps: 11000000
-            pct_start: 0.0,
-            anneal_strategy: linear
-            cycle_momentum: False
-            div_factor: 1.0
-value_net:
-    use_shared_architecture: True
+networks:
+    policy_net:
+        preprocessing:
+            ToChannelMajor: {}
+        architecture:
+            cls_name: AsyncCNN
+            cls_args: {img_channels: 1}
+        predictors:
+            policy:
+                cls_name: LinearCategoricalPolicyHead
+                cls_args: {num_features: 256}
+            value_extrinsic:
+                cls_name: LinearValueHead
+                cls_args: {num_features: 256}
+        optimizer:
+            cls_name: Adam
+            cls_args: {lr: 0.00025, eps: 0.00001}
+        scheduler:
+            cls_name: OneCycleLR
+            cls_args:
+                max_lr: 0.00025
+                total_steps: 11000000
+                pct_start: 0.0,
+                anneal_strategy: linear
+                cycle_momentum: False
+                div_factor: 1.0
+    value_net:
+        use_shared_architecture: True

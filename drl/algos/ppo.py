@@ -23,7 +23,7 @@ class PPO(Algo):
         env_config = self._config.get('env')
         env = self._get_env(env_config)
 
-        policy_config = self._config.get('policy_net')
+        policy_config = self._config['networks']['policy_net']
         policy_net = self._get_net(policy_config, env)
         policy_optimizer_config = policy_config.get('optimizer')
         policy_optimizer = self._get_opt(policy_optimizer_config, policy_net)
@@ -31,7 +31,7 @@ class PPO(Algo):
         policy_scheduler = self._get_sched(
             policy_scheduler_config, policy_optimizer)
 
-        value_config = self._config.get('value_net')
+        value_config = self._config['networks']['value_net']
         value_net, value_optimizer, value_scheduler = None, None, None
         if not value_config.get('use_shared_architecture'):
             value_net = self._get_net(value_config, env)

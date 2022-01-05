@@ -43,11 +43,12 @@ def get_algo(rank, config):
 
 
 def setup(rank, config):
-    os.environ['MASTER_ADDR'] = config.get('master_addr')
-    os.environ['MASTER_PORT'] = config.get('master_port')
+    distributed_config = config.get('distributed')
+    os.environ['MASTER_ADDR'] = distributed_config.get('master_addr')
+    os.environ['MASTER_PORT'] = distributed_config.get('master_port')
     tc.distributed.init_process_group(
-        backend=config.get('backend'),
-        world_size=config.get('world_size'),
+        backend=distributed_config.get('backend'),
+        world_size=distributed_config.get('world_size'),
         rank=rank)
     algo = get_algo(rank, config)
     return algo
