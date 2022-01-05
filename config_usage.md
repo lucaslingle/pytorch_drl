@@ -25,7 +25,7 @@ The config file has several components. We detail their usage below.
   - In our algorithms, we follow the practice of Burda et al., 2018, Badia et al., 2020 and perform credit assignment and value estimation for each reward stream separately.
 ### Networks:
   - We require algorithm-specific strings corresponding to network names to be listed out as second-level under the ```networks``` heading.
-  - For example, PPO potentially uses two networks: a ```policy_net``` and a ```value_net```. To avoid ambiguity arising from misspecified config files, our PPO implementation requires that if the network architecture is to be shared, the parameter under ```use_shared_architecture``` should be set to ```True```. However, both networks must be listed. We follow a similar pattern for all algorithms: all network names expected by the algorithm must be listed.
+  - For example, PPO potentially uses two networks: a ```policy_net``` and a ```value_net```. To avoid ambiguity arising from misspecified config files, our PPO implementation requires that if the network architecture is to be shared, the parameter ```use_shared_architecture``` under ```value_net``` should be set to ```True```. However, both network names must be listed. We follow a similar pattern for all algorithms; all network names expected by the algorithm must be listed. 
   - Under each network name should be either ```use_shared_architecture``` parameter (set to True), or else five different arguments.
 ### Preprocessing:
   - The first of the five arguments under each network is ```preprocessing```.
