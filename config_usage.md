@@ -40,8 +40,11 @@ The config file has several components. We detail their usage below.
 ### Predictors:
   - The third of the five arguments under each network is ```predictors```.
   - We require algorithm-specific predictor names. The names required are a subset of ```{'policy', 'value_extrinsic', 'action_value_extrinsic'}```.
+  - Under each predictor name, two values must be specified: cls_name and cls_args.
+  - In general, predictor class names can be found in submodules of ```drl/agents/heads```.
+  - In general, all predictor class arguments must be supplied, with one exception: the field action_dim or num_actions can be omitted, as it will automatically be inferred per-environment. 
   - If intrinsic rewards are used, we additionally require value or action-value heads for each reward stream.
-  - The names of these predictors must be ```value_{reward_name}``` or ```action_value_{reward_name}```. 
+  - The names of the predictors associated with each intrinsic reward stream must be ```value_{reward_name}``` or ```action_value_{reward_name}```. 
 ### Optimizer: 
   - The fourth of the five arguments under each network is ```optimizer```.
   - Under this heading, two values must be specified: cls_name and cls_args.
