@@ -82,7 +82,7 @@ class PPO(Algo):
 
     def _annotate(self, trajectory, policy_net, value_net, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
-            # get config variables
+            # get config variables.
             algo_config = self._config.get('algo')
             seg_len = algo_config.get('segment_length')
 
@@ -120,7 +120,7 @@ class PPO(Algo):
 
     @tc.no_grad()
     def _credit_assignment(self, trajectory):
-        # get config variables
+        # get config variables.
         algo_config = self._config.get('algo')
         seg_len = algo_config.get('segment_length')
         lam = algo_config.get('gae_lambda')
