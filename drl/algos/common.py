@@ -46,6 +46,13 @@ class MetadataManager:
 
 class Trajectory:
     def __init__(self, obs_shape, rew_keys, seg_len, extra_steps):
+        """
+        Args:
+            obs_shape: Observation shape.
+            rew_keys: Reward keys.
+            seg_len: Segment length.
+            extra_steps: Extra steps for n-step reward based credit assignment.
+        """
         self._obs_shape = obs_shape
         self._rew_keys = rew_keys
         self._seg_len = seg_len
@@ -66,6 +73,16 @@ class Trajectory:
         self._dones = tc.zeros(self._timesteps, dtype=tc.float32)
 
     def record(self, t, o_t, a_t, r_t, d_t):
+        """
+        Args:
+            t: Integer index for the step to be stored.
+            o_t: Observation.
+            a_t: Action.
+            r_t: Reward dict.
+            d_t: Done signal.
+        Returns:
+            None.
+        """
         i = t % self._timesteps
         self._observations[i] = tc.tensor(o_t).float()
         self._actions[i] = tc.tensor(a_t).long()
@@ -74,6 +91,15 @@ class Trajectory:
         self._dones[i] = tc.tensor(d_t).float()
 
     def report(self):
+        """
+        Generates a dictionary of observations, actions, rewards, and dones.
+        Erases the internally-stored trajectory.
+        If self._extra_steps > 0, writes the last self._extra_steps timesteps
+            of the old trajectory to the front of the the blank trajectory.
+
+        Returns:
+            Dict[str, tc.Tensor]: Trajectory data.
+        """
         results = {
             'observations': self._observations,
             'actions': self._actions,
@@ -94,6 +120,13 @@ class Trajectory:
 
 class TrajectoryManager:
     def __init__(self, env, policy_net, seg_len, extra_steps):
+        """
+        Args:
+            env: OpenAI gym environment or Wrapper instance.
+            policy_net: Network with a 'policy' predictor attached.
+            seg_len: Segment length.
+            extra_steps: Extra steps for n-step reward based credit assignment.
+        """
         self._env = env
         self._policy_net = policy_net
         self._seg_len = seg_len
@@ -141,6 +174,17 @@ class TrajectoryManager:
 
     @tc.no_grad()
     def generate(self, initial=False):
+        """
+        Generates a trajectory by stepping the environment.
+
+        Args:
+            initial: If true, steps the environment for self._extra_steps
+               and saves the results without returning anything. Otherwise,
+               the full trajectory is returned.
+
+        Returns:
+            Optional[Dict[str, tc.Tensor]]: Maybe some trajectory data.
+        """
         # determine the time indices for the trajectory segment to generate
         if initial:
             if self._extra_steps == 0:
