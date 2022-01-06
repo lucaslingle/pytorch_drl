@@ -294,6 +294,7 @@ class PPO(Algo):
                             'value_optimizer': value_optimizer,
                             'value_scheduler': value_scheduler,
                             'clip_param_annealer': clip_param_annealer,
+                            'ent_coef_annealer': ent_coef_annealer,
                             **env.get_checkpointables()
                         },
                         step=global_step)
