@@ -38,20 +38,46 @@ def get_predictor(cls_name, cls_args):
     return cls(**cls_args)
 
 
-def get_predictors(env, **predictors_spec: Dict[str, Dict[str, Any]]):
+def get_epsilon_sched(rank, cls_name, cls_args):
+    module = importlib.import_module('drl.agents.schedules')
+    cls = getattr(module, cls_name)
+    return cls(rank=rank, **cls_args)
+
+
+def get_predictors(rank, env, **predictors_spec: Dict[str, Dict[str, Any]]):
     predictors = dict()
+
+    if 'epsilon_schedule' in predictors_spec:
+        epsilon_schedule_spec = predictors_spec.pop('epsilon_schedule')
+    else:
+        epsilon_schedule_spec = None
+
     for key, spec in predictors_spec.items():
-        if key == 'policy':
+        # infer number of actions or action dimensionality.
+        if key == 'policy' or key.startswith('action_value'):
             if isinstance(env.action_space, gym.spaces.Discrete):
                 spec.update({'num_actions': env.action_space.n})
             elif isinstance(env.action_space, gym.spaces.Box):
-                spec.update({'num_actions': env.action_space.shape[0]})
+                spec.update({'action_dim': env.action_space.shape[0]})
+            else:
+                msg = "Unknown action space."
+                raise TypeError(msg)
+
+        # create and add the predictor.
         predictor = get_predictor(**spec)
-        if isinstance(predictor, CategoricalActionValueHead):
-            policy_predictor = EpsilonGreedyCategoricalPolicyHead(
-                action_value_head=predictor)
-            predictors['policy'] = policy_predictor
         predictors[key] = predictor
+
+        # add additional predictor for epsilon-greedy policy in DQN.
+        if isinstance(predictor, CategoricalActionValueHead):
+            if epsilon_schedule_spec is None:
+                msg = "Required predictor epsilon_schedule missing from config."
+                raise ValueError(msg)
+            epsilon_schedule = get_epsilon_sched(
+                rank=rank, **epsilon_schedule_spec)
+            policy_predictor = EpsilonGreedyCategoricalPolicyHead(
+                action_value_head=predictor, epsilon_schedule=epsilon_schedule)
+            predictors['policy'] = policy_predictor
+
     return predictors
 
 

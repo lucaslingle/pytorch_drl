@@ -125,9 +125,6 @@ class TrajectoryManager:
     def _choose_action(self, o_t):
         predictions = self._policy_net(
             tc.tensor(o_t).float().unsqueeze(0), predictions=['policy'])
-        # todo(lucaslingle):
-        #     edit EpsilonGreedyCategoricalPolicy to require an inputted
-        #     schedule during creation
         pi_dist_t = predictions.get('policy')
         a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
         return a_t

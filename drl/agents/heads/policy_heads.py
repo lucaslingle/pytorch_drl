@@ -21,11 +21,15 @@ class DiagonalGaussianPolicyHead(Head, metaclass=abc.ABCMeta):
 
 
 class EpsilonGreedyCategoricalPolicyHead(CategoricalPolicyHead):
-    def __init__(self, action_value_head, **kwargs):
+    def __init__(self, action_value_head, epsilon_schedule, **kwargs):
         super().__init__()
         self._action_value_head = action_value_head
+        self._epsilon_schedule = epsilon_schedule
 
     def forward(self, features, epsilon, **kwargs):
+        epsilon = self._epsilon_schedule.value
+        if len(features.shape) == 2 and features.shape[0] == 1:
+            self._epsilon_schedule.step()
         q_values = self._action_value_head(features)
         probs = tc.tensor([epsilon, 1-epsilon])
         dist = tc.distributions.Categorical(probs=probs)
