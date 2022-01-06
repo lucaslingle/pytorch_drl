@@ -6,7 +6,7 @@ Implementation of Deep Reinforcement Learning algorithms in PyTorch, with suppor
 This repo contains flexible implementations of several deep reinforcement learning algorithms.
 It supports the algorithms, architectures, and rewards from several papers, including:
 - [Mnih et al., 2015](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf) - 'Human Level Control through Deep Reinforcement Learning'
-- [van Hasselt et al., 2016](https://arxiv.org/pdf/1509.06461.pdf) - 'Deep Reinforcement Learning with Double Q-learning'
+- [van Hasselt et al., 2015](https://arxiv.org/pdf/1509.06461.pdf) - 'Deep Reinforcement Learning with Double Q-learning'
 - [Wang et al., 2015](https://arxiv.org/pdf/1511.06581.pdf) - 'Dueling Network Architectures for Deep Reinforcement Learning'
 - [Schaul et al., 2015](https://arxiv.org/pdf/1511.05952.pdf) - 'Prioritized Experience Replay'
 - [Schulman et al., 2017](https://arxiv.org/pdf/1707.06347.pdf) - 'Proximal Policy Optimization Algorithms'
