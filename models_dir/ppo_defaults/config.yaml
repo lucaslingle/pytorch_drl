@@ -8,9 +8,10 @@ algo:
     segment_length: 128
     opt_epochs: 3
     learner_batch_size: 32
-    initial_clip_param: 0.1
-    final_clip_param: 0.0
-    ent_coef: 0.01
+    clip_param_init: 0.1
+    clip_param_final: 0.0
+    ent_coef_init: 0.01
+    ent_coef_final: 0.01
     vf_loss_coef: 1.0
     gae_lambda:
         extrinsic: 0.95

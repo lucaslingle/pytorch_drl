@@ -46,9 +46,13 @@ class PPO(Algo):
         max_steps = algo_config.get('max_steps')
         seg_len = algo_config.get('seg_len')
         num_policy_improvements = max_steps // seg_len
-        clip_param_annealer = ClipParamAnnealer(
-            initial_clip_param=algo_config.get('initial_clip_param'),
-            final_clip_param=algo_config.get('final_clip_param'),
+        clip_param_annealer = Annealer(
+            initial_value=algo_config.get('clip_param_init'),
+            final_value=algo_config.get('clip_param_final'),
+            num_policy_improvements=num_policy_improvements)
+        ent_coef_annealer = Annealer(
+            initial_value=algo_config.get('ent_coef_init'),
+            final_value=algo_config.get('ent_coef_final'),
             num_policy_improvements=num_policy_improvements)
 
         checkpointables = {
@@ -58,7 +62,8 @@ class PPO(Algo):
             'value_net': value_net,
             'value_optimizer': value_optimizer,
             'value_scheduler': value_scheduler,
-            'clip_param_annealer': clip_param_annealer
+            'clip_param_annealer': clip_param_annealer,
+            'ent_coef_annealer': ent_coef_annealer
         }
         checkpointables_ = {k: v for k,v in checkpointables.items()}
         checkpointables_.update(env.get_checkpointables())
@@ -215,13 +220,13 @@ class PPO(Algo):
         value_optimizer = self._learning_system.get('value_optimizer')
         value_scheduler = self._learning_system.get('value_scheduler')
         clip_param_annealer = self._learning_system.get('clip_param_annealer')
+        ent_coef_annealer = self._learning_system.get('ent_coef_annealer')
 
         algo_config = self._config.get('algo')
         max_steps = algo_config.get('max_steps')
         seg_len = algo_config.get('segment_length')
         opt_epochs = algo_config.get('opt_epochs')
         batch_size = algo_config.get('learner_batch_size')
-        ent_coef = algo_config.get('ent_coef')
         checkpoint_frequency = algo_config.get('checkpoint_frequency')
 
         while self._learning_system.get('global_step') < max_steps:
@@ -241,7 +246,8 @@ class PPO(Algo):
                     mb = self._slice_minibatch(trajectory, mb_indices)
                     losses = self._compute_losses(
                         mb=mb, policy_net=policy_net, value_net=value_net,
-                        ent_coef=ent_coef, clip_param=clip_param_annealer.value)
+                        ent_coef=ent_coef_annealer.value,
+                        clip_param=clip_param_annealer.value)
                     composite_loss = losses.get('composite_loss')
 
                     policy_optimizer.zero_grad()
@@ -266,6 +272,7 @@ class PPO(Algo):
             if value_scheduler:
                 value_scheduler.step()
             clip_param_annealer.step()
+            ent_coef_annealer.step()
 
             # save everything.
             global_metadata = global_means(metadata, world_size)
@@ -295,13 +302,13 @@ class PPO(Algo):
         raise NotImplementedError
 
 
-class ClipParamAnnealer(tc.nn.Module):
+class Annealer(tc.nn.Module):
     def __init__(
-            self, initial_clip_param, final_clip_param, num_policy_improvements
+            self, initial_value, final_value, num_policy_improvements
     ):
         super().__init__()
-        self._initial_clip_param = initial_clip_param
-        self._final_clip_param = final_clip_param
+        self._initial_value = initial_value
+        self._final_value = final_value
         self._num_policy_improvements = num_policy_improvements
         self.register_buffer('_num_steps', tc.tensor(0))
 
@@ -313,7 +320,7 @@ class ClipParamAnnealer(tc.nn.Module):
     def value(self):
         frac_done = self.num_steps / self._num_policy_improvements
         s = min(max(0., frac_done), 1.)
-        return self._initial_clip_param * (1. - s) + self._final_clip_param * s
+        return self._initial_value * (1. - s) + self._final_value * s
 
     def step(self):
         self.register_buffer('_num_steps', tc.tensor(self.num_steps+1))
