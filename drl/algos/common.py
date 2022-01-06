@@ -191,7 +191,7 @@ class TrajectoryManager:
         if initial:
             return
 
-        # return results with next timestep observation and action included
+        # return results with next timestep observation and action included.
         # o_Tp1 is needed for value-based credit assignment, and a_Tp1 is needed
         # for credit assignment in q-learning.
         results = {
