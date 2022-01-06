@@ -187,7 +187,7 @@ class TrajectoryManager:
 
         # if we've gotten here and initial is True,
         # then dont mess it up by generating a trajectory report, since it will
-        # erase the extra_steps trajectory steps we just prepended.
+        # erase the extra_steps trajectory steps we just pre-generated.
         if initial:
             return
 
