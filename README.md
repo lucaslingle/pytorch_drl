@@ -19,6 +19,7 @@ Additionally, support is planned for:
 - [Horgan et al., 2018](https://arxiv.org/pdf/1803.00933.pdf) - 'Distributed Prioritized Experience Replay'
 - [Kapturowski et al., 2018](https://openreview.net/pdf?id=r1lyTjAqYX) - 'Recurrent Experience Replay in Distributed Reinforcement Learning'
 - [Song et al., 2019](https://arxiv.org/pdf/1909.12238.pdf) - 'V-MPO: On-Policy Maximum a Posteriori Policy Optimization for Discrete and Continuous Control'
+- [Peng et al., 2019](https://arxiv.org/pdf/1910.00177.pdf) - 'Advantage Weighted Regression: Simple and Scalable Off-Policy Reinforcement Learning' 
 - [Badia et al., 2020](https://arxiv.org/pdf/2002.06038.pdf) - 'Never Give Up: Learning Directed Exploration Strategies'
 
 ## Getting Started
