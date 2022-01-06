@@ -32,6 +32,9 @@ class MetadataManager:
             self._past_meta[key].append(self._present_meta[key])
             self._present_meta[key] = copy.deepcopy(self._present_defaults[key])
 
+    def past_done(self):
+        self._past_meta = {key: list() for key in self._fields}
+
     @property
     def present_meta(self):
         return self._present_meta
@@ -189,4 +192,5 @@ class TrajectoryManager:
         }
         results['observations'][-1] = o_tp1
         results['actions'][-1] = a_tp1
+        self._metadata_mgr.past_done()
         return results
