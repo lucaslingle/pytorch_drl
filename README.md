@@ -18,6 +18,7 @@ Additionally, support is planned for:
 - [Haarnoja et al., 2018](https://arxiv.org/pdf/1801.01290.pdf) - 'Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor'
 - [Horgan et al., 2018](https://arxiv.org/pdf/1803.00933.pdf) - 'Distributed Prioritized Experience Replay'
 - [Kapturowski et al., 2018](https://openreview.net/pdf?id=r1lyTjAqYX) - 'Recurrent Experience Replay in Distributed Reinforcement Learning'
+- [Song et al., 2019](https://arxiv.org/pdf/1909.12238.pdf) - 'V-MPO: On-Policy Maximum a Posteriori Policy Optimization for Discrete and Continuous Control'
 - [Badia et al., 2020](https://arxiv.org/pdf/2002.06038.pdf) - 'Never Give Up: Learning Directed Exploration Strategies'
 
 ## Getting Started
