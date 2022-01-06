@@ -101,7 +101,7 @@ class PPO(Algo):
 
             # compute logprobs of actions.
             predictions = policy_net(observations, policy_predict)
-            pi = predictions.get('policy')
+            pi = predictions.get('policy')[0:seg_len]
             logprobs = pi.log_prob(actions)
             entropies = pi.entropy()
 
@@ -112,13 +112,10 @@ class PPO(Algo):
                 vpreds = value_net(observations, value_predict)
             vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
 
-            partial_results = {
-                **trajectory,
+            return {
+                **self._slice_minibatch(trajectory, slice(0, seg_len)),
                 'logprobs': logprobs,
                 'entropies': entropies,
-            }
-            return {
-                **self._slice_minibatch(partial_results, slice(0, seg_len)),
                 'vpreds': vpreds
             }
 
@@ -195,7 +192,11 @@ class PPO(Algo):
                 policy_surrogate_objective += weight * ppo_surr_for_reward
                 vf_loss += tc.square(weight) * vf_loss_for_reward
                 # todo(lucaslingle): investigate if official implementation
-                #  of RND uses this value loss weighting
+                #    of RND uses this value loss weighting
+                # todo(lucaslingle): add support for configuring different
+                #    value losses, such as huber instead of squared
+                # todo(lucaslingle): add suppport for configuring
+                #    clipped or non-clipped value losses.
             clipfrac += clipfrac_for_reward
 
         policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)

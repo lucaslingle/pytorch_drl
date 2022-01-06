@@ -158,7 +158,6 @@ class TrajectoryManager:
         self._extra_steps = extra_steps
 
         self._o_t = self._env.reset()
-        self._a_t = self._choose_action(self._o_t)
         self._trajectory = Trajectory(
             obs_shape=self._o_t.shape,
             rew_keys=self._get_reward_keys(),
@@ -184,6 +183,9 @@ class TrajectoryManager:
         return {'extrinsic_raw', 'extrinsic'}
 
     def _choose_action(self, o_t):
+        # todo(lucaslingle): add support for stateful policies
+        # todo(lucaslingle): add support for RL^2/NGU-style inputting
+        #    of past rewards as inputs
         predictions = self._policy_net(
             tc.tensor(o_t).float().unsqueeze(0), predictions=['policy'])
         pi_dist_t = predictions.get('policy')
@@ -220,11 +222,9 @@ class TrajectoryManager:
         # generate a trajectory segment.
         self._policy_net.eval()
         for t in range(start_t, end_t):
-            # step environment
-            o_tp1, r_t, done_t, info_t = self._step_env(self._a_t)
-
-            # record everything
-            self._trajectory.record(t, self._o_t, self._a_t, r_t, done_t)
+            a_t = self._choose_action(self._o_t)
+            o_tp1, r_t, done_t, info_t = self._step_env(a_t)
+            self._trajectory.record(t, self._o_t, a_t, r_t, done_t)
             self._metadata_mgr.update_present(
                 deltas={
                     'ep_len': 1,
@@ -233,8 +233,6 @@ class TrajectoryManager:
                     'ep_ret_raw': r_t['extrinsic_raw']
                 }
             )
-
-            # handle metadata for episode boundaries
             if done_t:
                 self._metadata_mgr.present_done(fields=['ep_len', 'ep_ret'])
                 def was_real_done():
@@ -245,13 +243,7 @@ class TrajectoryManager:
                     self._metadata_mgr.present_done(
                         fields=['ep_len_raw', 'ep_ret_raw'])
                 o_tp1 = self._env.reset()
-
-            # choose next action
-            a_tp1 = self._choose_action(o_tp1)
-
-            # save next observation and action
             self._o_t = o_tp1
-            self._a_t = a_tp1
 
         # if we've gotten here and initial is True,
         # then dont mess it up by generating a trajectory report, since it will
@@ -260,13 +252,11 @@ class TrajectoryManager:
             return
 
         # return results with next timestep observation and action included.
-        # o_Tp1 is needed for value-based credit assignment, and a_Tp1 is needed
-        # for credit assignment in q-learning.
+        # o_Tp1 is needed for value-based credit assignment.
         results = {
             **self._trajectory.report(),
             'metadata': self._metadata_mgr.past_meta
         }
         results['observations'][-1] = o_tp1
-        results['actions'][-1] = a_tp1
         self._metadata_mgr.past_done()
         return results
