@@ -191,7 +191,6 @@ class TrajectoryManager:
         return a_t
 
     def _step_env(self, a_t):
-        # step environment
         o_tp1, r_t, done_t, info_t = self._env.step(a_t)
         if not isinstance(r_t, dict):
             r_t = {'extrinsic_raw': r_t, 'extrinsic': r_t}
