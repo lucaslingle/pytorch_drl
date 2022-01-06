@@ -17,31 +17,56 @@ def global_means(metrics, world_size):
 
 
 class MetadataManager:
-    def __init__(self, present_meta):
-        self._fields = present_meta.keys()
-        self._present_defaults = copy.deepcopy(present_meta)
-        self._present_meta = present_meta
+    def __init__(self, present_defaults):
+        """
+        Maintains running statistics on a stream of experience.
+
+        Args:
+            present_defaults: A dictionary of fields and default values.
+        """
+        self._fields = present_defaults.keys()
+        self._present_defaults = present_defaults
+        self._present_meta = copy.deepcopy(present_defaults)
         self._past_meta = {key: list() for key in self._fields}
 
+    @property
+    def present_meta(self):
+        """
+        A dictionary of tracked statistics, keyed by field name.
+        """
+        return self._present_meta
+
+    @property
+    def past_meta(self):
+        """
+        A dictionary of lists of tracked statistics, keyed by field name.
+        Each stat in a field's list was computed by aggregating
+            over a field-dependent timespan, such as a life or an episode.
+        """
+        return self._past_meta
+
     def update_present(self, deltas):
+        """
+        Update present_meta by incrementing each field by delta[field].
+        """
         for key in deltas:
             self._present_meta[key] += deltas[key]
 
     def present_done(self, fields):
+        """
+        Update past_meta for listed fields by appending present_meta[field].
+        """
         for key in fields:
             self._past_meta[key].append(self._present_meta[key])
             self._present_meta[key] = copy.deepcopy(self._present_defaults[key])
 
     def past_done(self):
+        """
+        Update past_meta by resetting to empty. To ensure correct aggregation
+        of statistics is not interrupted by trajectory segment boundaries,
+        present_meta is kept intact.
+        """
         self._past_meta = {key: list() for key in self._fields}
-
-    @property
-    def present_meta(self):
-        return self._present_meta
-
-    @property
-    def past_meta(self):
-        return self._past_meta
 
 
 class Trajectory:
@@ -140,7 +165,7 @@ class TrajectoryManager:
             seg_len=self._seg_len,
             extra_steps=self._extra_steps)
         self._metadata_mgr = MetadataManager(
-            present_meta={
+            present_defaults={
                 'ep_len': 0,
                 'ep_ret': 0.,
                 'ep_len_raw': 0,
