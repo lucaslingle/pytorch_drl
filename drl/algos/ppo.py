@@ -304,8 +304,14 @@ class ClipParamAnnealer(tc.nn.Module):
         self.register_buffer('_num_steps', tc.tensor(0))
 
     @property
-    def value(self):
+    def num_steps(self):
         return self._num_steps.item()
 
+    @property
+    def value(self):
+        frac_done = self.num_steps / self._num_policy_improvements
+        s = min(max(0., frac_done), 1.)
+        return self._initial_clip_param * (1. - s) + self._final_clip_param * s
+
     def step(self):
-        self.register_buffer('_num_steps', tc.tensor(0))
+        self.register_buffer('_num_steps', tc.tensor(self.num_steps+1))
