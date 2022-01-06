@@ -113,10 +113,9 @@ class PPO(Algo):
             vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
 
             trajectory.update({'logprobs': logprobs, 'entropies': entropies})
-            return {
-                **self._slice_minibatch(trajectory, slice(0, seg_len)),
-                'vpreds': vpreds
-            }
+            trajectory = self._slice_minibatch(trajectory, slice(0, seg_len))
+            trajectory.update({'vpreds': vpreds})
+            return trajectory
 
     @tc.no_grad()
     def _credit_assignment(self, trajectory):
