@@ -266,6 +266,7 @@ class PPO(Algo):
                 policy_scheduler.step()
             if value_scheduler:
                 value_scheduler.step()
+            clip_param_annealer.step()
 
             # save everything.
             global_metadata = global_means(metadata, world_size)
