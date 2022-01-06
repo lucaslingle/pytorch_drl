@@ -112,7 +112,7 @@ class PPO(Algo):
                 vpreds = value_net(observations, value_predict)
             vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
 
-            # shallow copy of trajectory dict; update pointers to new values.
+            # shallow copy of trajectory dict, update pointers to new values
             trajectory_new = {**trajectory}
             trajectory_new.update({'logprobs': logprobs, 'entropies': entropies})
             trajectory_new = self._slice_minibatch(trajectory_new, slice(0, seg_len))
