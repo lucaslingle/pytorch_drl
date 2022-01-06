@@ -185,6 +185,12 @@ class TrajectoryManager:
             self._o_t = o_tp1
             self._a_t = a_tp1
 
+        # if we've gotten here and initial is True,
+        # then dont mess it up by generating a trajectory report, since it will
+        # erase the extra_steps trajectory steps we just pre-generated.
+        if initial:
+            return
+
         # return results with next timestep observation and action included
         results = {
             **self._trajectory.report(),
