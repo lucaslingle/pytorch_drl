@@ -112,10 +112,12 @@ class PPO(Algo):
                 vpreds = value_net(observations, value_predict)
             vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
 
-            trajectory.update({'logprobs': logprobs, 'entropies': entropies})
-            trajectory = self._slice_minibatch(trajectory, slice(0, seg_len))
-            trajectory.update({'vpreds': vpreds})
-            return trajectory
+            # shallow copy of trajectory dict, update pointers to new values
+            trajectory_new = {**trajectory}
+            trajectory_new.update({'logprobs': logprobs, 'entropies': entropies})
+            trajectory_new = self._slice_minibatch(trajectory_new, slice(0, seg_len))
+            trajectory_new.update({'vpreds': vpreds})
+            return trajectory_new
 
     @tc.no_grad()
     def _credit_assignment(self, trajectory):
