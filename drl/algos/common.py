@@ -158,6 +158,7 @@ class TrajectoryManager:
         self._extra_steps = extra_steps
 
         self._o_t = self._env.reset()
+        self._a_t = self._choose_action(self._o_t)
         self._trajectory = Trajectory(
             obs_shape=self._o_t.shape,
             rew_keys=self._get_reward_keys(),
@@ -222,9 +223,8 @@ class TrajectoryManager:
         # generate a trajectory segment.
         self._policy_net.eval()
         for t in range(start_t, end_t):
-            a_t = self._choose_action(self._o_t)
-            o_tp1, r_t, done_t, info_t = self._step_env(a_t)
-            self._trajectory.record(t, self._o_t, a_t, r_t, done_t)
+            o_tp1, r_t, done_t, info_t = self._step_env(self._a_t)
+            self._trajectory.record(t, self._o_t, self._a_t, r_t, done_t)
             self._metadata_mgr.update_present(
                 deltas={
                     'ep_len': 1,
@@ -243,7 +243,9 @@ class TrajectoryManager:
                     self._metadata_mgr.present_done(
                         fields=['ep_len_raw', 'ep_ret_raw'])
                 o_tp1 = self._env.reset()
+            a_tp1 = self._choose_action(self._o_t)
             self._o_t = o_tp1
+            self._a_t = a_tp1
 
         # if we've gotten here and initial is True,
         # then dont mess it up by generating a trajectory report, since it will
@@ -253,10 +255,12 @@ class TrajectoryManager:
 
         # return results with next timestep observation and action included.
         # o_Tp1 is needed for value-based credit assignment.
+        # a_Tp1 is included to simplify the implementation elsewhere.
         results = {
             **self._trajectory.report(),
             'metadata': self._metadata_mgr.past_meta
         }
         results['observations'][-1] = o_tp1
+        results['actions'][-1] = a_tp1
         self._metadata_mgr.past_done()
         return results

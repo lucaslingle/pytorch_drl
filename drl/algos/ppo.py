@@ -101,7 +101,7 @@ class PPO(Algo):
 
             # compute logprobs of actions.
             predictions = policy_net(observations, policy_predict)
-            pi = predictions.get('policy')[0:seg_len]
+            pi = predictions.get('policy')
             logprobs = pi.log_prob(actions)
             entropies = pi.entropy()
 
@@ -112,10 +112,9 @@ class PPO(Algo):
                 vpreds = value_net(observations, value_predict)
             vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
 
+            trajectory.update({'logprobs': logprobs, 'entropies': entropies})
             return {
                 **self._slice_minibatch(trajectory, slice(0, seg_len)),
-                'logprobs': logprobs,
-                'entropies': entropies,
                 'vpreds': vpreds
             }
 
@@ -151,12 +150,11 @@ class PPO(Algo):
                 A_t = delta_t + (1.-dones[t]) * gamma[k] * lam[k] * A_tp1
                 advantages[k][t] = A_t
         td_lambda_returns = {k: advantages[k] + vpreds[k] for k in advantages}
-        results = {
-            **trajectory,
+        trajectory.update({
             'advantages': advantages,
             'td_lambda_returns': td_lambda_returns
-        }
-        return self._slice_minibatch(results, slice(0, seg_len))
+        })
+        return self._slice_minibatch(trajectory, slice(0, seg_len))
 
     def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef):
         mb_new = self._annotate(mb, policy_net, value_net, no_grad=False)
