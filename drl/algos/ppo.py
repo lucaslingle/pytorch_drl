@@ -49,8 +49,7 @@ class PPO(Algo):
         clip_param_annealer = ClipParamAnnealer(
             initial_clip_param=algo_config.get('initial_clip_param'),
             final_clip_param=algo_config.get('final_clip_param'),
-            num_policy_improvements=num_policy_improvements
-        )
+            num_policy_improvements=num_policy_improvements)
 
         checkpointables = {
             'policy_net': policy_net,
