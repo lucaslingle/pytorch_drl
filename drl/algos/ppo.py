@@ -282,8 +282,11 @@ class PPO(Algo):
                         checkpointables={
                             'policy_net': policy_net,
                             'policy_optimizer': policy_optimizer,
+                            'policy_scheduler': policy_scheduler,
                             'value_net': value_net,
                             'value_optimizer': value_optimizer,
+                            'value_scheduler': value_scheduler,
+                            'clip_param_annealer': clip_param_annealer,
                             **env.get_checkpointables()
                         },
                         step=global_step)
