@@ -192,6 +192,8 @@ class TrajectoryManager:
             return
 
         # return results with next timestep observation and action included
+        # o_Tp1 is needed for value-based credit assignment, and a_Tp1 is needed
+        # for credit assignment in q-learning.
         results = {
             **self._trajectory.report(),
             'metadata': self._metadata_mgr.past_meta
