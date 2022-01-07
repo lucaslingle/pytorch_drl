@@ -48,7 +48,10 @@ class Wrapper(metaclass=abc.ABCMeta):
     @property
     def reward_spec(self):
         if self._reward_spec is None:
-            return self.env.reward_spec
+            if isinstance(self.env, gym.core.Env):
+                return None
+            else:
+                return self.env.reward_spec
         return self._reward_spec
 
     @reward_spec.setter
