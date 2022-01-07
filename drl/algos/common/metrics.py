@@ -16,7 +16,7 @@ def global_means(metrics, world_size):
 
 def global_gather(field_values, world_size):
     metadata_tensor = tc.tensor(field_values)
-    shape, dtype = metadata_tensor.shape, metadata_tensor.dtype
+    shape, dtype = tuple(metadata_tensor.shape), metadata_tensor.dtype
     tensors_list = [tc.zeros(shape, dtype) for _ in range(world_size)]
     tc.distributed.all_gather(tensors_list, metadata_tensor)
     return list(tc.cat(tensors_list, dim=0).detach().numpy())
@@ -24,6 +24,18 @@ def global_gather(field_values, world_size):
 
 def global_gathers(metadata, world_size):
     return Counter({k: global_gather(v, world_size) for k,v in metadata.items()})
+
+
+def pretty_print(metrics):
+    print("-" * 100)
+    maxlen_name_len = max(len(name) for name in metrics)
+    for name, value in metrics.items():
+        blankspace = " " * (maxlen_name_len - len(name) + 1)
+        if name.startswith("loss_"):
+            print(f"{name}: {blankspace}{value:>0.2f}")
+        else:
+            print(f"{name}: {blankspace}{value:>0.1f}")
+    print("-" * 100)
 
 
 class MultiDeque:
@@ -44,3 +56,6 @@ class MultiDeque:
     def update(self, new_metadata):
         for field in new_metadata:
             self.update_field(field, new_metadata[field])
+
+    def items(self):
+        return [(field, self.mean(field)) for field in self._dequeues]

@@ -6,7 +6,7 @@ import numpy as np
 
 from drl.algos.abstract import Algo
 from drl.algos.common import (
-    TrajectoryManager, MultiDeque, global_means, global_gathers
+    TrajectoryManager, MultiDeque, global_means, global_gathers, pretty_print
 )
 
 
@@ -266,6 +266,7 @@ class PPO(Algo):
 
                     global_metrics = global_means(losses, world_size)
                     if self._rank == 0:
+                        pretty_print(global_metrics)
                         for name in global_metrics:
                             self._writer.add_scalar(
                                 tag=f"epoch_{opt_epoch}/{name}",
@@ -283,6 +284,7 @@ class PPO(Algo):
             global_metadata = global_gathers(metadata, world_size)
             self._metadata_acc.update(global_metadata)
             if self._rank == 0:
+                pretty_print(self._metadata_acc)
                 for name in global_metadata:
                     self._writer.add_scalar(
                         tag=f"metadata/{name}",
