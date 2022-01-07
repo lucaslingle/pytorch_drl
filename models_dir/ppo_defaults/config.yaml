@@ -17,6 +17,7 @@ algo:
         extrinsic: 0.95
     discount_gamma:
         extrinsic: 0.99
+    stats_memory_len: 100
     checkpoint_frequency: 100
     max_steps: 11000000
 env:

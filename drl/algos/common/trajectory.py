@@ -1,19 +1,9 @@
-from collections import Counter
+from typing import Dict
 import copy
 
 import torch as tc
 
 from drl.envs.wrappers import Wrapper
-
-
-def global_mean(metric, world_size):
-    global_metric = metric.clone().float().detach()
-    tc.distributed.all_reduce(global_metric, op=tc.distributed.ReduceOp.SUM)
-    return global_metric.item() / world_size
-
-
-def global_means(metrics, world_size):
-    return Counter({k: global_mean(v, world_size) for k, v in metrics.items()})
 
 
 class MetadataManager:

@@ -5,7 +5,9 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 
 from drl.algos.abstract import Algo
-from drl.algos.common import TrajectoryManager, global_means
+from drl.algos.common import (
+    TrajectoryManager, MultiDeque, global_means, global_gathers
+)
 
 
 class PPO(Algo):
@@ -17,6 +19,8 @@ class PPO(Algo):
             policy_net=self._learning_system['policy_net'],
             seg_len=self._config['algo']['seg_len'],
             extra_steps=0)
+        self._metadata_acc = MultiDeque(
+            memory_len=self._config['algo']['stats_memory_len'])
         if self._rank == 0:
             self._writer = SummaryWriter(self._config.get('log_dir'))
 
@@ -276,12 +280,13 @@ class PPO(Algo):
             ent_coef_annealer.step()
 
             # save everything.
-            global_metadata = global_means(metadata, world_size)
+            global_metadata = global_gathers(metadata, world_size)
+            self._metadata_acc.update(global_metadata)
             if self._rank == 0:
                 for name in global_metadata:
                     self._writer.add_scalar(
                         tag=f"metadata/{name}",
-                        scalar_value=global_metadata[name],
+                        scalar_value=self._metadata_acc.mean(name),
                         global_step=self._learning_system['global_step'])
 
                 global_step = self._learning_system['global_step']
