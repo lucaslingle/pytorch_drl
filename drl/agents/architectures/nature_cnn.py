@@ -26,3 +26,8 @@ class NatureCNN(Architecture):
     @property
     def output_dim(self):
         return self._num_features
+
+    def forward(self, x, **kwargs):
+        features = self._network(x)
+        return features
+
