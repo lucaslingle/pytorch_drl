@@ -16,6 +16,9 @@ class PPO(Algo):
     #    add and test orthogonal init (used in baselines NatureCNN, RND, etc).
     #    add and test reward normalization (see baselines VecNormalize).
     #    add and test clipped value function
+    # PPO speed todos:
+    #    after reproducability done, add support for vectorized environment.
+    #    test speed of vectorized vs non-vectorized environments.
     def __init__(self, rank, config):
         super().__init__(rank, config)
         self._learning_system = self._get_learning_system()

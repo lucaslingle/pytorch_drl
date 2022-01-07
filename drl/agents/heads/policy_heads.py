@@ -26,10 +26,9 @@ class EpsilonGreedyCategoricalPolicyHead(CategoricalPolicyHead):
         self._action_value_head = action_value_head
         self._epsilon_schedule = epsilon_schedule
 
-    def forward(self, features, **kwargs):
-        # todo(lucaslingle): policy must be a probability dist
+    def forward(self, features, step, **kwargs):
         epsilon = self._epsilon_schedule.value
-        if len(features.shape) == 2 and features.shape[0] == 1:
+        if step:
             self._epsilon_schedule.step()
         q_values = self._action_value_head(features)
         probs = tc.tensor([epsilon, 1-epsilon])

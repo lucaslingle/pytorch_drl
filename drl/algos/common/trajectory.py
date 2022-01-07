@@ -182,7 +182,7 @@ class TrajectoryManager:
         # todo(lucaslingle): add support for RL^2/NGU-style inputting
         #    of past rewards as inputs
         predictions = self._policy_net(
-            tc.tensor(o_t).float().unsqueeze(0), predict=['policy'])
+            tc.tensor(o_t).float().unsqueeze(0), predict=['policy'], step=True)
         pi_dist_t = predictions.get('policy')
         a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
         return a_t
