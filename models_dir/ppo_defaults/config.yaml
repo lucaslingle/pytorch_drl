@@ -1,6 +1,6 @@
 distributed:
     backend: gloo
-    world_size: 2
+    world_size: 8
     master_addr: localhost
     master_port: '12345'
 algo:

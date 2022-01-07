@@ -89,7 +89,7 @@ class PPO(Algo):
         with tc.no_grad() if no_grad else ExitStack():
             # get config variables.
             algo_config = self._config.get('algo')
-            seg_len = algo_config.get('segment_length')
+            seg_len = algo_config.get('seg_len')
 
             # get trajectory variables.
             observations = trajectory.get('observations')
