@@ -72,6 +72,8 @@ class Wrapper(metaclass=abc.ABCMeta):
         return self.env.step(action)
 
     def reset(self, **kwargs):
+        if 'seed' in kwargs:
+            _ = kwargs.pop('seed')  # maintain backwards compatibility with gym
         return self.env.reset(**kwargs)
 
     def render(self, mode="human", **kwargs):
