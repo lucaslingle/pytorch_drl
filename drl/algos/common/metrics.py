@@ -15,11 +15,10 @@ def global_means(metrics, world_size):
 
 
 def global_gather(field_values, world_size):
-    metadata_tensor = tc.tensor(field_values)
-    shape, dtype = tuple(metadata_tensor.shape), metadata_tensor.dtype
-    tensors_list = [tc.zeros(size=shape, dtype=dtype) for _ in range(world_size)]
-    tc.distributed.all_gather(tensors_list, metadata_tensor)
-    return list(tc.cat(tensors_list, dim=0).detach().numpy())
+    output = [None for _ in range(world_size)]
+    tc.distributed.all_gather_object(output, field_values)
+    output = [element for lst in output for element in lst]
+    return output
 
 
 def global_gathers(metadata, world_size):
@@ -38,24 +37,24 @@ def pretty_print(metrics):
 class MultiDeque:
     def __init__(self, memory_len):
         self._memory_len = memory_len
-        self._dequeues = dict()
+        self._deques = dict()
 
     def __iter__(self):
-        return iter([field for field in self._dequeues])
+        return iter(field for field in self._deques)
 
     def update_field(self, field, values):
-        if field not in self._dequeues:
-            self._dequeues[field] = deque(maxlen=self._memory_len)
-        self._dequeues[field].extend(values)
+        if field not in self._deques:
+            self._deques[field] = deque(maxlen=self._memory_len)
+        self._deques[field].extend(values)
 
     def update(self, new_metadata):
         for field in new_metadata:
             self.update_field(field, new_metadata[field])
 
     def mean(self, field):
-        if len(self._dequeues[field]) == 0:
+        if len(self._deques[field]) == 0:
             return 0.0
-        return np.mean(self._dequeues[field])
+        return sum(self._deques[field]) / len(self._deques[field])
 
     def items(self):
-        return iter([(field, self.mean(field)) for field in self._dequeues])
+        return [(field, self.mean(field)) for field in self._deques]

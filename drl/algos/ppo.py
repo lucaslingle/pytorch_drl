@@ -140,6 +140,7 @@ class PPO(Algo):
         # get reward keys.
         reward_keys = rewards.keys()
         relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
+        assert len(relevant_reward_keys) > 0
 
         # assign credit.
         advantages = {
@@ -168,6 +169,7 @@ class PPO(Algo):
         # get reward keys.
         reward_keys = mb_new['rewards'].keys()
         relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
+        assert len(relevant_reward_keys) > 0
 
         # entropy
         entropies = mb_new['entropies']
@@ -264,15 +266,15 @@ class PPO(Algo):
                         composite_loss.backward()
                         value_optimizer.step()
 
-                    global_metrics = global_means(losses, world_size)
-                    if self._rank == 0:
-                        print(f"Opt epoch: {opt_epoch}")
-                        pretty_print(global_metrics)
-                        for name in global_metrics:
-                            self._writer.add_scalar(
-                                tag=f"epoch_{opt_epoch}/{name}",
-                                scalar_value=global_metrics[name],
-                                global_step=self._learning_system['global_step'])
+                global_metrics = global_means(losses, world_size)
+                if self._rank == 0:
+                    print(f"Opt epoch: {opt_epoch}")
+                    pretty_print(global_metrics)
+                    for name in global_metrics:
+                        self._writer.add_scalar(
+                            tag=f"epoch_{opt_epoch}/{name}",
+                            scalar_value=global_metrics[name],
+                            global_step=self._learning_system['global_step'])
 
             if policy_scheduler:
                 policy_scheduler.step()
