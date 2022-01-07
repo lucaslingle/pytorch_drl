@@ -51,13 +51,16 @@ class Normalizer(tc.nn.Module):
         self.mean = mean
         self.var = var
 
-    def forward(self, item, eps=1e-4):
+    def forward(self, item, shift=True, scale=True, eps=1e-4):
         mean, var = self.mean.unsqueeze(0), self.var.unsqueeze(0)
-        normalized = (item - mean) * tc.rsqrt(var + eps)
+        if shift:
+            item -= mean
+        if scale:
+            item *= tc.rsqrt(var + eps)
         if self._clip_low is not None:
-            lows = tc.ones_like(normalized) * self._clip_low
-            normalized = tc.max(lows, normalized)
+            lows = tc.ones_like(item) * self._clip_low
+            item = tc.max(lows, item)
         if self._clip_high is not None:
-            highs = tc.ones_like(normalized) * self._clip_high
-            normalized = tc.min(normalized, highs)
-        return normalized
+            highs = tc.ones_like(item) * self._clip_high
+            item = tc.min(item, highs)
+        return item

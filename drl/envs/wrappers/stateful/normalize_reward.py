@@ -64,7 +64,7 @@ class NormalizeRewardWrapper(TrainableWrapper):
         #  for 'all' key or perhaps change None to mean 'all'.
         reward = rew if not isinstance(rew, dict) else rew[self._key]
         reward = tc.tensor([reward]).float()
-        normalized = self._synced_normalizer(reward.unsqueeze(0)).item()
+        normalized = self._synced_normalizer(reward.unsqueeze(0), shift=False).item()
         _ = self._unsynced_normalizer.update(reward)
         if isinstance(rew, dict):
             rew[self._key] = normalized

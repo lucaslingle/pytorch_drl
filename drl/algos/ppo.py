@@ -11,6 +11,10 @@ from drl.algos.common import (
 
 
 class PPO(Algo):
+    # PPO paper reproducability todos:
+    #    add and test orthogonal init (used in baselines NatureCNN, RND, etc).
+    #    add and test reward normalization (see baselines VecNormalize).
+    #    add and test clipped value function
     def __init__(self, rank, config):
         super().__init__(rank, config)
         self._learning_system = self._get_learning_system()
