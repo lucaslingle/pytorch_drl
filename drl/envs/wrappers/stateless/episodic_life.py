@@ -21,7 +21,7 @@ class EpisodicLifeWrapper(Wrapper):
     def step(self, action):
         obs, reward, self._was_real_done, info = self.env.step(action)
         lives = self._lives_fn(self.env)
-        done = self.was_real_done or (0 < lives < self._lives)
+        done = self._was_real_done or (0 < lives < self._lives)
         self._lives = lives
         return obs, reward, done, info
 
