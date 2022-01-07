@@ -210,7 +210,7 @@ class PPO(Algo):
         }
 
     def training_loop(self):
-        world_size = self._config.get('world_size')
+        world_size = self._config['distributed']['world_size']
 
         env = self._learning_system.get('env')
         policy_net = self._learning_system.get('policy_net')
