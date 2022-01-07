@@ -56,9 +56,9 @@ def get_predictors(rank, env, **predictors_spec: Dict[str, Dict[str, Any]]):
         # infer number of actions or action dimensionality.
         if key == 'policy' or key.startswith('action_value'):
             if isinstance(env.action_space, gym.spaces.Discrete):
-                spec.update({'num_actions': env.action_space.n})
+                spec['cls_args'].update({'num_actions': env.action_space.n})
             elif isinstance(env.action_space, gym.spaces.Box):
-                spec.update({'action_dim': env.action_space.shape[0]})
+                spec['cls_args'].update({'action_dim': env.action_space.shape[0]})
             else:
                 msg = "Unknown action space."
                 raise TypeError(msg)
