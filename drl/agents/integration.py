@@ -97,23 +97,17 @@ class Agent(tc.nn.Module):
     def keys(self):
         return self._predictors.keys()
 
-    def forward(
-            self,
-            x: tc.Tensor,
-            predict: List[str],
-            **kwargs: Dict[str, Any]
-    ) -> Dict[str, tc.Tensor]:
+    def forward(self, x: tc.Tensor, predict: List[str]) -> Dict[str, tc.Tensor]:
         """
         Args:
             x: Batch of observations
             predict: Names of predictors to apply.
-            **kwargs: Keyword arguments to pass to predictors.
         Returns:
             Dictionary of predictions.
         """
         preproc = self._preprocessing(x)
         features = self._architecture(preproc)
         predictions = {
-            key: self._predictors[key](features, **kwargs) for key in predict
+            key: self._predictors[key](features) for key in predict
         }
         return predictions

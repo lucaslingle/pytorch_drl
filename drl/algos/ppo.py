@@ -101,7 +101,7 @@ class PPO(Algo):
                 policy_predict.extend(value_predict)
 
             # compute logprobs of actions.
-            predictions = policy_net(observations, policy_predict)
+            predictions = policy_net(observations, predict=policy_predict)
             pi = predictions.get('policy')
             logprobs = pi.log_prob(actions)
             entropies = pi.entropy()
@@ -110,7 +110,7 @@ class PPO(Algo):
             if value_net is None:
                 vpreds = {k: predictions[k] for k in value_predict}
             else:
-                vpreds = value_net(observations, value_predict)
+                vpreds = value_net(observations, predict=value_predict)
             vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
 
             # shallow copy of trajectory dict, update pointers to new values
