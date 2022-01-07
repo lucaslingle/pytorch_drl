@@ -5,7 +5,7 @@ distributed:
     master_port: '12345'
 algo:
     cls_name: PPO
-    segment_length: 128
+    seg_len: 128
     opt_epochs: 3
     learner_batch_size: 32
     clip_param_init: 0.1

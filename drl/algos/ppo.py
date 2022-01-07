@@ -15,7 +15,7 @@ class PPO(Algo):
         self._trajectory_mgr = TrajectoryManager(
             env=self._learning_system['env'],
             policy_net=self._learning_system['policy_net'],
-            seg_len=self._config['algo']['segment_length'],
+            seg_len=self._config['algo']['seg_len'],
             extra_steps=0)
         if self._rank == 0:
             self._writer = SummaryWriter(self._config.get('log_dir'))
@@ -124,7 +124,7 @@ class PPO(Algo):
     def _credit_assignment(self, trajectory):
         # get config variables.
         algo_config = self._config.get('algo')
-        seg_len = algo_config.get('segment_length')
+        seg_len = algo_config.get('seg_len')
         lam = algo_config.get('gae_lambda')
         gamma = algo_config.get('discount_gamma')
 
@@ -225,7 +225,7 @@ class PPO(Algo):
 
         algo_config = self._config.get('algo')
         max_steps = algo_config.get('max_steps')
-        seg_len = algo_config.get('segment_length')
+        seg_len = algo_config.get('seg_len')
         opt_epochs = algo_config.get('opt_epochs')
         batch_size = algo_config.get('learner_batch_size')
         checkpoint_frequency = algo_config.get('checkpoint_frequency')
