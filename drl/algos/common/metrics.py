@@ -31,10 +31,7 @@ def pretty_print(metrics):
     maxlen_name_len = max(len(name) for name in metrics)
     for name, value in metrics.items():
         blankspace = " " * (maxlen_name_len - len(name) + 1)
-        if name.startswith("loss_"):
-            print(f"{name}: {blankspace}{value:>0.2f}")
-        else:
-            print(f"{name}: {blankspace}{value:>0.1f}")
+        print(f"{name}: {blankspace}{value:>0.6f}")
     print("-" * 100)
 
 
