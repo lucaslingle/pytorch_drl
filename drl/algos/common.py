@@ -115,6 +115,10 @@ class Trajectory:
             self._rewards[key][i] = tc.tensor(r_t[key]).float()
         self._dones[i] = tc.tensor(d_t).float()
 
+    def record_nexts(self, o_Tp1, a_Tp1):
+        self._observations[-1] = tc.tensor(o_Tp1).float()
+        self._actions[-1] = tc.tensor(a_Tp1).long()
+
     def report(self):
         """
         Generates a dictionary of observations, actions, rewards, and dones.
@@ -256,11 +260,10 @@ class TrajectoryManager:
         # return results with next timestep observation and action included.
         # o_Tp1 is needed for value-based credit assignment.
         # a_Tp1 is included to simplify the implementation elsewhere.
+        self._trajectory.record_nexts(o_Tp1=o_tp1, a_Tp1=a_tp1)
         results = {
             **self._trajectory.report(),
             'metadata': self._metadata_mgr.past_meta
         }
-        results['observations'][-1] = o_tp1
-        results['actions'][-1] = a_tp1
         self._metadata_mgr.past_done()
         return results
