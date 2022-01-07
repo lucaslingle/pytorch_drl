@@ -32,7 +32,7 @@ class MaxAndSkipWrapper(Wrapper):
 
     def step(self, action):
         prev_obs, total_reward, done = None, 0., False
-        for _ in range(self._skip):
+        for _ in range(self._num_skip):
             obs, reward, done, info = self.env.step(action)
             total_reward += reward
             prev_obs = obs
