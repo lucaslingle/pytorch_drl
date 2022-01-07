@@ -78,5 +78,5 @@ if __name__ == '__main__':
     tc.multiprocessing.spawn(
         train if args.mode == 'train' else evaluate,
         args=(config,),
-        nprocs=config.get('world_size'),
+        nprocs=config['distributed']['world_size'],
         join=True)
