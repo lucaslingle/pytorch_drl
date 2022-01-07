@@ -18,8 +18,6 @@ Additionally, support is planned for:
 - [Haarnoja et al., 2018](https://arxiv.org/pdf/1801.01290.pdf) - 'Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor'
 - [Horgan et al., 2018](https://arxiv.org/pdf/1803.00933.pdf) - 'Distributed Prioritized Experience Replay'
 - [Kapturowski et al., 2018](https://openreview.net/pdf?id=r1lyTjAqYX) - 'Recurrent Experience Replay in Distributed Reinforcement Learning'
-- [Song et al., 2019](https://arxiv.org/pdf/1909.12238.pdf) - 'V-MPO: On-Policy Maximum a Posteriori Policy Optimization for Discrete and Continuous Control'
-- [Peng et al., 2019](https://arxiv.org/pdf/1910.00177.pdf) - 'Advantage Weighted Regression: Simple and Scalable Off-Policy Reinforcement Learning' 
 - [Badia et al., 2020](https://arxiv.org/pdf/2002.06038.pdf) - 'Never Give Up: Learning Directed Exploration Strategies'
 
 ## Getting Started
@@ -72,5 +70,5 @@ To evaluate a trained model, append ```--mode=eval``` to the command above.
 
 ### Config overview
 
-To understand how the configuration files are structured, refer to [this document](config_usage.md).  
-We also provide some example config files for different algorithms in the subdirectories of the folder ```models_dir```.
+Some example config files for different algorithms are provided in the subdirectories of ```models_dir```.  
+A formal description of how the configuration files are structured can be found in [this document](config_usage.md).  
