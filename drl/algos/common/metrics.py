@@ -43,10 +43,8 @@ class MultiDeque:
         self._memory_len = memory_len
         self._dequeues = dict()
 
-    def mean(self, field):
-        if len(self._dequeues[field]) == 0:
-            return 0.0
-        return np.mean(self._dequeues[field])
+    def __iter__(self):
+        return iter([field for field in self._dequeues])
 
     def update_field(self, field, values):
         if field not in self._dequeues:
@@ -57,5 +55,10 @@ class MultiDeque:
         for field in new_metadata:
             self.update_field(field, new_metadata[field])
 
-    def __iter__(self):
+    def mean(self, field):
+        if len(self._dequeues[field]) == 0:
+            return 0.0
+        return np.mean(self._dequeues[field])
+
+    def items(self):
         return iter([(field, self.mean(field)) for field in self._dequeues])
