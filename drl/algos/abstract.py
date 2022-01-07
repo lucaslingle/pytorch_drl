@@ -19,14 +19,14 @@ class Algo(metaclass=abc.ABCMeta):
     @staticmethod
     def _get_env(env_config):
         env = gym.make(env_config.get('id'))
-        env = get_wrappers(env=env, **env_config.get('wrappers'))
+        env = get_wrappers(env, **env_config.get('wrappers'))
         return env
 
     @staticmethod
-    def _get_net(net_config, env):
+    def _get_net(net_config, env, rank):
         preprocessing = get_preprocessings(**net_config.get('preprocessing'))
         architecture = get_architecture(**net_config.get('architecture'))
-        predictors = get_predictors(env, **net_config.get('predictors'))
+        predictors = get_predictors(rank, env, **net_config.get('predictors'))
         return DDP(Agent(preprocessing, architecture, predictors))
 
     @staticmethod

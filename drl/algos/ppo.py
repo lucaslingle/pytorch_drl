@@ -23,9 +23,10 @@ class PPO(Algo):
     def _get_learning_system(self):
         env_config = self._config.get('env')
         env = self._get_env(env_config)
+        rank = self._rank
 
         policy_config = self._config['networks']['policy_net']
-        policy_net = self._get_net(policy_config, env)
+        policy_net = self._get_net(policy_config, env, rank)
         policy_optimizer_config = policy_config.get('optimizer')
         policy_optimizer = self._get_opt(policy_optimizer_config, policy_net)
         policy_scheduler_config = policy_config.get('scheduler')
@@ -35,7 +36,7 @@ class PPO(Algo):
         value_config = self._config['networks']['value_net']
         value_net, value_optimizer, value_scheduler = None, None, None
         if not value_config.get('use_shared_architecture'):
-            value_net = self._get_net(value_config, env)
+            value_net = self._get_net(value_config, env, rank)
             value_optimizer_config = value_config.get('optimizer')
             value_optimizer = self._get_opt(value_optimizer_config, value_net)
             value_scheduler_config = value_config.get('scheduler')
