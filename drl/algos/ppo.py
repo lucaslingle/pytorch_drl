@@ -266,6 +266,7 @@ class PPO(Algo):
 
                     global_metrics = global_means(losses, world_size)
                     if self._rank == 0:
+                        print(f"Opt epoch: {opt_epoch}")
                         pretty_print(global_metrics)
                         for name in global_metrics:
                             self._writer.add_scalar(
