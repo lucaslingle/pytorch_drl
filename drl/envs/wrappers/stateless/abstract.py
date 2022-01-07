@@ -25,9 +25,6 @@ class Wrapper(metaclass=abc.ABCMeta):
         self._reward_spec = None
         self._metadata = None
 
-    def __getattr__(self, name):
-        return getattr(self.env, name)
-
     @property
     def observation_space(self):
         if self._observation_space is None:
