@@ -8,6 +8,7 @@ from drl.algos.abstract import Algo
 from drl.algos.common import (
     TrajectoryManager, MultiDeque, global_means, global_gathers, pretty_print
 )
+from drl.envs.wrappers import Wrapper
 
 
 class PPO(Algo):
@@ -269,6 +270,13 @@ class PPO(Algo):
                         value_optimizer.zero_grad()
                         composite_loss.backward()
                         value_optimizer.step()
+
+                    # todo(lucaslingle): this should look cleaner
+                    env = self._learning_system.get('env')
+                    while isinstance(env, Wrapper):
+                        env = env.unwrapped
+                        if hasattr(env, 'learn'):
+                            env.learn(mb['observations'])
 
                 global_metrics = global_means(losses, world_size)
                 if self._rank == 0:

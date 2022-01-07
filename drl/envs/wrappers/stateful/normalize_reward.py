@@ -7,6 +7,13 @@ from drl.algos.common import global_mean
 
 
 class NormalizeRewardWrapper(TrainableWrapper):
+    # todo(lucaslingle):
+    #  (1) baseline's VecNormalize uses running discounted cumulative reward
+    #        as part of state.
+    #  (2) Need to add that, and rewrite normalization mechanism
+    #        to update based on it.
+    #  (3) For fault tolerance, make it a separate class with a torch buffer,
+    #        and add it to the get_checkpointables return dict.
     def __init__(self, env, key=None):
         super().__init__(env)
         self._synced_normalizer = Normalizer((1,), -5, 5)
