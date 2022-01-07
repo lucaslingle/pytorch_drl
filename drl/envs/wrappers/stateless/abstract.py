@@ -71,8 +71,8 @@ class Wrapper(metaclass=abc.ABCMeta):
     def step(self, action):
         return self.env.step(action)
 
-    def reset(self, seed: Optional[int] = None, **kwargs):
-        return self.env.reset(seed, **kwargs)
+    def reset(self, **kwargs):
+        return self.env.reset(**kwargs)
 
     def render(self, mode="human", **kwargs):
         return self.env.render(mode, **kwargs)
