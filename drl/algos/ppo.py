@@ -236,10 +236,10 @@ class PPO(Algo):
             msg = "Currently only support pcgrad when no val net"
             raise ValueError(msg)
 
-    def _maybe_split_losses(self, losses, separate_value_net):
+    def _maybe_split_losses(self, losses, value_net):
         policy_losses = losses
         value_losses = dict()
-        if separate_value_net:
+        if value_net:
             for k in policy_losses:
                 if k.startswith('value_'):
                     value_losses[k] = policy_losses[k]
@@ -307,7 +307,7 @@ class PPO(Algo):
                         ent_coef=ent_coef_annealer.value,
                         clip_param=clip_param_annealer.value)
                     policy_losses, value_losses = self._maybe_split_losses(
-                        losses=losses, separate_value_net=separate_value_net)
+                        losses=losses, value_net=separate_value_net)
                     self._optimize_losses(
                         net=policy_net, optimizer=policy_optimizer,
                         losses=policy_losses, retain_graph=separate_value_net,
