@@ -302,6 +302,7 @@ class PPO(Algo):
                                 'value_loss': losses.get('value_loss')
                             },
                             normalize=True)
+                        policy_optimizer.step()
 
                     update_trainable_wrappers(env, mb)
 
