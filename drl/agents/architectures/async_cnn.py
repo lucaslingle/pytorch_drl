@@ -20,6 +20,13 @@ class AsyncCNN(Architecture):
             tc.nn.Linear(2592, self._num_features),
             tc.nn.ReLU()
         )
+        self._init_weights()
+
+    def _init_weights(self):
+        for m in self._network:
+            if isinstance(m, (tc.nn.Linear, tc.nn.Conv2d)):
+                tc.nn.init.orthogonal_(m.weight, gain=1.0)
+                tc.nn.init.zeros_(m.bias)
 
     @property
     def output_dim(self):

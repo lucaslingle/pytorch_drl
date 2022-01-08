@@ -13,8 +13,8 @@ from drl.envs.wrappers import Wrapper
 
 class PPO(Algo):
     # PPO paper reproducability todos:
-    #    add and test orthogonal init (used in baselines NatureCNN, RND, etc).
-    #    add and test reward normalization (see baselines VecNormalize).
+    #   [added] add and test orthogonal init (used in baselines NatureCNN, RND, etc).
+    #   [added] add and test reward normalization (see baselines VecNormalize).
     #    add and test clipped value function
     # PPO speed todos:
     #    after reproducability done, add support for vectorized environment.
@@ -224,6 +224,13 @@ class PPO(Algo):
             'clipfrac': clipfrac / len(relevant_reward_keys)
         }
 
+    def _update_trainable_wrappers(self, mb):
+        env = self._learning_system.get('env')
+        while isinstance(env, Wrapper):
+            env = env.unwrapped
+            if hasattr(env, 'learn'):
+                env.learn(**mb)
+
     def training_loop(self):
         world_size = self._config['distributed']['world_size']
 
@@ -274,12 +281,7 @@ class PPO(Algo):
                         composite_loss.backward()
                         value_optimizer.step()
 
-                    # todo(lucaslingle): this should look cleaner
-                    env = self._learning_system.get('env')
-                    while isinstance(env, Wrapper):
-                        env = env.unwrapped
-                        if hasattr(env, 'learn'):
-                            env.learn(mb['observations'])
+                    self._update_trainable_wrappers(mb)
 
                 global_metrics = global_means(losses, world_size)
                 if self._rank == 0:

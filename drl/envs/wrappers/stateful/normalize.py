@@ -2,6 +2,9 @@ import torch as tc
 
 
 class Normalizer(tc.nn.Module):
+    # todo(lucaslingle):
+    #      consider using this algorithm instead
+    #      https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     def __init__(self, data_shape, clip_low=None, clip_high=None):
         super().__init__()
         self._data_shape = data_shape
