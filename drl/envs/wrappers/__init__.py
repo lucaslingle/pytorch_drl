@@ -18,7 +18,10 @@ from drl.envs.wrappers.stateless import (
     DeepmindWrapper
 )
 from drl.envs.wrappers.stateful import (
-    TrainableWrapper, Normalizer, RandomNetworkDistillationWrapper
+    TrainableWrapper,
+    Normalizer,
+    NormalizeRewardWrapper,
+    RandomNetworkDistillationWrapper
 )
 
 
@@ -42,5 +45,6 @@ __all__ = [
     "DeepmindWrapper",
     "TrainableWrapper",
     "Normalizer",
+    "NormalizeRewardWrapper",
     "RandomNetworkDistillationWrapper"
 ]
