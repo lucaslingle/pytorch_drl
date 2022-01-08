@@ -61,6 +61,7 @@ def write_gradient(network: Agent, gradient: np.ndarray) -> None:
         numel = np.prod(p.shape)
         subvec = gradient[dims_so_far:dims_so_far+numel]
         p.grad.copy_(tc.tensor(subvec.reshape(p.shape)).float())
+        dims_so_far += numel
 
 
 def apply_pcgrad(
