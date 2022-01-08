@@ -236,10 +236,10 @@ class PPO(Algo):
             msg = "Currently only support pcgrad when no val net"
             raise ValueError(msg)
 
-    def _maybe_split_losses(self, losses, value_net):
+    def _maybe_split_losses(self, losses, separate_value_net):
         policy_losses = losses
         value_losses = dict()
-        if value_net:
+        if separate_value_net:
             for k in policy_losses:
                 if k.startswith('value_'):
                     value_losses[k] = policy_losses[k]
