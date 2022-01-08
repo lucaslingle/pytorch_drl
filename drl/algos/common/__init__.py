@@ -4,7 +4,7 @@ from drl.algos.common.metrics import (
 )
 from drl.algos.common.trajectory import TrajectoryManager
 from drl.algos.common.wrapper_ops import update_trainable_wrappers
-from drl.algos.common.pcgrad import apply_pcgrad
+from drl.algos.common.grad_ops import apply_pcgrad
 
 
 __all__ = [
