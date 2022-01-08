@@ -306,7 +306,8 @@ class PPO(Algo):
                     losses = self._compute_losses(
                         mb=mb, policy_net=policy_net, value_net=value_net,
                         ent_coef=ent_coef_annealer.value,
-                        clip_param=clip_param_annealer.value, no_grad=False)
+                        clip_param=clip_param_annealer.value,
+                        no_grad=False)
                     policy_losses, value_losses = self._maybe_split_losses(
                         losses=losses, value_net=separate_value_net)
                     self._optimize_losses(
@@ -323,7 +324,8 @@ class PPO(Algo):
                 metrics = self._compute_losses(
                     mb=trajectory, policy_net=policy_net, value_net=value_net,
                     ent_coef=ent_coef_annealer.value,
-                    clip_param=clip_param_annealer.value, no_grad=True)
+                    clip_param=clip_param_annealer.value,
+                    no_grad=True)
                 global_metrics = global_means(metrics, world_size)
                 if self._rank == 0:
                     print(f"Opt epoch: {opt_epoch}")
