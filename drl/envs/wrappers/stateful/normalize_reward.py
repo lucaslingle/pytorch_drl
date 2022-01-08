@@ -30,7 +30,7 @@ class ReturnAcc(tc.nn.Module):
 
     @property
     def mean(self):
-        return self._mean.item()
+        return self._mean
 
     @mean.setter
     def mean(self, value):
@@ -38,7 +38,7 @@ class ReturnAcc(tc.nn.Module):
 
     @property
     def var(self):
-        return self._var.item()
+        return self._var
 
     @var.setter
     def var(self, value):
@@ -62,12 +62,12 @@ class ReturnAcc(tc.nn.Module):
 
             returns = np.array(returns)
 
-            mean = self.mean
+            mean = self.mean.item()
             mean *= ((steps-ep_steps) / steps)
             ep_ret_mean = np.mean(returns)
             mean += (ep_steps / steps) * ep_ret_mean
 
-            var = self.var
+            var = self.var.item()
             var *= ((steps-ep_steps) / steps)
             ep_ret_var = np.mean(np.square(returns - np.expand_dims(mean, 0)))
             var += (ep_steps / steps) * ep_ret_var
