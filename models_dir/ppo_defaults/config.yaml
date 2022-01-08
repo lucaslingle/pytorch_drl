@@ -25,6 +25,7 @@ env:
     wrappers:
         AtariWrapper: {}
         DeepmindWrapper: {frame_stack: False}
+        NormalizeRewardWrapper: {key: extrinsic, gamma: 0.99, world_size: 8}
 networks:
     policy_net:
         preprocessing:
