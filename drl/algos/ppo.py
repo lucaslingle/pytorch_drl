@@ -6,9 +6,9 @@ import numpy as np
 
 from drl.algos.abstract import Algo
 from drl.algos.common import (
-    TrajectoryManager, MultiDeque, global_means, global_gathers, pretty_print
+    TrajectoryManager, MultiDeque, global_means, global_gathers, pretty_print,
+    update_trainable_wrappers
 )
-from drl.envs.wrappers import Wrapper
 
 
 class PPO(Algo):
@@ -224,13 +224,6 @@ class PPO(Algo):
             'clipfrac': clipfrac / len(relevant_reward_keys)
         }
 
-    def _update_trainable_wrappers(self, mb):
-        maybe_wrapper = self._learning_system.get('env')
-        while isinstance(maybe_wrapper, Wrapper):
-            if hasattr(maybe_wrapper, 'learn'):
-                maybe_wrapper.learn(**mb)
-            maybe_wrapper = maybe_wrapper.env
-
     def training_loop(self):
         world_size = self._config['distributed']['world_size']
 
@@ -281,7 +274,7 @@ class PPO(Algo):
                         composite_loss.backward()
                         value_optimizer.step()
 
-                    self._update_trainable_wrappers(mb)
+                    update_trainable_wrappers(env, mb)
 
                 global_metrics = global_means(losses, world_size)
                 if self._rank == 0:
