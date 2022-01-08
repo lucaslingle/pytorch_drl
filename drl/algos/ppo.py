@@ -307,7 +307,7 @@ class PPO(Algo):
                         ent_coef=ent_coef_annealer.value,
                         clip_param=clip_param_annealer.value)
                     policy_losses, value_losses = self._maybe_split_losses(
-                        losses=losses, value_net=separate_value_net)
+                        losses=losses, separate_value_net=separate_value_net)
                     self._optimize_losses(
                         net=policy_net, optimizer=policy_optimizer,
                         losses=policy_losses, retain_graph=separate_value_net,
