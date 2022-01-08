@@ -36,14 +36,14 @@ def pcgrad_gradient_surgery(
     pcgrad_gradients = []
     for i in task_losses:
         optimizer.zero_grad()
-        task_losses[i].backward()
+        task_losses[i].backward(retain_graph=True)
         grad_i = extract_gradient(network, normalize)
         pcgrad_i = grad_i
         for j in task_losses:
             if i == j:
                 continue
             optimizer.zero_grad()
-            task_losses[i].backward()
+            task_losses[i].backward(retain_graph=True)
             grad_j = extract_gradient(network, normalize)
             if np.dot(pcgrad_i, grad_j) < 0.:
                 coef = np.dot(pcgrad_i, grad_j) / np.square(norm(grad_j))

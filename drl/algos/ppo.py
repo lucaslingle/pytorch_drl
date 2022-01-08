@@ -7,7 +7,7 @@ import numpy as np
 from drl.algos.abstract import Algo
 from drl.algos.common import (
     TrajectoryManager, MultiDeque, global_means, global_gathers, pretty_print,
-    update_trainable_wrappers
+    update_trainable_wrappers, apply_pcgrad
 )
 
 
@@ -205,17 +205,21 @@ class PPO(Algo):
                 weight = self._config['algo']['reward_weightings'][key]
                 policy_surrogate_objective += weight * ppo_surr_for_reward
                 vf_loss += tc.square(weight) * vf_loss_for_reward
-                # todo(lucaslingle): investigate if official implementation
+                # todo(lucaslingle): Investigate if official implementation
                 #    of RND uses this value loss weighting
-                # todo(lucaslingle): add support for configuring different
+                # todo(lucaslingle): Add support for configuring different
                 #    value losses, such as huber instead of squared
-                # todo(lucaslingle): add suppport for configuring
+                # todo(lucaslingle): Add suppport for configuring
                 #    clipped or non-clipped value losses.
             clipfrac += clipfrac_for_reward
 
         policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)
         weight = 1. if value_net else self._config['algo']['vf_loss_coef']
         composite_loss = policy_loss + weight * vf_loss
+
+        # todo(lucaslingle): Add support for non-aggregated losses,
+        #  which could be useful if combining multiple intrinsic rewards.
+        #  Apply disaggregation to both policy loss and value loss.
         return {
             'policy_loss': policy_loss,
             'value_loss': vf_loss,
@@ -223,6 +227,14 @@ class PPO(Algo):
             'meanent': mean_entropy,
             'clipfrac': clipfrac / len(relevant_reward_keys)
         }
+
+    def _pcgrad_checks(self):
+        if len(self._config['policy_net']['predictors']) <= 1:
+            msg = "Required multiple predictions for pcgrad"
+            raise ValueError(msg)
+        if self._learning_system['value_net'] is not None:
+            msg = "Currently only support pcgrad when no val net"
+            raise ValueError(msg)
 
     def training_loop(self):
         world_size = self._config['distributed']['world_size']
@@ -243,6 +255,9 @@ class PPO(Algo):
         opt_epochs = algo_config.get('opt_epochs')
         batch_size = algo_config.get('learner_batch_size')
         checkpoint_frequency = algo_config.get('checkpoint_frequency')
+        use_pcgrad = algo_config.get('use_pcgrad')
+        if use_pcgrad:
+            self._pcgrad_checks()
 
         while self._learning_system.get('global_step') < max_steps:
             # generate trajectory.
@@ -263,16 +278,30 @@ class PPO(Algo):
                         mb=mb, policy_net=policy_net, value_net=value_net,
                         ent_coef=ent_coef_annealer.value,
                         clip_param=clip_param_annealer.value)
-                    composite_loss = losses.get('composite_loss')
+                    composite_policy_loss = losses.get('composite_loss')
 
-                    policy_optimizer.zero_grad()
-                    composite_loss.backward(retain_graph=value_net is not None)
-                    policy_optimizer.step()
+                    if not use_pcgrad:
+                        retain_graph = value_net is not None
+                        policy_optimizer.zero_grad()
+                        composite_policy_loss.backward(retain_graph=retain_graph)
+                        policy_optimizer.step()
 
-                    if value_net:
-                        value_optimizer.zero_grad()
-                        composite_loss.backward()
-                        value_optimizer.step()
+                        if value_net:
+                            value_optimizer.zero_grad()
+                            composite_policy_loss.backward()
+                            value_optimizer.step()
+                    else:
+                        # todo(lucaslingle):
+                        #  add support for pcgrad on separate value net
+                        #  useful if e.g., multiple rewards are used.
+                        apply_pcgrad(
+                            network=policy_net,
+                            optimizer=policy_optimizer,
+                            task_losses={
+                                'policy_loss': losses.get('policy_loss'),
+                                'value_loss': losses.get('value_loss')
+                            },
+                            normalize=True)
 
                     update_trainable_wrappers(env, mb)
 

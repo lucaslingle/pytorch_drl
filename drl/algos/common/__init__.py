@@ -4,6 +4,7 @@ from drl.algos.common.metrics import (
 )
 from drl.algos.common.trajectory import TrajectoryManager
 from drl.algos.common.wrapper_ops import update_trainable_wrappers
+from drl.algos.common.pcgrad import apply_pcgrad
 
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "global_gather", "global_gathers",
     "MultiDeque", "pretty_print",
     "TrajectoryManager",
-    "update_trainable_wrappers"
+    "update_trainable_wrappers",
+    "apply_pcgrad"
 ]
