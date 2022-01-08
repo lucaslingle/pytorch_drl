@@ -21,7 +21,7 @@ def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
             numel = np.prod(p.shape)
             subvec = np.zeros((numel,), dtype=tc.float32)
         gradient_subvecs.append(subvec)
-    gradient = np.concatenate(gradient_subvecs, dim=0)
+    gradient = np.concatenate(gradient_subvecs, axis=0)
     if normalize:
         gradient /= norm(gradient)
     return gradient
