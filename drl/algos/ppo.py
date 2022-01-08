@@ -316,7 +316,7 @@ class PPO(Algo):
                         use_pcgrad=use_pcgrad)
                     if separate_value_net:
                         self._optimize_losses(
-                            net=policy_net, optimizer=policy_optimizer,
+                            net=value_net, optimizer=value_optimizer,
                             losses=value_losses, retain_graph=False,
                             use_pcgrad=use_pcgrad)
                     update_trainable_wrappers(env, mb)
