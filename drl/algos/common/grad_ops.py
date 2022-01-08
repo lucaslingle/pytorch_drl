@@ -17,10 +17,11 @@ def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
     for p in network.parameters():
         if p.grad is not None:
             subvec = p.grad.reshape(-1).detach().numpy()
-        else:
-            numel = np.prod(p.shape)
-            subvec = np.zeros((numel,), dtype=tc.float32)
-        gradient_subvecs.append(subvec)
+            gradient_subvecs.append(subvec)
+        #else:
+        #    numel = np.prod(p.shape)
+        #    subvec = np.zeros((numel,), dtype=tc.float32)
+        #    gradient_subvecs.append(subvec)
     gradient = np.concatenate(gradient_subvecs, axis=0)
     if normalize:
         gradient /= norm(gradient)
@@ -31,10 +32,11 @@ def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
 def write_gradient(network: Agent, gradient: np.ndarray) -> None:
     dims_so_far = 0
     for p in network.parameters():
-        numel = np.prod(p.shape)
-        subvec = gradient[dims_so_far:dims_so_far+numel]
-        p.grad.copy_(tc.tensor(subvec, requires_grad=False).reshape(p.shape))
-        dims_so_far += numel
+        if p.grad is not None:
+            numel = np.prod(p.shape)
+            subvec = gradient[dims_so_far:dims_so_far+numel]
+            p.grad.copy_(tc.tensor(subvec, requires_grad=False).reshape(p.shape))
+            dims_so_far += numel
 
 
 def pcgrad_gradient_surgery(

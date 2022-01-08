@@ -237,14 +237,20 @@ class PPO(Algo):
             msg = "Currently only support pcgrad when no val net"
             raise ValueError(msg)
 
-    def _maybe_split_losses(self, losses, value_net):
-        policy_losses = losses
+    def _maybe_split_losses(self, losses, value_net, use_pcgrad):
+        policy_losses = dict()
         value_losses = dict()
-        if value_net:
-            for k in policy_losses:
-                if k.startswith('value_'):
-                    value_losses[k] = policy_losses[k]
-                    del policy_losses[k]
+        for k in losses:
+            if k.startswith('policy_'):
+                policy_losses[k] = losses[k]
+            if k.startswith('value_'):
+                if value_net:
+                    value_losses[k] = losses[k]
+                else:
+                    policy_losses[k] = losses[k]
+            if not use_pcgrad:
+                if k == 'composite_loss':
+                    policy_losses[k] = losses[k]
         return policy_losses, value_losses
 
     def _optimize_losses(self, net, optimizer, losses, retain_graph, use_pcgrad):
@@ -256,7 +262,6 @@ class PPO(Algo):
             losses['composite_loss'].backward(retain_graph=retain_graph)
             optimizer.step()
         else:
-            del losses['composite_loss']
             apply_pcgrad(
                 network=net,
                 optimizer=optimizer,
@@ -309,7 +314,8 @@ class PPO(Algo):
                         clip_param=clip_param_annealer.value,
                         no_grad=False)
                     policy_losses, value_losses = self._maybe_split_losses(
-                        losses=losses, value_net=separate_value_net)
+                        losses=losses, value_net=separate_value_net,
+                        use_pcgrad=use_pcgrad)
                     self._optimize_losses(
                         net=policy_net, optimizer=policy_optimizer,
                         losses=policy_losses, retain_graph=separate_value_net,
