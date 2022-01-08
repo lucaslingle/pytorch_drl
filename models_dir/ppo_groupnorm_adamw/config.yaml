@@ -1,0 +1,56 @@
+distributed:
+    backend: gloo
+    world_size: 8
+    master_addr: localhost
+    master_port: '12345'
+algo:
+    cls_name: PPO
+    seg_len: 128
+    opt_epochs: 3
+    learner_batch_size: 32
+    clip_param_init: 0.1
+    clip_param_final: 0.0
+    ent_coef_init: 0.01
+    ent_coef_final: 0.01
+    vf_loss_coef: 1.0
+    gae_lambda:
+        extrinsic: 0.95
+    discount_gamma:
+        extrinsic: 0.99
+    use_pcgrad: False
+    stats_memory_len: 100
+    checkpoint_frequency: 100
+    max_steps: 11000000
+env:
+    id: 'PongNoFrameskip-v4'
+    wrappers:
+        AtariWrapper: {}
+        DeepmindWrapper: {frame_stack: False}
+networks:
+    policy_net:
+        preprocessing:
+            ToChannelMajor: {}
+        architecture:
+            cls_name: AsyncCNN
+            cls_args: {img_channels: 1, use_gn: True}
+        predictors:
+            policy:
+                cls_name: LinearCategoricalPolicyHead
+                cls_args: {num_features: 256}
+            value_extrinsic:
+                cls_name: LinearValueHead
+                cls_args: {num_features: 256}
+        optimizer:
+            cls_name: AdamW
+            cls_args: {lr: 0.00025, eps: 0.00001, wd: 0.01}
+        scheduler:
+            cls_name: OneCycleLR
+            cls_args:
+                max_lr: 0.00025
+                total_steps: 85938
+                pct_start: 0.0
+                anneal_strategy: linear
+                cycle_momentum: False
+                div_factor: 1.0
+    value_net:
+        use_shared_architecture: True
