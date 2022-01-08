@@ -16,8 +16,8 @@ class ReturnAcc(tc.nn.Module):
         self._clip_low = clip_low
         self._clip_high = clip_high
         self._current_ep_rewards = []
-        self.register_buffer('_steps', tc.tensor(0))
-        self.register_buffer('_mean', tc.tensor(0.))
+        self.register_buffer('_steps', tc.tensor(0.))
+        self.register_buffer('_mean', tc.tensor(1.))
         self.register_buffer('_var', tc.tensor(1.))
 
     @property
@@ -26,7 +26,7 @@ class ReturnAcc(tc.nn.Module):
 
     @steps.setter
     def steps(self, value):
-        self.register_buffer('_steps', tc.tensor(value))
+        self.register_buffer('_steps', value)
 
     @property
     def mean(self):
@@ -34,7 +34,7 @@ class ReturnAcc(tc.nn.Module):
 
     @mean.setter
     def mean(self, value):
-        self.register_buffer('_mean', tc.tensor(value))
+        self.register_buffer('_mean', value)
 
     @property
     def var(self):
@@ -42,12 +42,12 @@ class ReturnAcc(tc.nn.Module):
 
     @var.setter
     def var(self, value):
-        self.register_buffer('_var', tc.tensor(value))
+        self.register_buffer('_var', value)
 
     def update(self, r_t, d_t):
         self._current_ep_rewards.append(r_t)
         if d_t:
-            returns = []
+            returns = list()
             while len(self._current_ep_rewards) > 0:
                 r_t = self._current_ep_rewards.pop()
                 if len(returns) == 0:
@@ -58,25 +58,25 @@ class ReturnAcc(tc.nn.Module):
                 returns.append(R_t)
 
             ep_steps = len(returns)
-            steps = self.steps.item() + ep_steps
+            steps = self.steps + ep_steps
 
-            returns = np.array(returns)
+            returns = tc.tensor(returns)
 
-            mean = self.mean.item()
+            mean = self.mean
             mean *= ((steps-ep_steps) / steps)
-            ep_ret_mean = np.mean(returns)
+            ep_ret_mean = tc.mean(returns)
             mean += (ep_steps / steps) * ep_ret_mean
 
-            var = self.var.item()
+            var = self.var
             var *= ((steps-ep_steps) / steps)
-            ep_ret_var = np.mean(np.square(returns - np.expand_dims(mean, 0)))
+            ep_ret_var = tc.mean(tc.square(returns - mean.unsqueeze(0)))
             var += (ep_steps / steps) * ep_ret_var
 
             self.steps = steps
             self.mean = mean
             self.var = var
 
-    def forward(self, r_t, eps=1e-4):
+    def forward(self, r_t):
         # nb: this is different than baselines' vecnormalize.
         mean = self.mean.unsqueeze(0)
         r_t /= mean

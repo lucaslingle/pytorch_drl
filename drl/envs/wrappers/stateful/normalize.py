@@ -10,7 +10,7 @@ class Normalizer(tc.nn.Module):
         self._data_shape = data_shape
         self._clip_low = clip_low
         self._clip_high = clip_high
-        self.register_buffers("_steps", tc.tensor(0))
+        self.register_buffers("_steps", tc.tensor(0.))
         self.register_buffers("_mean", tc.zeros(data_shape, dtype=tc.float32))
         self.register_buffers("_var", tc.zeros(data_shape, dtype=tc.float32))
 
@@ -20,7 +20,7 @@ class Normalizer(tc.nn.Module):
 
     @steps.setter
     def steps(self, value):
-        self.register_buffer(self._steps, tc.tensor(value).long())
+        self.register_buffer(self._steps, value)
 
     @property
     def mean(self):
@@ -40,7 +40,7 @@ class Normalizer(tc.nn.Module):
 
     def update(self, item):
         # updates a streaming, asymptotically-unbiased estimator of mean and var
-        steps = self.steps.item() + 1
+        steps = self.steps + 1
 
         mean = self.mean
         mean *= ((steps-1) / steps)

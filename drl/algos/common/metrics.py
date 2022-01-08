@@ -4,14 +4,18 @@ import torch as tc
 import numpy as np
 
 
-def global_mean(metric, world_size):
+def global_mean(metric, world_size, item=False):
     global_metric = metric.clone().float().detach()
     tc.distributed.all_reduce(global_metric, op=tc.distributed.ReduceOp.SUM)
-    return global_metric.item() / world_size
+    if item and np.prod(global_metric.shape) == 1:
+        global_metric = global_metric.item()
+    return global_metric / world_size
 
 
-def global_means(metrics, world_size):
-    return Counter({k: global_mean(v, world_size) for k,v in metrics.items()})
+def global_means(metrics, world_size, item):
+    return Counter({
+        k: global_mean(v, world_size, item) for k,v in metrics.items()
+    })
 
 
 def global_gather(field_values, world_size):

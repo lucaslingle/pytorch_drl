@@ -329,7 +329,7 @@ class PPO(Algo):
                     ent_coef=ent_coef_annealer.value,
                     clip_param=clip_param_annealer.value,
                     no_grad=True)
-                global_metrics = global_means(metrics, world_size)
+                global_metrics = global_means(metrics, world_size, item=True)
                 if self._rank == 0:
                     print(f"Opt epoch: {opt_epoch}")
                     pretty_print(global_metrics)

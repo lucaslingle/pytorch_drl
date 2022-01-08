@@ -125,11 +125,11 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
 
     def _set_reward_spec(self):
         def spec_exists():
-            if isinstance(self._env, Wrapper):
-                return self._env.reward_spec is not None
+            if isinstance(self.env, Wrapper):
+                return self.env.reward_spec is not None
             return False
         if spec_exists:
-            keys = copy.deepcopy(self._env.reward_spec.keys)
+            keys = copy.deepcopy(self.env.reward_spec.keys)
             keys.append(self._reward_name)
         else:
             keys = ['extrinsic_raw', 'extrinsic', self._reward_name]
