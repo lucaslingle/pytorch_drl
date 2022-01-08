@@ -22,7 +22,7 @@ class ReturnAcc(tc.nn.Module):
 
     @property
     def steps(self):
-        return self._steps.item()
+        return self._steps
 
     @steps.setter
     def steps(self, value):
@@ -58,7 +58,7 @@ class ReturnAcc(tc.nn.Module):
                 returns.append(R_t)
 
             ep_steps = len(returns)
-            steps = self.steps + ep_steps
+            steps = self.steps.item() + ep_steps
 
             returns = np.array(returns)
 

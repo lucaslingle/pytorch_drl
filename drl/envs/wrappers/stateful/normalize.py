@@ -16,7 +16,7 @@ class Normalizer(tc.nn.Module):
 
     @property
     def steps(self):
-        return self._steps.item()
+        return self._steps
 
     @steps.setter
     def steps(self, value):
@@ -40,7 +40,7 @@ class Normalizer(tc.nn.Module):
 
     def update(self, item):
         # updates a streaming, asymptotically-unbiased estimator of mean and var
-        steps = self.steps+1
+        steps = self.steps.item() + 1
 
         mean = self.mean
         mean *= ((steps-1) / steps)
