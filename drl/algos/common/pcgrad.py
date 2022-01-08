@@ -73,3 +73,4 @@ def apply_pcgrad(
     pcgrad_output = pcgrad_gradient_surgery(
         network, optimizer, task_losses, normalize)
     write_gradient(network, pcgrad_output)
+    optimizer.step()
