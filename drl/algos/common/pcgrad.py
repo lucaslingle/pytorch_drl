@@ -19,7 +19,7 @@ def extract_gradient(network: Agent, normalize: bool) -> np.ndarray:
             subvec = p.grad.reshape(-1).detach().numpy()
         else:
             numel = np.prod(p.shape)
-            subvec = tc.zeros((numel,), dtype=tc.float32)
+            subvec = np.zeros((numel,), dtype=tc.float32)
         gradient_subvecs.append(subvec)
     gradient = np.concatenate(gradient_subvecs, dim=0)
     if normalize:
@@ -60,7 +60,7 @@ def write_gradient(network: Agent, gradient: np.ndarray) -> None:
     for p in network.params():
         numel = np.prod(p.shape)
         subvec = gradient[dims_so_far:dims_so_far+numel]
-        p.grad.copy_(tc.tensor(subvec.reshape(p.shape)).float())
+        p.grad.copy_(tc.tensor(subvec, requires_grad=False).reshape(p.shape))
         dims_so_far += numel
 
 
