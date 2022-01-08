@@ -16,9 +16,9 @@ class ReturnAcc(tc.nn.Module):
         self._clip_low = clip_low
         self._clip_high = clip_high
         self._current_ep_rewards = []
-        self._register_buffer('_steps', tc.tensor(0))
-        self._register_buffer('_mean', tc.tensor(0.))
-        self._register_buffer('_var', tc.tensor(1.))
+        self.register_buffer('_steps', tc.tensor(0))
+        self.register_buffer('_mean', tc.tensor(0.))
+        self.register_buffer('_var', tc.tensor(1.))
 
     @property
     def steps(self):
