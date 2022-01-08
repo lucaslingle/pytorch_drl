@@ -254,9 +254,6 @@ class PPO(Algo):
         return policy_losses, value_losses
 
     def _optimize_losses(self, net, optimizer, losses, retain_graph, use_pcgrad):
-        # todo(lucaslingle):
-        #  add support for pcgrad on separate value net
-        #  useful if e.g., multiple rewards are used.
         if not use_pcgrad:
             optimizer.zero_grad()
             losses['composite_loss'].backward(retain_graph=retain_graph)
