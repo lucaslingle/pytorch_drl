@@ -17,7 +17,7 @@ algo:
         extrinsic: 0.95
     discount_gamma:
         extrinsic: 0.99
-    use_pcgrad: True
+    use_pcgrad: False
     stats_memory_len: 100
     checkpoint_frequency: 100
     max_steps: 11000000
@@ -26,6 +26,7 @@ env:
     wrappers:
         AtariWrapper: {}
         DeepmindWrapper: {frame_stack: False}
+        NormalizeRewardWrapper: {gamma: 0.99, world_size: 8, key: extrinsic}
 networks:
     policy_net:
         preprocessing:

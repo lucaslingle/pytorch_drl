@@ -76,12 +76,10 @@ class ReturnAcc(tc.nn.Module):
             self.mean = mean
             self.var = var
 
-    def forward(self, r_t, shift=False, scale=True, eps=1e-4):
-        mean, var = self.mean.unsqueeze(0), self.var.unsqueeze(0)
-        if shift:
-            r_t -= mean
-        if scale:
-            r_t *= tc.rsqrt(var + eps)
+    def forward(self, r_t, eps=1e-4):
+        # nb: this is different than baselines' vecnormalize.
+        mean = self.mean.unsqueeze(0)
+        r_t /= mean
         if self._clip_low is not None:
             low = self._clip_low * tc.ones_like(r_t)
             r_t = tc.max(low, r_t)
