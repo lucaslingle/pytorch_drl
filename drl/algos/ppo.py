@@ -14,7 +14,7 @@ from drl.algos.common import (
 class PPO(Algo):
     # PPO paper reproducability todos:
     #   [added] add and test orthogonal init (used in baselines NatureCNN, RND, etc).
-    #   [added] add and test reward normalization (see baselines VecNormalize).
+    #   [tested] add and test reward normalization (see baselines VecNormalize).
     #    add and test clipped value function
     # PPO speed todos:
     #    after reproducability done, add support for vectorized environment.
