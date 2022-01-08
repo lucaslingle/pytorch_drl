@@ -171,62 +171,63 @@ class PPO(Algo):
         })
         return self._slice_minibatch(trajectory, slice(0, seg_len))
 
-    def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef):
-        mb_new = self._annotate(mb, policy_net, value_net, no_grad=False)
+    def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef, no_grad):
+        with tc.no_grad() if no_grad else ExitStack():
+            mb_new = self._annotate(mb, policy_net, value_net, no_grad=False)
 
-        # get reward keys.
-        reward_keys = mb_new['rewards'].keys()
-        relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
-        assert len(relevant_reward_keys) > 0
+            # get reward keys.
+            reward_keys = mb_new['rewards'].keys()
+            relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
+            assert len(relevant_reward_keys) > 0
 
-        # entropy
-        entropies = mb_new['entropies']
-        mean_entropy = tc.mean(entropies)
-        policy_entropy_bonus = ent_coef * mean_entropy
+            # entropy
+            entropies = mb_new['entropies']
+            mean_entropy = tc.mean(entropies)
+            policy_entropy_bonus = ent_coef * mean_entropy
 
-        # ppo policy loss, value loss
-        policy_ratio = tc.exp(mb_new['logprobs'] - mb['logprobs'])
-        clipped_policy_ratio = tc.clip(policy_ratio, 1-clip_param, 1+clip_param)
-        policy_surrogate_objective = 0.
-        vf_loss = 0.
-        clipfrac = 0.
-        for key in relevant_reward_keys:
-            surr1 = mb['advantages'][key] * policy_ratio
-            surr2 = mb['advantages'][key] * clipped_policy_ratio
-            ppo_surr_for_reward = tc.mean(tc.min(surr1, surr2))
-            vf_loss_for_reward = tc.mean(
-                tc.square(mb['td_lambda_returns'][key] - mb_new['vpreds'][key])
-            )
-            clipfrac_for_reward = tc.mean(tc.greater(surr1, surr2).float())
-            if len(relevant_reward_keys) == 1:
-                policy_surrogate_objective += ppo_surr_for_reward
-                vf_loss += vf_loss_for_reward
-            else:
-                weight = self._config['algo']['reward_weightings'][key]
-                policy_surrogate_objective += weight * ppo_surr_for_reward
-                vf_loss += tc.square(weight) * vf_loss_for_reward
-                # todo(lucaslingle): Investigate if official implementation
-                #    of RND uses this value loss weighting
-                # todo(lucaslingle): Add support for configuring different
-                #    value losses, such as huber instead of squared
-                # todo(lucaslingle): Add suppport for configuring
-                #    clipped or non-clipped value losses.
-            clipfrac += clipfrac_for_reward
+            # ppo policy loss, value loss
+            policy_ratio = tc.exp(mb_new['logprobs'] - mb['logprobs'])
+            clipped_policy_ratio = tc.clip(policy_ratio, 1-clip_param, 1+clip_param)
+            policy_surrogate_objective = 0.
+            vf_loss = 0.
+            clipfrac = 0.
+            for key in relevant_reward_keys:
+                surr1 = mb['advantages'][key] * policy_ratio
+                surr2 = mb['advantages'][key] * clipped_policy_ratio
+                ppo_surr_for_reward = tc.mean(tc.min(surr1, surr2))
+                vf_loss_for_reward = tc.mean(
+                    tc.square(mb['td_lambda_returns'][key] - mb_new['vpreds'][key])
+                )
+                clipfrac_for_reward = tc.mean(tc.greater(surr1, surr2).float())
+                if len(relevant_reward_keys) == 1:
+                    policy_surrogate_objective += ppo_surr_for_reward
+                    vf_loss += vf_loss_for_reward
+                else:
+                    weight = self._config['algo']['reward_weightings'][key]
+                    policy_surrogate_objective += weight * ppo_surr_for_reward
+                    vf_loss += tc.square(weight) * vf_loss_for_reward
+                    # todo(lucaslingle): Investigate if official implementation
+                    #    of RND uses this value loss weighting
+                    # todo(lucaslingle): Add support for configuring different
+                    #    value losses, such as huber instead of squared
+                    # todo(lucaslingle): Add suppport for configuring
+                    #    clipped or non-clipped value losses.
+                clipfrac += clipfrac_for_reward
 
-        policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)
-        weight = 1. if value_net else self._config['algo']['vf_loss_coef']
-        composite_loss = policy_loss + weight * vf_loss
+            policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)
+            weight = 1. if value_net else self._config['algo']['vf_loss_coef']
+            composite_loss = policy_loss + weight * vf_loss
 
-        # todo(lucaslingle): Add support for non-aggregated losses,
-        #  which could be useful if combining multiple intrinsic rewards.
-        #  Apply disaggregation to both policy loss and value loss.
-        return {
-            'policy_loss': policy_loss,
-            'value_loss': vf_loss,
-            'composite_loss': composite_loss,
-            'meanent': mean_entropy,
-            'clipfrac': clipfrac / len(relevant_reward_keys)
-        }
+            # todo(lucaslingle): Add support for non-aggregated losses,
+            #  which could be useful if combining multiple intrinsic rewards.
+            #  Apply disaggregation to both policy loss and value loss.
+            return {
+                'policy_loss': policy_loss,
+                'value_loss': vf_loss,
+                'composite_loss': composite_loss,
+                'meanent': mean_entropy,
+                'clipfrac': clipfrac / len(relevant_reward_keys)
+            }
 
     def _pcgrad_checks(self):
         if len(self._config['policy_net']['predictors']) <= 1:
@@ -305,7 +306,7 @@ class PPO(Algo):
                     losses = self._compute_losses(
                         mb=mb, policy_net=policy_net, value_net=value_net,
                         ent_coef=ent_coef_annealer.value,
-                        clip_param=clip_param_annealer.value)
+                        clip_param=clip_param_annealer.value, no_grad=False)
                     policy_losses, value_losses = self._maybe_split_losses(
                         losses=losses, value_net=separate_value_net)
                     self._optimize_losses(
@@ -322,7 +323,7 @@ class PPO(Algo):
                 metrics = self._compute_losses(
                     mb=trajectory, policy_net=policy_net, value_net=value_net,
                     ent_coef=ent_coef_annealer.value,
-                    clip_param=clip_param_annealer.value)
+                    clip_param=clip_param_annealer.value, no_grad=True)
                 global_metrics = global_means(metrics, world_size)
                 if self._rank == 0:
                     print(f"Opt epoch: {opt_epoch}")
