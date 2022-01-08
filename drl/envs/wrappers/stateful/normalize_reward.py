@@ -1,5 +1,4 @@
 import torch as tc
-import numpy as np
 
 from drl.envs.wrappers.stateless.abstract import Wrapper, RewardSpec
 from drl.envs.wrappers.stateful.abstract import TrainableWrapper
@@ -17,7 +16,7 @@ class ReturnAcc(tc.nn.Module):
         self._clip_high = clip_high
         self._current_ep_rewards = []
         self.register_buffer('_steps', tc.tensor(0.))
-        self.register_buffer('_mean', tc.tensor(1.))
+        self.register_buffer('_mean', tc.tensor(0.))
         self.register_buffer('_var', tc.tensor(1.))
 
     @property
@@ -77,9 +76,8 @@ class ReturnAcc(tc.nn.Module):
             self.var = var
 
     def forward(self, r_t):
-        # nb: this is different than baselines' vecnormalize.
-        mean = self.mean.unsqueeze(0)
-        r_t /= mean
+        mean, var = self.mean.unsqueeze(0), self._var.unsqueeze(0)
+        r_t *= tc.rsqrt(var + 1e-4)
         if self._clip_low is not None:
             low = self._clip_low * tc.ones_like(r_t)
             r_t = tc.max(low, r_t)
