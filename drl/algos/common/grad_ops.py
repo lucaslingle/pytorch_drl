@@ -14,7 +14,7 @@ def norm(vector: np.ndarray) -> float:
 @tc.no_grad()
 def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
     gradient_subvecs = []
-    for p in network.params():
+    for p in network.parameters():
         if p.grad is not None:
             subvec = p.grad.reshape(-1).detach().numpy()
         else:
@@ -30,7 +30,7 @@ def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
 @tc.no_grad()
 def write_gradient(network: Agent, gradient: np.ndarray) -> None:
     dims_so_far = 0
-    for p in network.params():
+    for p in network.parameters():
         numel = np.prod(p.shape)
         subvec = gradient[dims_so_far:dims_so_far+numel]
         p.grad.copy_(tc.tensor(subvec, requires_grad=False).reshape(p.shape))

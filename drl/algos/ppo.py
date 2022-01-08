@@ -230,7 +230,7 @@ class PPO(Algo):
             }
 
     def _pcgrad_checks(self):
-        if len(self._config['policy_net']['predictors']) <= 1:
+        if len(self._config['networks']['policy_net']['predictors']) <= 1:
             msg = "Required multiple predictions for pcgrad"
             raise ValueError(msg)
         if self._learning_system['value_net'] is not None:
