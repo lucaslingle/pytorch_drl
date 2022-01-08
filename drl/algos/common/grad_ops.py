@@ -12,7 +12,7 @@ def norm(vector: np.ndarray) -> float:
 
 
 @tc.no_grad()
-def extract_gradient(network: Agent, normalize: bool) -> np.ndarray:
+def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
     gradient_subvecs = []
     for p in network.params():
         if p.grad is not None:
@@ -27,33 +27,6 @@ def extract_gradient(network: Agent, normalize: bool) -> np.ndarray:
     return gradient
 
 
-def pcgrad_gradient_surgery(
-        network: Agent,
-        optimizer: Optimizer,
-        task_losses: Dict[str, tc.Tensor],
-        normalize: bool = True
-) -> np.ndarray:
-    pcgrad_gradients = []
-    for i in task_losses:
-        optimizer.zero_grad()
-        task_losses[i].backward(retain_graph=True)
-        grad_i = extract_gradient(network, normalize)
-        pcgrad_i = grad_i
-        for j in task_losses:
-            if i == j:
-                continue
-            optimizer.zero_grad()
-            task_losses[i].backward(retain_graph=True)
-            grad_j = extract_gradient(network, normalize)
-            if np.dot(pcgrad_i, grad_j) < 0.:
-                coef = np.dot(pcgrad_i, grad_j) / np.square(norm(grad_j))
-                pcgrad_i -= coef * grad_j
-        pcgrad_gradients.append(pcgrad_i)
-    optimizer.zero_grad()
-    pcgrad_output = sum(pcgrad_gradients)
-    return pcgrad_output
-
-
 @tc.no_grad()
 def write_gradient(network: Agent, gradient: np.ndarray) -> None:
     dims_so_far = 0
@@ -62,6 +35,36 @@ def write_gradient(network: Agent, gradient: np.ndarray) -> None:
         subvec = gradient[dims_so_far:dims_so_far+numel]
         p.grad.copy_(tc.tensor(subvec, requires_grad=False).reshape(p.shape))
         dims_so_far += numel
+
+
+def pcgrad_gradient_surgery(
+        network: Agent,
+        optimizer: Optimizer,
+        task_losses: Dict[str, tc.Tensor],
+        normalize: bool = True
+) -> np.ndarray:
+    task_gradients = dict()
+    for k in task_losses:
+        optimizer.zero_grad()
+        task_losses[k].backward(retain_graph=True)
+        task_gradients[k] = read_gradient(network, normalize)
+
+    pcgrad_gradients = list()
+    for i in task_losses:
+        grad_i = task_gradients[i]
+        pcgrad_i = grad_i
+        for j in task_losses:
+            if i == j:
+                continue
+            grad_j = task_gradients[j]
+            if np.dot(pcgrad_i, grad_j) < 0.:
+                coef = np.dot(pcgrad_i, grad_j) / np.square(norm(grad_j))
+                pcgrad_i -= coef * grad_j
+        pcgrad_gradients.append(pcgrad_i)
+
+    optimizer.zero_grad()
+    pcgrad_output = sum(pcgrad_gradients)
+    return pcgrad_output
 
 
 def apply_pcgrad(
