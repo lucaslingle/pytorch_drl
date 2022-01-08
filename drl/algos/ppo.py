@@ -225,11 +225,11 @@ class PPO(Algo):
         }
 
     def _update_trainable_wrappers(self, mb):
-        env = self._learning_system.get('env')
-        while isinstance(env, Wrapper):
-            env = env.unwrapped
-            if hasattr(env, 'learn'):
-                env.learn(**mb)
+        maybe_wrapper = self._learning_system.get('env')
+        while isinstance(maybe_wrapper, Wrapper):
+            if hasattr(maybe_wrapper, 'learn'):
+                maybe_wrapper.learn(**mb)
+            maybe_wrapper = maybe_wrapper.env
 
     def training_loop(self):
         world_size = self._config['distributed']['world_size']
