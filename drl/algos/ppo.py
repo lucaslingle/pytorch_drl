@@ -236,6 +236,33 @@ class PPO(Algo):
             msg = "Currently only support pcgrad when no val net"
             raise ValueError(msg)
 
+    def _maybe_split_losses(self, losses, value_net):
+        policy_losses = losses
+        value_losses = dict()
+        if value_net:
+            for k in policy_losses:
+                if k.startswith('value_'):
+                    value_losses[k] = policy_losses[k]
+                    del policy_losses[k]
+        return policy_losses, value_losses
+
+    def _optimize_losses(self, net, optimizer, losses, retain_graph, use_pcgrad):
+        # todo(lucaslingle):
+        #  add support for pcgrad on separate value net
+        #  useful if e.g., multiple rewards are used.
+        if not use_pcgrad:
+            optimizer.zero_grad()
+            losses['composite_loss'].backward(retain_graph=retain_graph)
+            optimizer.step()
+        else:
+            del losses['composite_loss']
+            apply_pcgrad(
+                network=net,
+                optimizer=optimizer,
+                task_losses=losses,
+                normalize=True)
+            optimizer.step()
+
     def training_loop(self):
         world_size = self._config['distributed']['world_size']
 
@@ -258,6 +285,7 @@ class PPO(Algo):
         use_pcgrad = algo_config.get('use_pcgrad')
         if use_pcgrad:
             self._pcgrad_checks()
+        separate_value_net = value_net is not None
 
         while self._learning_system.get('global_step') < max_steps:
             # generate trajectory.
@@ -278,35 +306,24 @@ class PPO(Algo):
                         mb=mb, policy_net=policy_net, value_net=value_net,
                         ent_coef=ent_coef_annealer.value,
                         clip_param=clip_param_annealer.value)
-                    composite_policy_loss = losses.get('composite_loss')
-
-                    if not use_pcgrad:
-                        retain_graph = value_net is not None
-                        policy_optimizer.zero_grad()
-                        composite_policy_loss.backward(retain_graph=retain_graph)
-                        policy_optimizer.step()
-
-                        if value_net:
-                            value_optimizer.zero_grad()
-                            composite_policy_loss.backward()
-                            value_optimizer.step()
-                    else:
-                        # todo(lucaslingle):
-                        #  add support for pcgrad on separate value net
-                        #  useful if e.g., multiple rewards are used.
-                        apply_pcgrad(
-                            network=policy_net,
-                            optimizer=policy_optimizer,
-                            task_losses={
-                                'policy_loss': losses.get('policy_loss'),
-                                'value_loss': losses.get('value_loss')
-                            },
-                            normalize=True)
-                        policy_optimizer.step()
-
+                    policy_losses, value_losses = self._maybe_split_losses(
+                        losses=losses, value_net=separate_value_net)
+                    self._optimize_losses(
+                        net=policy_net, optimizer=policy_optimizer,
+                        losses=policy_losses, retain_graph=separate_value_net,
+                        use_pcgrad=use_pcgrad)
+                    if separate_value_net:
+                        self._optimize_losses(
+                            net=policy_net, optimizer=policy_optimizer,
+                            losses=value_losses, retain_graph=False,
+                            use_pcgrad=use_pcgrad)
                     update_trainable_wrappers(env, mb)
 
-                global_metrics = global_means(losses, world_size)
+                metrics = self._compute_losses(
+                    mb=trajectory, policy_net=policy_net, value_net=value_net,
+                    ent_coef=ent_coef_annealer.value,
+                    clip_param=clip_param_annealer.value)
+                global_metrics = global_means(metrics, world_size)
                 if self._rank == 0:
                     print(f"Opt epoch: {opt_epoch}")
                     pretty_print(global_metrics)
