@@ -266,7 +266,7 @@ class PPO(Algo):
                 network=net,
                 optimizer=optimizer,
                 task_losses=losses,
-                normalize=True)
+                normalize=False)
             optimizer.step()
 
     def training_loop(self):
