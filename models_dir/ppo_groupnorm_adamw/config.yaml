@@ -13,6 +13,7 @@ algo:
     ent_coef_init: 0.01
     ent_coef_final: 0.01
     vf_loss_coef: 1.0
+    vf_loss_cls: SmoothL1Loss
     gae_lambda:
         extrinsic: 0.95
     discount_gamma:

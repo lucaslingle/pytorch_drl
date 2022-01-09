@@ -6,15 +6,15 @@ import numpy as np
 
 from drl.algos.abstract import Algo
 from drl.algos.common import (
-    TrajectoryManager, MultiDeque, global_means, global_gathers, pretty_print,
-    update_trainable_wrappers, apply_pcgrad
+    TrajectoryManager, MultiDeque, get_loss, global_means, global_gathers,
+    update_trainable_wrappers, apply_pcgrad, pretty_print
 )
 
 
 class PPO(Algo):
     # PPO paper reproducability todos:
-    #   [added] add and test orthogonal init (used in baselines NatureCNN, RND, etc).
-    #   [tested] add and test reward normalization (see baselines VecNormalize).
+    #   [tested & bad] add and test orthogonal init (used in baselines NatureCNN, RND, etc).
+    #   [tested & bad] add and test reward normalization (see baselines VecNormalize).
     #    add and test clipped value function
     # PPO speed todos:
     #    after reproducability done, add support for vectorized environment.
@@ -189,41 +189,44 @@ class PPO(Algo):
             policy_ratio = tc.exp(mb_new['logprobs'] - mb['logprobs'])
             clipped_policy_ratio = tc.clip(policy_ratio, 1-clip_param, 1+clip_param)
             policy_surrogate_objective = 0.
-            vf_loss = 0.
+            value_loss = 0.
             clipfrac = 0.
-            for key in relevant_reward_keys:
-                surr1 = mb['advantages'][key] * policy_ratio
-                surr2 = mb['advantages'][key] * clipped_policy_ratio
-                ppo_surr_for_reward = tc.mean(tc.min(surr1, surr2))
-                vf_loss_for_reward = tc.mean(
-                    tc.square(mb['td_lambda_returns'][key] - mb_new['vpreds'][key])
-                )
-                clipfrac_for_reward = tc.mean(tc.greater(surr1, surr2).float())
-                if len(relevant_reward_keys) == 1:
-                    policy_surrogate_objective += ppo_surr_for_reward
-                    vf_loss += vf_loss_for_reward
-                else:
-                    weight = self._config['algo']['reward_weightings'][key]
-                    policy_surrogate_objective += weight * ppo_surr_for_reward
-                    vf_loss += tc.square(weight) * vf_loss_for_reward
-                    # todo(lucaslingle): Investigate if official implementation
-                    #    of RND uses this value loss weighting
-                    # todo(lucaslingle): Add support for configuring different
-                    #    value losses, such as huber instead of squared
-                    # todo(lucaslingle): Add suppport for configuring
-                    #    clipped or non-clipped value losses.
-                clipfrac += clipfrac_for_reward
+            vf_loss_criterion = get_loss(self._config['algo']['vf_loss_cls'])
+            if not hasattr(self._config['algo'], 'reward_weightings'):
+                reward_weightings = {'extrinsic': 1.0}
+            else:
+                reward_weightings = self._config['algo']['reward_weightings']
 
-            policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)
-            weight = 1. if value_net else self._config['algo']['vf_loss_coef']
-            composite_loss = policy_loss + weight * vf_loss
+            for key in relevant_reward_keys:
+                advantages = mb['advantages'][key]
+                tdlam_rets = mb['vpreds'][key]
+                vpreds = mb_new['vpreds'][key]
+
+                surr1 = advantages * policy_ratio
+                surr2 = advantages * clipped_policy_ratio
+                pol_surr_for_rew = tc.mean(tc.min(surr1, surr2))
+                clipfrac_for_rew = tc.mean(tc.greater(surr1, surr2).float())
+                val_loss_for_rew = tc.mean(vf_loss_criterion(
+                    input=vpreds, target=tdlam_rets))
+
+                weight = reward_weightings[key]
+                policy_surrogate_objective += weight * pol_surr_for_rew
+                value_loss += (weight ** 2) * val_loss_for_rew
+                clipfrac += clipfrac_for_rew
+                # todo(lucaslingle): Investigate if official implementation
+                #    of RND uses the value loss weighting above.
+                # todo(lucaslingle): Add suppport for configuring
+                #    clipped or non-clipped value losses.
 
             # todo(lucaslingle): Add support for non-aggregated losses,
             #  which could be useful if combining multiple intrinsic rewards.
             #  Apply disaggregation to both policy loss and value loss.
+            policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)
+            weight = 1. if value_net else self._config['algo']['vf_loss_coef']
+            composite_loss = policy_loss + weight * value_loss
             return {
                 'policy_loss': policy_loss,
-                'value_loss': vf_loss,
+                'value_loss': value_loss,
                 'composite_loss': composite_loss,
                 'meanent': mean_entropy,
                 'clipfrac': clipfrac / len(relevant_reward_keys)
