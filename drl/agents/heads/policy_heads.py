@@ -3,6 +3,7 @@ import abc
 import torch as tc
 
 from drl.agents.heads.abstract import Head
+from drl.agents.architectures.common import normc_init_
 
 
 class CategoricalPolicyHead(Head, metaclass=abc.ABCMeta):
@@ -43,9 +44,17 @@ class LinearCategoricalPolicyHead(CategoricalPolicyHead):
     def __init__(self, num_features, num_actions, **kwargs):
         super().__init__()
         self._policy_head = tc.nn.Linear(num_features, num_actions)
+        self._init_weights()
+
+    def _init_weights(self):
+        normc_init_(self._value_head.weight, gain=0.01)
 
 
 class LinearDiagonalGaussianPolicyHead(DiagonalGaussianPolicyHead):
     def __init__(self, num_features, action_dim, **kwargs):
         super().__init__()
         self._policy_head = tc.nn.Linear(num_features, 2*action_dim)
+        self._init_weights()
+
+    def _init_weights(self):
+        normc_init_(self._value_head.weight, gain=0.01)
