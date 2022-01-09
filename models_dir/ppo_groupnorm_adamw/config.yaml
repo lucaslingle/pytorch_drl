@@ -25,14 +25,14 @@ env:
     id: 'PongNoFrameskip-v4'
     wrappers:
         AtariWrapper: {}
-        DeepmindWrapper: {frame_stack: False}
+        DeepmindWrapper: {frame_stack: True}
 networks:
     policy_net:
         preprocessing:
             ToChannelMajor: {}
         architecture:
             cls_name: NatureCNN
-            cls_args: {img_channels: 1, use_gn: True}
+            cls_args: {img_channels: 4, use_gn: True}
         predictors:
             policy:
                 cls_name: LinearCategoricalPolicyHead
@@ -42,7 +42,7 @@ networks:
                 cls_args: {num_features: 512}
         optimizer:
             cls_name: AdamW
-            cls_args: {lr: 0.001, betas: [0.0, 0.999], eps: 0.00001, wd: 0.005}
+            cls_args: {lr: 0.0005, betas: [0.0, 0.999], eps: 0.00001, wd: 0.01}
         scheduler:
             cls_name: OneCycleLR
             cls_args:
