@@ -190,7 +190,7 @@ class PPO(Algo):
 
     def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
-            mb_new = self._annotate(mb, policy_net, value_net, no_grad=False)
+            mb_new = self._annotate(mb, policy_net, value_net, no_grad=no_grad)
 
             # get reward keys.
             reward_keys = mb_new['rewards'].keys()
