@@ -178,7 +178,7 @@ class PPO(Algo):
                 delta_t = -V_t + r_t + (1.-dones[t]) * gamma[k] * V_tp1
                 A_t = delta_t + (1.-dones[t]) * gamma[k] * lam[k] * A_tp1
                 advantages[k][t] = A_t
-            td_lambda_returns = advantages[k] + vpreds[k]
+            td_lambda_returns[k] = advantages[k] + vpreds[k]
             if standardize_adv:
                 advantages[k] -= tc.mean(advantages[k])
                 advantages[k] /= tc.std(advantages[k])
@@ -217,7 +217,7 @@ class PPO(Algo):
 
             for key in relevant_reward_keys:
                 advantages = mb['advantages'][key]
-                tdlam_rets = mb['vpreds'][key]
+                tdlam_rets = mb['td_lambda_returns'][key]
                 vpreds = mb_new['vpreds'][key]
                 vpreds_new = mb_new['vpreds'][key]
 
