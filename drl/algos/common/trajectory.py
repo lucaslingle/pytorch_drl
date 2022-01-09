@@ -130,7 +130,7 @@ class Trajectory:
             src = slice(self._seg_len, self._seg_len + self._extra_steps)
             dest = slice(0, self._extra_steps)
             self._observations[dest] = results['observations'][src]
-            self._actions[dest] = results['observations'][src]
+            self._actions[dest] = results['actions'][src]
             for k in self._rew_keys:
                 self._rewards[k][dest] = results['rewards'][k][src]
             self._dones[dest] = results['dones'][src]

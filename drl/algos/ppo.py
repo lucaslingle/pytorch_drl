@@ -125,11 +125,19 @@ class PPO(Algo):
                 vpreds = value_net(observations, predict=value_predict)
             vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
 
-            # shallow copy of trajectory dict, update pointers to new values
-            trajectory_new = {**trajectory}
-            trajectory_new.update({'logprobs': logprobs, 'entropies': entropies})
+            # shallow copy of trajectory dict, point to initial/new values
+            trajectory_new = {
+                'observations': trajectory['observations'],
+                'actions': trajectory['actions'],
+                'logprobs': logprobs,
+                'entropies': entropies
+            }
             trajectory_new = self._slice_minibatch(trajectory_new, slice(0, seg_len))
-            trajectory_new.update({'vpreds': vpreds})
+            trajectory_new.update({
+                'rewards': trajectory['rewards'],
+                'dones': trajectory['dones'],
+                'vpreds': vpreds
+            })
             return trajectory_new
 
     @tc.no_grad()
@@ -137,6 +145,7 @@ class PPO(Algo):
         # get config variables.
         algo_config = self._config.get('algo')
         seg_len = algo_config.get('seg_len')
+        extra_steps = self._config['algo']['gae_extra_steps']
         lam = algo_config.get('gae_lambda')
         gamma = algo_config.get('discount_gamma')
         standardize_adv = algo_config.get('standardize_adv')
@@ -156,12 +165,12 @@ class PPO(Algo):
 
         # assign credit.
         advantages = {
-            k: tc.zeros(seg_len+1, dtype=tc.float32)
+            k: tc.zeros(seg_len+extra_steps+1, dtype=tc.float32)
             for k in relevant_reward_keys
         }
         td_lambda_returns = {}
         for k in relevant_reward_keys:
-            for t in reversed(range(0, seg_len)):  # T-1, ..., 0
+            for t in reversed(range(0, seg_len+extra_steps)):  # T+n-1, ..., 0
                 r_t = rewards[k][t]
                 V_t = vpreds[k][t]
                 V_tp1 = vpreds[k][t+1]
