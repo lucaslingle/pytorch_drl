@@ -25,7 +25,7 @@ env:
     id: 'PongNoFrameskip-v4'
     wrappers:
         AtariWrapper: {}
-        DeepmindWrapper: {frame_stack: True}
+        DeepmindWrapper: {frame_stack: True, lazy: False}
 networks:
     policy_net:
         preprocessing:

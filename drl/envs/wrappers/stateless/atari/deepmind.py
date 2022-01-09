@@ -9,7 +9,8 @@ class DeepmindWrapper(ws.Wrapper):
             episode_life=True,
             clip_rewards=True,
             scale=True,
-            frame_stack=True
+            frame_stack=True,
+            lazy=True
     ):
         """
         Configure environment for DeepMind-style Atari.
@@ -20,12 +21,14 @@ class DeepmindWrapper(ws.Wrapper):
             clip_rewards (bool): Use ClipRewardWrapper?
             scale (bool): Use ScaleObservationsWrapper?
             frame_stack (bool): Use FrameStackWrapper?
+            lazy (bool): Use LazyFrames in FrameStackWrapper?
         """
         super().__init__(env)
         self._episode_life = episode_life
         self._clip_rewards = clip_rewards
         self._scale = scale
         self._frame_stack = frame_stack
+        self._lazy = lazy
         self.env = self._build()
 
     def _build(self):
@@ -47,5 +50,5 @@ class DeepmindWrapper(ws.Wrapper):
                 env=env, scale_factor=acs.SCALE_FACTOR)
         if self._frame_stack:
             env = ws.FrameStackWrapper(
-                env=env, num_stack=acs.NUM_STACK)
+                env=env, num_stack=acs.NUM_STACK, lazy=self._lazy)
         return env

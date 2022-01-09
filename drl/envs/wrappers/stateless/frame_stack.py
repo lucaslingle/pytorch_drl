@@ -7,7 +7,7 @@ from drl.envs.wrappers.stateless.abstract import Wrapper
 
 
 class FrameStackWrapper(Wrapper):
-    def __init__(self, env, num_stack):
+    def __init__(self, env, num_stack, lazy=True):
         """
         Args:
             env (Env): OpenAI gym environment instance.
@@ -15,6 +15,7 @@ class FrameStackWrapper(Wrapper):
         """
         super().__init__(env)
         self._num_frames = num_stack
+        self._lazy = lazy
         self._frames = deque(maxlen=self._num_frames)
         self._set_observation_space()
 
@@ -27,6 +28,8 @@ class FrameStackWrapper(Wrapper):
 
     def _get_obs(self):
         assert len(self._frames) == self._num_frames
+        if not self._lazy:
+            return np.array(list(self._frames))
         return LazyFrames(list(self._frames))
 
     def reset(self, **kwargs):
@@ -36,9 +39,9 @@ class FrameStackWrapper(Wrapper):
         return self._get_obs()
 
     def step(self, action):
-        ob, reward, done, info = self.env.step(action)
-        self._frames.append(ob)
-        return self._get_obs(), reward, done, info
+        obs, rew, done, info = self.env.step(action)
+        self._frames.append(obs)
+        return self._get_obs(), rew, done, info
 
 
 class LazyFrames:
