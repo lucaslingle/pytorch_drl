@@ -218,7 +218,7 @@ class PPO(Algo):
             for key in relevant_reward_keys:
                 advantages = mb['advantages'][key]
                 tdlam_rets = mb['td_lambda_returns'][key]
-                vpreds = mb_new['vpreds'][key]
+                vpreds = mb['vpreds'][key]
                 vpreds_new = mb_new['vpreds'][key]
 
                 surr1 = advantages * policy_ratio
