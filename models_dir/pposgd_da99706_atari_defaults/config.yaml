@@ -46,7 +46,7 @@ networks:
                 cls_args: {num_features: 512, ortho_init: False}
         optimizer:
             cls_name: Adam
-            cls_args: {lr: 0.001, betas=[0.9, 0.999], eps: 0.00000001}
+            cls_args: {lr: 0.001, betas: [0.9, 0.999], eps: 0.00000001}
         scheduler:
             cls_name: OneCycleLR
             cls_args:
