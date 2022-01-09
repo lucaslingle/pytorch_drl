@@ -16,7 +16,7 @@ def create_argparser():
 
     parser.add_argument("--mode", choices=['train', 'eval'], default='train')
     parser.add_argument("--models_dir", type=str, default='models_dir')
-    parser.add_argument("--run_name", type=str, default='ppo_defaults')
+    parser.add_argument("--run_name", type=str, default='ppo_da99706_atari_defaults')
     return parser
 
 

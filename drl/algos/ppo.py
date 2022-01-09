@@ -15,7 +15,7 @@ class PPO(Algo):
     # PPO paper reproducability todos:
     #   [tested & bad] add and test orthogonal init (used in baselines NatureCNN, RND, etc).
     #   [tested & bad] add and test reward normalization (see baselines VecNormalize).
-    #    add and test clipped value function
+    #   [added] add and test clipped value function
     # PPO speed todos:
     #    after reproducability done, add support for vectorized environment.
     #    test speed of vectorized vs non-vectorized environments.
@@ -26,7 +26,7 @@ class PPO(Algo):
             env=self._learning_system['env'],
             policy_net=self._learning_system['policy_net'],
             seg_len=self._config['algo']['seg_len'],
-            extra_steps=0)
+            extra_steps=self._config['algo']['gae_extra_steps'])
         self._metadata_acc = MultiDeque(
             memory_len=self._config['algo']['stats_memory_len'])
         if self._rank == 0:
@@ -200,6 +200,7 @@ class PPO(Algo):
             value_loss = 0.
             clipfrac = 0.
             vf_loss_criterion = get_loss(self._config['algo']['vf_loss_cls'])
+            vf_loss_clipping = self._config['algo']['vf_loss_clipping']
             if not hasattr(self._config['algo'], 'reward_weightings'):
                 reward_weightings = {'extrinsic': 1.0}
             else:
@@ -209,13 +210,33 @@ class PPO(Algo):
                 advantages = mb['advantages'][key]
                 tdlam_rets = mb['vpreds'][key]
                 vpreds = mb_new['vpreds'][key]
+                vpreds_new = mb_new['vpreds'][key]
 
                 surr1 = advantages * policy_ratio
                 surr2 = advantages * clipped_policy_ratio
                 pol_surr_for_rew = tc.mean(tc.min(surr1, surr2))
                 clipfrac_for_rew = tc.mean(tc.greater(surr1, surr2).float())
-                val_loss_for_rew = tc.mean(vf_loss_criterion(
-                    input=vpreds, target=tdlam_rets))
+                if not vf_loss_clipping:
+                    val_loss_for_rew = tc.mean(vf_loss_criterion(
+                        input=vpreds, target=tdlam_rets))
+                else:
+                    vpreds_new_clipped = tc.clip(
+                        vpreds_new, vpreds-clip_param, vpreds+clip_param)
+                    vsurr1 = vf_loss_criterion(
+                        input=vpreds_new, target=tdlam_rets)
+                    vsurr2 = vf_loss_criterion(
+                        input=vpreds_new_clipped, target=tdlam_rets)
+                    val_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
+
+                """
+                # straight outta schulman's initial commit of pposgd_simple (only used for atari!)
+                vfloss1 = tf.square(pi.vpred - ret)
+                vpredclipped = oldpi.vpred + tf.clip_by_value(
+                    pi.vpred - oldpi.vpred, -clip_param, clip_param)
+                vfloss2 = tf.square(vpredclipped - ret)
+                vf_loss = .5 * U.mean(tf.maximum(vfloss1,
+                                                 vfloss2))  # we do the same clipping-based trust region for the value function
+                """
 
                 weight = reward_weightings[key]
                 policy_surrogate_objective += weight * pol_surr_for_rew
