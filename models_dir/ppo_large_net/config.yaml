@@ -7,7 +7,7 @@ algo:
     cls_name: PPO
     seg_len: 128
     opt_epochs: 3
-    learner_batch_size: 32
+    learner_batch_size: 64
     clip_param_init: 0.1
     clip_param_final: 0.0
     ent_coef_init: 0.01
@@ -18,6 +18,7 @@ algo:
         extrinsic: 0.95
     discount_gamma:
         extrinsic: 0.99
+    standardize_adv: True
     use_pcgrad: False
     stats_memory_len: 100
     checkpoint_frequency: 100
@@ -33,7 +34,7 @@ networks:
             ToChannelMajor: {}
         architecture:
             cls_name: NatureCNN
-            cls_args: {img_channels: 4, use_gn: True}
+            cls_args: {img_channels: 4, use_gn: False}
         predictors:
             policy:
                 cls_name: LinearCategoricalPolicyHead
@@ -42,8 +43,8 @@ networks:
                 cls_name: LinearValueHead
                 cls_args: {num_features: 512}
         optimizer:
-            cls_name: AdamW
-            cls_args: {lr: 0.0005, betas: [0.0, 0.999], eps: 0.00001, wd: 0.01}
+            cls_name: Adam
+            cls_args: {lr: 0.00025, betas: [0.9, 0.999], eps: 0.00001}
         scheduler:
             cls_name: OneCycleLR
             cls_args:

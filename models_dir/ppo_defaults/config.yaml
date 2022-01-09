@@ -18,6 +18,7 @@ algo:
         extrinsic: 0.95
     discount_gamma:
         extrinsic: 0.99
+    standardize_adv: True
     use_pcgrad: False
     stats_memory_len: 100
     checkpoint_frequency: 100

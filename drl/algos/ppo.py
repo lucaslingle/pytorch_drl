@@ -139,6 +139,10 @@ class PPO(Algo):
         seg_len = algo_config.get('seg_len')
         lam = algo_config.get('gae_lambda')
         gamma = algo_config.get('discount_gamma')
+        standardize_adv = algo_config.get('standardize_adv')
+        # todo(lucaslingle):
+        #    support standardization at other aggregation levels besides
+        #    per-trajectory.
 
         # get trajectory variables.
         rewards = trajectory.get('rewards')
@@ -164,6 +168,9 @@ class PPO(Algo):
                 delta_t = -V_t + r_t + (1.-dones[t]) * gamma[k] * V_tp1
                 A_t = delta_t + (1.-dones[t]) * gamma[k] * lam[k] * A_tp1
                 advantages[k][t] = A_t
+            if standardize_adv:
+                advantages[k] -= tc.mean(advantages[k])
+                advantages[k] /= (tc.std(advantages[k]) + 1e-2)
         td_lambda_returns = {k: advantages[k] + vpreds[k] for k in advantages}
         trajectory.update({
             'advantages': advantages,
