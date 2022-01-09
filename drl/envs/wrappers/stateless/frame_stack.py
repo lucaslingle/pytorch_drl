@@ -29,7 +29,7 @@ class FrameStackWrapper(Wrapper):
     def _get_obs(self):
         assert len(self._frames) == self._num_frames
         if not self._lazy:
-            return np.array(list(self._frames))
+            return np.concatenate(list(self._frames), axis=-1)
         return LazyFrames(list(self._frames))
 
     def reset(self, **kwargs):
