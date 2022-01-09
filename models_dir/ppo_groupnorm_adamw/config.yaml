@@ -36,13 +36,13 @@ networks:
         predictors:
             policy:
                 cls_name: LinearCategoricalPolicyHead
-                cls_args: {num_features: 256}
+                cls_args: {num_features: 512}
             value_extrinsic:
                 cls_name: LinearValueHead
-                cls_args: {num_features: 256}
+                cls_args: {num_features: 512}
         optimizer:
             cls_name: AdamW
-            cls_args: {lr: 0.00025, betas: (0.0, 0.999), eps: 0.00001, wd: 0.01}
+            cls_args: {lr: 0.00025, betas: [0.0, 0.999], eps: 0.00001, wd: 0.01}
         scheduler:
             cls_name: OneCycleLR
             cls_args:
