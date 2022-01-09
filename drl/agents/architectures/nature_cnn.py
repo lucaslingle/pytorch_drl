@@ -46,7 +46,7 @@ class NatureCNN(Architecture):
                     tc.nn.init.xavier_uniform_(m.weight)
                     tc.nn.init.zeros_(m.bias)
                 if isinstance(m, tc.nn.Linear):
-                    normc_init_(m.weigh, gain=1.0)
+                    normc_init_(m.weight, gain=1.0)
                     tc.nn.init.zeros_(m.bias)
 
     @property
