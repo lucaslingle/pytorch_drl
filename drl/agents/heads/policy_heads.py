@@ -47,7 +47,7 @@ class LinearCategoricalPolicyHead(CategoricalPolicyHead):
         self._init_weights()
 
     def _init_weights(self):
-        normc_init_(self._value_head.weight, gain=0.01)
+        normc_init_(self._policy_head.weight, gain=0.01)
 
 
 class LinearDiagonalGaussianPolicyHead(DiagonalGaussianPolicyHead):
@@ -57,4 +57,4 @@ class LinearDiagonalGaussianPolicyHead(DiagonalGaussianPolicyHead):
         self._init_weights()
 
     def _init_weights(self):
-        normc_init_(self._value_head.weight, gain=0.01)
+        normc_init_(self._policy_head.weight, gain=0.01)
