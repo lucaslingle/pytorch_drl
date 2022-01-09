@@ -34,14 +34,14 @@ networks:
             ToChannelMajor: {}
         architecture:
             cls_name: AsyncCNN
-            cls_args: {img_channels: 1}
+            cls_args: {img_channels: 1, ortho_init: True}
         predictors:
             policy:
                 cls_name: LinearCategoricalPolicyHead
-                cls_args: {num_features: 256}
+                cls_args: {num_features: 256, ortho_init: True}
             value_extrinsic:
                 cls_name: LinearValueHead
-                cls_args: {num_features: 256}
+                cls_args: {num_features: 256, ortho_init: True}
         optimizer:
             cls_name: Adam
             cls_args: {lr: 0.00025, eps: 0.00001}

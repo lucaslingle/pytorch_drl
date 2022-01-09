@@ -19,22 +19,30 @@ class ContinuousActionValueHead(Head, metaclass=abc.ABCMeta):
 
 
 class LinearCategoricalActionValueHead(CategoricalActionValueHead):
-    def __init__(self, num_features, num_actions, **kwargs):
+    def __init__(self, num_features, num_actions, ortho_init, **kwargs):
         super().__init__()
         self._action_value_head = tc.nn.Linear(num_features, num_actions)
+        self._ortho_init = ortho_init
         self._init_weights()
 
     def _init_weights(self):
-        normc_init_(self._action_value_head.weight, gain=0.01)
-        tc.nn.init.zeros_(self._action_value_head.bias)
+        if self._ortho_init:
+            tc.nn.init.orthogonal_(self._action_value_head.weight, gain=0.01)
+        else:
+            normc_init_(self._action_value_head.weight, gain=0.01)
+        tc.nn.init.zeros_(self._value_head.bias)
 
 
 class LinearContinuousActionValueHead(ContinuousActionValueHead):
-    def __init__(self, num_features, **kwargs):
+    def __init__(self, num_features, ortho_init, **kwargs):
         super().__init__()
         self._action_value_head = tc.nn.Linear(num_features, 1)
+        self._ortho_init = ortho_init
         self._init_weights()
 
     def _init_weights(self):
-        normc_init_(self._action_value_head.weight, gain=0.1)
-        tc.nn.init.zeros_(self._action_value_head.bias)
+        if self._ortho_init:
+            tc.nn.init.orthogonal_(self._action_value_head.weight, gain=0.01)
+        else:
+            normc_init_(self._action_value_head.weight, gain=0.01)
+        tc.nn.init.zeros_(self._value_head.bias)

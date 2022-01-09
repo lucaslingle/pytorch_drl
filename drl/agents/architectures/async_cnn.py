@@ -37,14 +37,12 @@ class AsyncCNN(Architecture):
             if self._ortho_init:
                 if isinstance(m, (tc.nn.Linear, tc.nn.Conv2d)):
                     tc.nn.init.orthogonal_(m.weight, gain=1.0)
-                    tc.nn.init.zeros_(m.bias)
             else:
                 if isinstance(m, tc.nn.Conv2d):
                     tc.nn.init.xavier_uniform_(m.weight)
-                    tc.nn.init.zeros_(m.bias)
                 if isinstance(m, tc.nn.Linear):
                     normc_init_(m.weight, gain=1.0)
-                    tc.nn.init.zeros_(m.bias)
+            tc.nn.init.zeros_(m.bias)
 
     @property
     def output_dim(self):

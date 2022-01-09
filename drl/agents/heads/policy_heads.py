@@ -41,20 +41,30 @@ class EpsilonGreedyCategoricalPolicyHead(CategoricalPolicyHead):
 
 
 class LinearCategoricalPolicyHead(CategoricalPolicyHead):
-    def __init__(self, num_features, num_actions, **kwargs):
+    def __init__(self, num_features, num_actions, ortho_init, **kwargs):
         super().__init__()
         self._policy_head = tc.nn.Linear(num_features, num_actions)
+        self._ortho_init = ortho_init
         self._init_weights()
 
     def _init_weights(self):
-        normc_init_(self._policy_head.weight, gain=0.01)
+        if self._ortho_init:
+            tc.nn.init.orthogonal_(self._policy_head.weight, gain=0.01)
+        else:
+            normc_init_(self._policy_head.weight, gain=0.01)
+        tc.nn.init.zeros_(self._policy_head.bias)
 
 
 class LinearDiagonalGaussianPolicyHead(DiagonalGaussianPolicyHead):
-    def __init__(self, num_features, action_dim, **kwargs):
+    def __init__(self, num_features, action_dim, ortho_init, **kwargs):
         super().__init__()
         self._policy_head = tc.nn.Linear(num_features, 2*action_dim)
+        self._ortho_init = ortho_init
         self._init_weights()
 
     def _init_weights(self):
-        normc_init_(self._policy_head.weight, gain=0.01)
+        if self._ortho_init:
+            tc.nn.init.orthogonal_(self._policy_head.weight, gain=0.01)
+        else:
+            normc_init_(self._policy_head.weight, gain=0.01)
+        tc.nn.init.zeros_(self._policy_head.bias)
