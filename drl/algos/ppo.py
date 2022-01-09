@@ -159,6 +159,7 @@ class PPO(Algo):
             k: tc.zeros(seg_len+1, dtype=tc.float32)
             for k in relevant_reward_keys
         }
+        td_lambda_returns = {}
         for k in relevant_reward_keys:
             for t in reversed(range(0, seg_len)):  # T-1, ..., 0
                 r_t = rewards[k][t]
@@ -168,10 +169,10 @@ class PPO(Algo):
                 delta_t = -V_t + r_t + (1.-dones[t]) * gamma[k] * V_tp1
                 A_t = delta_t + (1.-dones[t]) * gamma[k] * lam[k] * A_tp1
                 advantages[k][t] = A_t
+            td_lambda_returns = advantages[k] + vpreds[k]
             if standardize_adv:
                 advantages[k] -= tc.mean(advantages[k])
-                advantages[k] /= (tc.std(advantages[k]) + 1e-2)
-        td_lambda_returns = {k: advantages[k] + vpreds[k] for k in advantages}
+                advantages[k] /= tc.std(advantages[k])
         trajectory.update({
             'advantages': advantages,
             'td_lambda_returns': td_lambda_returns
