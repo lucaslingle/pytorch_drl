@@ -7,14 +7,14 @@ from drl.envs.wrappers.stateless.abstract import Wrapper
 
 
 class FrameStackWrapper(Wrapper):
-    def __init__(self, env, num_frames):
+    def __init__(self, env, num_stack):
         """
         Args:
             env (Env): OpenAI gym environment instance.
-            num_frames (int): Number of frames to stack.
+            num_stack (int): Number of frames to stack.
         """
         super().__init__(env)
-        self._num_frames = num_frames
+        self._num_frames = num_stack
         self._frames = deque(maxlen=self._num_frames)
         self._set_observation_space()
 
