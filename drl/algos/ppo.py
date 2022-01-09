@@ -238,7 +238,7 @@ class PPO(Algo):
                     val_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
 
                 """
-                # straight outta schulman's initial commit of pposgd_simple (only used for atari!)
+                # straight out of schulman's initial commit of pposgd_simple (only used for atari!)
                 vfloss1 = tf.square(pi.vpred - ret)
                 vpredclipped = oldpi.vpred + tf.clip_by_value(
                     pi.vpred - oldpi.vpred, -clip_param, clip_param)
