@@ -1,8 +1,8 @@
 """Script."""
 
 import argparse
-import os
 import importlib
+import os
 
 import torch as tc
 

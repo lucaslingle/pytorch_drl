@@ -1,9 +1,16 @@
 from typing import Dict
+import importlib
 import copy
 
 import torch as tc
 
 from drl.envs.wrappers import Wrapper
+
+
+def torch_dtype(np_dtype):
+    module = importlib.import_module('torch')
+    dtype = getattr(module, str(np_dtype))
+    return dtype
 
 
 class MetadataManager:
@@ -60,15 +67,17 @@ class MetadataManager:
 
 
 class Trajectory:
-    def __init__(self, obs_shape, rew_keys, seg_len, extra_steps):
+    def __init__(self, obs_space, ac_space, rew_keys, seg_len, extra_steps):
         """
         Args:
-            obs_shape: Observation shape.
+            obs_space: Observation space.
+            ac_space: Action space.
             rew_keys: Reward keys.
             seg_len: Segment length.
             extra_steps: Extra steps for n-step reward based credit assignment.
         """
-        self._obs_shape = obs_shape
+        self._obs_space = obs_space
+        self._ac_space = ac_space
         self._rew_keys = rew_keys
         self._seg_len = seg_len
         self._extra_steps = extra_steps
@@ -80,8 +89,10 @@ class Trajectory:
         self._erase()
 
     def _erase(self):
-        self._observations = tc.zeros((self._timesteps+1, *self._obs_shape), dtype=tc.float32)
-        self._actions = tc.zeros(self._timesteps+1, dtype=tc.int64)
+        obs_shape, ac_shape = self._obs_space.shape, self._ac_space.shape
+        ac_dtype = torch_dtype(self._ac_space.dtype)
+        self._observations = tc.zeros((self._timesteps+1, *obs_shape), dtype=tc.float32)
+        self._actions = tc.zeros((self._timesteps+1, *ac_shape), dtype=ac_dtype)
         self._rewards = {
             k: tc.zeros(self._timesteps, dtype=tc.float32) for k in self._rew_keys
         }
@@ -154,7 +165,8 @@ class TrajectoryManager:
         self._o_t = self._env.reset()
         self._a_t = self._choose_action(self._o_t)
         self._trajectory = Trajectory(
-            obs_shape=self._env.observation_space.shape,
+            obs_shape=self._o_t.shape,
+            ac_shape=self._a_t.shape,
             rew_keys=self._get_reward_keys(),
             seg_len=self._seg_len,
             extra_steps=self._extra_steps)
