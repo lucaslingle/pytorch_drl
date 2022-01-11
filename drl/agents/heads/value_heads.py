@@ -13,15 +13,16 @@ class ValueHead(Head, metaclass=abc.ABCMeta):
 
 
 class LinearValueHead(ValueHead):
-    def __init__(self, num_features, ortho_init, **kwargs):
+    def __init__(self, num_features, ortho_init, ortho_gain=0.01, **kwargs):
         super().__init__()
         self._value_head = tc.nn.Linear(num_features, 1)
         self._ortho_init = ortho_init
+        self._ortho_gain = ortho_gain
         self._init_weights()
 
     def _init_weights(self):
         if self._ortho_init:
-            tc.nn.init.orthogonal_(self._value_head.weight, gain=1.0)
+            tc.nn.init.orthogonal_(self._value_head.weight, gain=self._ortho_gain)
         else:
             normc_init_(self._value_head.weight, gain=1.0)
         tc.nn.init.zeros_(self._value_head.bias)

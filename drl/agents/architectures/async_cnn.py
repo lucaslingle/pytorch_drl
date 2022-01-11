@@ -14,11 +14,13 @@ class AsyncCNN(Architecture):
             img_channels,
             activation=tc.nn.ReLU,
             use_gn=False,
-            ortho_init=False
+            ortho_init=False,
+            ortho_gain=1.0
     ):
         super().__init__()
         self._num_features = 256
         self._ortho_init = ortho_init
+        self._ortho_gain = ortho_gain
         self._network = tc.nn.Sequential(
             tc.nn.Conv2d(img_channels, 16, kernel_size=(8,8), stride=(4,4)),
             MaybeGroupNorm(16, 2, use_gn=use_gn),
@@ -36,7 +38,7 @@ class AsyncCNN(Architecture):
         for m in self._network:
             if self._ortho_init:
                 if isinstance(m, (tc.nn.Linear, tc.nn.Conv2d)):
-                    tc.nn.init.orthogonal_(m.weight, gain=1.0)
+                    tc.nn.init.orthogonal_(m.weight, gain=self._ortho_gain)
                     tc.nn.init.zeros_(m.bias)
             else:
                 if isinstance(m, tc.nn.Conv2d):
