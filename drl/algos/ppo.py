@@ -227,7 +227,7 @@ class PPO(Algo):
                 clipfrac_for_rew = tc.mean(tc.greater(surr1, surr2).float())
                 if not vf_loss_clipping:
                     val_loss_for_rew = tc.mean(vf_loss_criterion(
-                        input=vpreds, target=tdlam_rets))
+                        input=vpreds_new, target=tdlam_rets))
                 else:
                     vpreds_new_clipped = tc.clip(
                         vpreds_new, vpreds-clip_param, vpreds+clip_param)
