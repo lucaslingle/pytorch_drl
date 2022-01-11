@@ -181,7 +181,7 @@ class PPO(Algo):
             td_lambda_returns[k] = advantages[k] + vpreds[k]
             if standardize_adv:
                 advantages[k] -= tc.mean(advantages[k])
-                advantages[k] /= tc.std(advantages[k])
+                advantages[k] /= (tc.std(advantages[k]) + 1e-8)
         trajectory.update({
             'advantages': advantages,
             'td_lambda_returns': td_lambda_returns

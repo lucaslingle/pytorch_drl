@@ -81,7 +81,7 @@ class Trajectory:
 
     def _erase(self):
         self._observations = tc.zeros((self._timesteps+1, *self._obs_shape), dtype=tc.float32)
-        self._actions = tc.zeros(self._timesteps+1, dtype=tc.float32)
+        self._actions = tc.zeros(self._timesteps+1, dtype=tc.int64)
         self._rewards = {
             k: tc.zeros(self._timesteps, dtype=tc.float32) for k in self._rew_keys
         }

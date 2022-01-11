@@ -1,6 +1,6 @@
 distributed:
     backend: gloo
-    world_size: 8
+    world_size: 1
     master_addr: localhost
     master_port: '12345'
 algo:
@@ -14,10 +14,10 @@ algo:
     ent_coef_final: 0.01
     vf_loss_coef: 0.5
     vf_loss_cls: MSELoss
-    vf_loss_clipping: True
+    vf_loss_clipping: False
     gae_lambda:
         extrinsic: 0.95
-    gae_extra_steps: 256
+    gae_extra_steps: 0
     discount_gamma:
         extrinsic: 0.99
     standardize_adv: True
