@@ -165,8 +165,8 @@ class TrajectoryManager:
         self._o_t = self._env.reset()
         self._a_t = self._choose_action(self._o_t)
         self._trajectory = Trajectory(
-            obs_shape=self._o_t.shape,
-            ac_shape=self._a_t.shape,
+            obs_space=self._env.observation_space,
+            ac_space=self._env.action_space,
             rew_keys=self._get_reward_keys(),
             seg_len=self._seg_len,
             extra_steps=self._extra_steps)
