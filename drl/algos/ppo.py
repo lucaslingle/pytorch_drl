@@ -237,16 +237,6 @@ class PPO(Algo):
                         input=vpreds_new_clipped, target=tdlam_rets)
                     val_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
 
-                """
-                # straight out of schulman's initial commit of pposgd_simple (only used for atari!)
-                vfloss1 = tf.square(pi.vpred - ret)
-                vpredclipped = oldpi.vpred + tf.clip_by_value(
-                    pi.vpred - oldpi.vpred, -clip_param, clip_param)
-                vfloss2 = tf.square(vpredclipped - ret)
-                vf_loss = .5 * U.mean(tf.maximum(vfloss1,
-                                                 vfloss2))  # we do the same clipping-based trust region for the value function
-                """
-
                 weight = reward_weightings[key]
                 policy_surrogate_objective += weight * pol_surr_for_rew
                 value_loss += (weight ** 2) * val_loss_for_rew
