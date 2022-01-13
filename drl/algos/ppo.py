@@ -407,6 +407,32 @@ class PPO(Algo):
     def evaluation_loop(self):
         raise NotImplementedError
 
+    @tc.no_grad()
+    def render_loop(self):
+        if self._rank == 0:
+            env = self._learning_system['env']
+            policy_net = self._learning_system['policy_net']
+            t = 0
+            r_tot = 0.
+            o_t = env.reset()
+            real_done_t = False
+            while not real_done_t:
+                predictions_t = policy_net(
+                    x=tc.tensor(o_t).float().unsqueeze(0),
+                    predict=['policy'])
+                pi_dist_t = predictions_t['policy']
+                a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
+                o_tp1, r_t, done_t, info_t = env.step(a_t)
+                if 'ale.lives' in info_t:
+                    real_done_t = (info_t['ale.lives'] == 0)
+                else:
+                    real_done_t = done_t
+                _ = env.render(mode='human')
+                t += 1
+                r_tot += r_t['extrinsic_raw']
+                o_t = o_tp1
+            print(r_tot)
+
 
 class Annealer(tc.nn.Module):
     def __init__(

@@ -16,6 +16,10 @@ class Algo(metaclass=abc.ABCMeta):
         self._rank = rank
         self._config = config
 
+    @property
+    def rank(self):
+        return self._rank
+
     @staticmethod
     def _get_env(env_config):
         env = gym.make(env_config.get('id'))

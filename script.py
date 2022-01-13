@@ -11,12 +11,13 @@ from drl.utils.configuration import ConfigParser
 
 def create_argparser():
     parser = argparse.ArgumentParser(
-        description="A Pytorch implementation of Deep Residual Networks, " +
-                    "using Torch Distributed Data Parallel.")
-
-    parser.add_argument("--mode", choices=['train', 'eval'], default='train')
-    parser.add_argument("--models_dir", type=str, default='models_dir')
-    parser.add_argument("--run_name", type=str, default='my_old_repo_ppo_hparams')
+        description='Deep RL algorithms, using Torch DDP.')
+    parser.add_argument(
+        '--mode', choices=['train', 'evaluate', 'video'], default='train')
+    parser.add_argument(
+        '--models_dir', type=str, default='models_dir')
+    parser.add_argument(
+        '--run_name', type=str, default='my_old_repo_ppo_hparams')
     return parser
 
 
@@ -67,16 +68,27 @@ def train(rank, config):
 def evaluate(rank, config):
     algo = setup(rank, config)
     metrics = algo.evaluation_loop()
-    if rank == 0:
+    if algo.rank == 0:
         print(f"Test metrics: {metrics}")
+    cleanup()
+
+
+def video(rank, config):
+    algo = setup(rank, config)
+    _ = algo.render_loop()
     cleanup()
 
 
 if __name__ == '__main__':
     args = create_argparser().parse_args()
     config = get_config(args)
+    ops = {
+        'train': train,
+        'evaluate': evaluate,
+        'video': video
+    }
     tc.multiprocessing.spawn(
-        train if args.mode == 'train' else evaluate,
+        ops[args.mode],
         args=(config,),
         nprocs=config['distributed']['world_size'],
         join=True)
