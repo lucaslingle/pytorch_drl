@@ -409,6 +409,8 @@ class PPO(Algo):
 
     @tc.no_grad()
     def render_loop(self):
+        # todo: replace this with video-saving loop in Algo abstract class.
+        #   or implement saving video via wrapper env.
         if self._rank == 0:
             env = self._learning_system['env']
             policy_net = self._learning_system['policy_net']
