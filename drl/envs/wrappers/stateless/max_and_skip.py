@@ -20,6 +20,11 @@ class MaxAndSkipWrapper(Wrapper):
         self._apply_max = apply_max
         self._run_checks()
 
+        obs_space = env.observation_space
+        obs_shape = obs_space.shape
+        obs_dtype = obs_space.dtype
+        self._obs_buffer = np.zeros((2, *obs_shape), dtype=obs_dtype)
+
     def _run_checks(self):
         cond1 = isinstance(self._num_skip, int)
         cond2 = self._num_skip > 0
@@ -31,12 +36,14 @@ class MaxAndSkipWrapper(Wrapper):
             raise ValueError(msg)
 
     def step(self, action):
-        prev_obs, total_reward, done = None, 0., False
-        for _ in range(self._num_skip):
+        total_reward = 0.
+        for k in range(self._num_skip):
             obs, reward, done, info = self.env.step(action)
+            if k == self._num_skip-2: self._obs_buffer[-2] = obs
+            if k == self._num_skip-1: self._obs_buffer[-1] = obs
             total_reward += reward
-            prev_obs = obs
             if done:
                 break
-        obs = np.maximum(prev_obs, obs) if self._apply_max else obs
+        if self._apply_max:
+            obs = self._obs_buffer.max(axis=0)
         return obs, total_reward, done, info
