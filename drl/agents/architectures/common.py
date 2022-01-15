@@ -56,7 +56,7 @@ def normc_init_(weight_tensor, gain=1.0):
     """
     num_dims = len(list(weight_tensor.shape))
     normalize_dims = list(range(num_dims))
-    normalize_dims.remove(1)
+    normalize_dims.remove(0)
     normalize_dims = tuple(normalize_dims)
     out = np.random.normal(loc=0.0, scale=1.0, size=weight_tensor.shape)
     out /= np.sqrt(np.sum(np.square(out), axis=normalize_dims, keepdims=True))
