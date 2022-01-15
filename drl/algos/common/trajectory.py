@@ -249,7 +249,7 @@ class TrajectoryManager:
                     self._metadata_mgr.present_done(
                         fields=['ep_len_raw', 'ep_ret_raw'])
                 o_tp1 = self._env.reset()
-            a_tp1 = self._choose_action(self._o_t)
+            a_tp1 = self._choose_action(o_tp1)
             self._o_t = o_tp1
             self._a_t = a_tp1
 
