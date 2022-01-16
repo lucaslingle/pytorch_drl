@@ -179,14 +179,16 @@ class PPO(Algo):
                 A_t = delta_t + (1.-dones[t]) * gamma[k] * lam[k] * A_tp1
                 advantages[k][t] = A_t
             td_lambda_returns[k] = advantages[k] + vpreds[k]
-            if standardize_adv:
-                advantages[k] -= tc.mean(advantages[k])
-                advantages[k] /= (tc.std(advantages[k]) + 1e-8)
         trajectory.update({
             'advantages': advantages,
             'td_lambda_returns': td_lambda_returns
         })
-        return self._slice_minibatch(trajectory, slice(0, seg_len))
+        trajectory = self._slice_minibatch(trajectory, slice(0, seg_len))
+        if standardize_adv:
+            for k in relevant_reward_keys:
+                trajectory['advantages'][k] -= tc.mean(advantages[k])
+                trajectory['advantages'][k] /= (tc.std(advantages[k]) + 1e-8)
+        return trajectory
 
     def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
