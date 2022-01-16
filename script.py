@@ -17,20 +17,23 @@ def create_argparser():
     parser.add_argument(
         '--models_dir', type=str, default='models_dir')
     parser.add_argument(
-        '--run_name', type=str, default='my_old_repo_ppo_hparams')
+        '--experiment_name', type=str, default='my_old_repo_ppo_hparams')
+    parser.add_argument(
+        '--seed', type=int, default=0)
     return parser
 
 
 def get_config(args):
-    base_path = os.path.join(args.models_dir, args.run_name)
+    base_path = os.path.join(args.models_dir, args.experiment_name)
     config_path = os.path.join(base_path, 'config.yaml')
-    checkpoint_dir = os.path.join(base_path, 'checkpoints')
-    log_dir = os.path.join(base_path, 'tensorboard_logs')
+    checkpoint_dir = os.path.join(base_path, str(args.seed), 'checkpoints')
+    log_dir = os.path.join(base_path, str(args.seed), 'tensorboard_logs')
 
     config = ConfigParser(
         defaults={
             'checkpoint_dir': checkpoint_dir,
-            'log_dir': log_dir
+            'log_dir': log_dir,
+            'seed': args.seed
         }
     )
     config.read(config_path, verbose=True)

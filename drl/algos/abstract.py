@@ -1,7 +1,10 @@
 import abc
+import random
 
-import gym
+import numpy as np
+import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
+import gym
 
 from drl.envs.wrappers.integration import get_wrappers
 from drl.agents.integration import (
@@ -15,14 +18,27 @@ class Algo(metaclass=abc.ABCMeta):
     def __init__(self, rank, config):
         self._rank = rank
         self._config = config
+        self._set_seeds()
 
     @property
     def rank(self):
         return self._rank
 
-    @staticmethod
-    def _get_env(env_config):
+    @property
+    def worker_seed(self):
+        if 'seed' in self._config:
+            return self._config['seed'] + 10000 * self._rank
+        return None
+
+    def _set_seeds(self):
+        if self.worker_seed is not None:
+            tc.manual_seed(self.worker_seed)
+            np.random.seed(self.worker_seed % 2 ** 32)
+            random.seed(self.worker_seed % 2 ** 32)
+
+    def _get_env(self, env_config):
         env = gym.make(env_config.get('id'))
+        env.seed(self.worker_seed)
         env = get_wrappers(env, **env_config.get('wrappers'))
         return env
 
