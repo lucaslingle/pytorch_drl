@@ -72,3 +72,24 @@ To evaluate a trained model, append ```--mode=eval``` to the command above.
 
 Some example config files for different algorithms are provided in the subdirectories of ```models_dir```.  
 A formal description of how the configuration files are structured can be found in [this document](config_usage.md).  
+
+## Reproducing Papers
+
+In this section, we describe the algorithms whose published results we've replicated using our codebase.
+
+### Proximal Policy Optimization Algorithms
+
+| Game           | OpenAI Baselines | Schulman et al., 2017 | Ours         |
+| :------------- | ---------------: | --------------------: | -----------: |
+| Beamrider      |          1299.3  |                1590.0 |              |
+| Breakout       |           114.3  |                 274.8 |              |
+| Enduro         |           350.2  |                 758.3 |              |
+| Pong           |            13.7  |                  20.7 |              |
+| Qbert          |          7012.1  |               14293.3 |              |
+| Seaquest       |          1218.9  |                1204.5 |              |
+| Space Invaders |           557.3  |                 942.5 |              |
+
+- For computational efficiency, we tested only the seven Atari games first examined by [Mnih et al., 2013](https://arxiv.org/pdf/1312.5602.pdf).
+- For consistency with Schulman et al., 2017, each of our results above is the mean performance over the last 100 real episodes of training, averaged over three random seeds.
+- The OpenAI baselines results were obtained [here](https://htmlpreview.github.io/?https://github.com/openai/baselines/blob/master/benchmarks_atari10M.htm).
+- As can be seen above, our implementation closely reproduces the results of the paper. 
