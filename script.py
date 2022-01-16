@@ -17,7 +17,7 @@ def create_argparser():
     parser.add_argument(
         '--models_dir', type=str, default='models_dir')
     parser.add_argument(
-        '--experiment_group', type=str, default='my_old_repo_ppo_hparams')
+        '--experiment_group', type=str, default='atari')
     parser.add_argument(
         '--env_name', type=str, default='BreakoutNoFrameskip-v4')
     parser.add_argument(
@@ -33,12 +33,15 @@ def get_config(args):
         experiment_group_path, args.env_name, str(args.seed))
     checkpoint_dir = os.path.join(experiment_path, 'checkpoints')
     log_dir = os.path.join(experiment_path, 'tensorboard_logs')
+    media_dir = os.path.join(experiment_path, 'media')
 
     config = ConfigParser(
         defaults={
+            'env.id': args.env_name,
+            'seed': args.seed,
             'checkpoint_dir': checkpoint_dir,
             'log_dir': log_dir,
-            'seed': args.seed
+            'media_dir': media_dir
         }
     )
     config.read(config_path, verbose=True)
