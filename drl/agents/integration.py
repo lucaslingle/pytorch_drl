@@ -4,7 +4,7 @@ import importlib
 import torch as tc
 import gym
 
-from drl.agents.preprocessing import Preprocessing, EndToEndPreprocessing
+from drl.agents.preprocessing import Preprocessing
 from drl.agents.architectures import Architecture
 from drl.agents.heads import (
     Head, CategoricalActionValueHead, EpsilonGreedyCategoricalPolicyHead
@@ -23,7 +23,7 @@ def get_preprocessings(**preprocessing_spec: Dict[str, Dict[str, Any]]):
         preprocessing = get_preprocessing(
             cls_name=cls_name, cls_args=cls_args)
         preprocessing_stack.append(preprocessing)
-    return EndToEndPreprocessing(tc.nn.Sequential(*preprocessing_stack))
+    return preprocessing_stack
 
 
 def get_architecture(cls_name, cls_args):
@@ -84,14 +84,16 @@ def get_predictors(rank, env, **predictors_spec: Dict[str, Dict[str, Any]]):
 class Agent(tc.nn.Module):
     def __init__(
             self,
-            preprocessing: Preprocessing,
+            preprocessing: List[Preprocessing],
             architecture: Architecture,
-            predictors: Dict[str, Head]
+            predictors: Dict[str, Head],
+            detach_input: bool = True
     ):
         super().__init__()
-        self._preprocessing = preprocessing
+        self._preprocessing = tc.nn.Sequential(*preprocessing)
         self._architecture = architecture
-        self._predictors = predictors
+        self._predictors = tc.nn.ModuleDict(predictors)
+        self._detach_input = detach_input
 
     @property
     def keys(self):
@@ -106,6 +108,8 @@ class Agent(tc.nn.Module):
         Returns:
             Dictionary of predictions.
         """
+        if self._detach_input:
+            x = x.detach()
         preproc = self._preprocessing(x)
         features = self._architecture(preproc)
         predictions = {
