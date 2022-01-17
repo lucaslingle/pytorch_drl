@@ -3,8 +3,10 @@
 The config file has several components. We detail their usage below. 
 
 ### Distributed communication:
-  - The script currently only supports single-machine training without GPUs. This is subject to change, however.
-  - If using GPUs, be sure to ```backend``` parameter to ```nccl```, and set the ```world_size``` to the number of GPUs available.
+  - The script currently only supports single-machine training without GPUs. (This is subject to change, however.)
+  - The script currently does not support vectorized environments. (This is subject to change, however.) 
+  - To use Torch DDP with more than one parallel process, you can set ```world_size``` to the number of environments you want to run.
+  - If using GPUs, be sure to ```backend``` parameter to ```nccl```, and set the ```world_size``` to the number of GPUs available. 
 ### Algorithm:
   - The class names of available algorithms can be found in the submodules of ```drl/algos/```.
   - Currently supported class names are: ```DQN, PPO```.
