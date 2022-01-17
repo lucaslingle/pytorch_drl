@@ -1,4 +1,5 @@
 import torch as tc
+import numpy as np
 
 from drl.agents.architectures.abstract import Architecture
 from drl.agents.architectures.common import MaybeGroupNorm, normc_init_
@@ -15,7 +16,7 @@ class NatureCNN(Architecture):
             activation=tc.nn.ReLU,
             use_gn=False,
             ortho_init=False,
-            ortho_gain=1.0
+            ortho_gain=np.sqrt(2)
     ):
         super().__init__()
         self._num_features = 512

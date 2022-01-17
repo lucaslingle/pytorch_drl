@@ -50,28 +50,18 @@ pip install -e .
 
 ## Overview
 
-This repo comes in two parts: a python package and a script. The script organizes all runs in a ```models_dir```, placing checkpoints and tensorboard logs in a ```run_name``` subdirectory. 
+### Structure
 
-Furthermore, it expects to find a ```config.yaml``` file in the ```run_name``` directory, specifying hyperparameters and configuration details for the ```run_name``` training run. 
+This repo comes in two parts: a python package and a script. 
 
-Using a flexible markup language like YAML allows us to specify nested configuration details, which simplifies the implementation over that of a 'flat' configuration object like an argparse namespace. 
+### Script
 
-## Usage
+To use the script correctly, you can refer to the script usage [docs](script_usage.md). 
 
-### Script overview
-To train a new model, you should:
-- create a subdirectory of the ```models_dir``` directory, with a descriptive name for the training run;
-- copy over a config file and edit the parameters appropriately;
-- pass the details to the script and run it: 
-  ```
-  python -m script --run_name=YOUR_RUN_NAME
-  ```
-To evaluate a trained model, append ```--mode=eval``` to the command above.
-
-### Config overview
+### Config
 
 Some example config files for different algorithms are provided in the subdirectories of ```models_dir```.  
-A formal description of how the configuration files are structured can be found in [this document](config_usage.md).  
+A formal description of how the configuration files are structured can be found in the config usage [docs](config_usage.md).  
 
 ## Reproducing Papers
 
@@ -82,7 +72,7 @@ In this section, we describe the algorithms whose published results we've replic
 | Game           | OpenAI Baselines | Schulman et al., 2017 | Ours         |
 | :------------- | ---------------: | --------------------: | -----------: |
 | Beamrider      |          1299.3  |                1590.0 |              |
-| Breakout       |           114.3  |                 274.8 |              |
+| Breakout       |           114.3  |                 274.8 |     437.5 (seed 0)  |
 | Enduro         |           350.2  |                 758.3 |              |
 | Pong           |            13.7  |                  20.7 |              |
 | Qbert          |          7012.1  |               14293.3 |              |
