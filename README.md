@@ -60,8 +60,8 @@ To use the script correctly, you can refer to the script usage [docs](script_usa
 
 ### Config
 
-Some example config files for different algorithms are provided in the subdirectories of ```models_dir```.  
 A formal description of how the configuration files are structured can be found in the config usage [docs](config_usage.md).  
+Some example config files for different algorithms are also provided in the subdirectories of ```models_dir```.  
 
 ## Reproducing Papers
 
