@@ -26,7 +26,6 @@ algo:
     checkpoint_frequency: 100
     max_steps: 11000000
 env:
-    id: 'BreakoutNoFrameskip-v4'
     wrappers:
         AtariWrapper: {}
         DeepmindWrapper: {frame_stack: True, lazy: False}
