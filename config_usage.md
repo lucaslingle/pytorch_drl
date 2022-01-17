@@ -3,7 +3,7 @@
 The config file has several components. We detail their usage below. 
 
 ### Distributed communication:
-  - The script currently only supports single-machine training with zero or more GPUs. 
+  - The script currently only supports single-machine training without GPUs. This is subject to change, however.
   - If using GPUs, be sure to ```backend``` parameter to ```nccl```, and set the ```world_size``` to the number of GPUs available.
 ### Algorithm:
   - The class names of available algorithms can be found in the submodules of ```drl/algos/```.
