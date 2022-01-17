@@ -24,7 +24,7 @@ algo:
     use_pcgrad: False
     stats_memory_len: 100
     checkpoint_frequency: 100
-    max_steps: 11000000
+    max_steps: 10000000
 env:
     wrappers:
         AtariWrapper: {}
@@ -50,7 +50,7 @@ networks:
             cls_name: OneCycleLR
             cls_args:
                 max_lr: 0.001
-                total_steps: 85938
+                total_steps: 4883
                 pct_start: 0.0
                 anneal_strategy: linear
                 cycle_momentum: False
