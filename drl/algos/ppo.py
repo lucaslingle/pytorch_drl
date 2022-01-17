@@ -330,7 +330,7 @@ class PPO(Algo):
             trajectory = self._annotate(
                 trajectory, policy_net, value_net, no_grad=True)
             trajectory = self._credit_assignment(trajectory)
-            self._learning_system['global_step'] += seg_len
+            self._learning_system['global_step'] += seg_len * world_size
 
             # update policy.
             for opt_epoch in range(opt_epochs):
