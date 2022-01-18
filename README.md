@@ -74,7 +74,7 @@ In this section, we describe the algorithms whose published results we've replic
 | Beamrider      |          1299.3  |                1590.0 |              |
 | Breakout       |           114.3  |                 274.8 |        424.4 |
 | Enduro         |           350.2  |                 758.3 |              |
-| Pong           |            13.7  |                  20.7 |              |
+| Pong           |            13.7  |                  20.7 |         19.8 |
 | Qbert          |          7012.1  |               14293.3 |              |
 | Seaquest       |          1218.9  |                1204.5 |              |
 | Space Invaders |           557.3  |                 942.5 |              |
