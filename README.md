@@ -72,7 +72,7 @@ In this section, we describe the algorithms whose published results we've replic
 | Game           | OpenAI Baselines | Schulman et al., 2017 | Ours         |
 | :------------- | ---------------: | --------------------: | -----------: |
 | Beamrider      |          1299.3  |                1590.0 |              |
-| Breakout       |           114.3  |                 274.8 |     437.5 (seed 0)  |
+| Breakout       |           114.3  |                 274.8 |        424.4 |
 | Enduro         |           350.2  |                 758.3 |              |
 | Pong           |            13.7  |                  20.7 |              |
 | Qbert          |          7012.1  |               14293.3 |              |
