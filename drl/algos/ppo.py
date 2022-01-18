@@ -6,16 +6,13 @@ import numpy as np
 
 from drl.algos.abstract import Algo
 from drl.algos.common import (
-    TrajectoryManager, MultiDeque, get_loss, global_means, global_gathers,
+    TrajectoryManager, MultiDeque, extract_reward_name, gae_advantages,
+    get_loss, global_means, global_gathers,
     update_trainable_wrappers, apply_pcgrad, pretty_print
 )
 
 
 class PPO(Algo):
-    # PPO paper reproducability todos:
-    #   [tested & bad] add and test orthogonal init (used in baselines NatureCNN, RND, etc).
-    #   [tested & bad] add and test reward normalization (see baselines VecNormalize).
-    #   [added] add and test clipped value function
     # PPO speed todos:
     #    after reproducability done, add support for vectorized environment.
     #    test speed of vectorized vs non-vectorized environments.
@@ -123,7 +120,7 @@ class PPO(Algo):
                 vpreds = {k: predictions[k] for k in value_predict}
             else:
                 vpreds = value_net(observations, predict=value_predict)
-            vpreds = {k.partition('_')[2]: vpreds[k] for k in vpreds}
+            vpreds = {extract_reward_name(k): vpreds[k] for k in vpreds}
 
             # shallow copy of trajectory dict, point to initial/new values
             trajectory_new = {
@@ -164,20 +161,13 @@ class PPO(Algo):
         assert len(relevant_reward_keys) > 0
 
         # assign credit.
-        advantages = {
-            k: tc.zeros(seg_len+extra_steps+1, dtype=tc.float32)
-            for k in relevant_reward_keys
-        }
-        td_lambda_returns = {}
+        advantages = dict()
+        td_lambda_returns = dict()
         for k in relevant_reward_keys:
-            for t in reversed(range(0, seg_len+extra_steps)):  # T+n-1, ..., 0
-                r_t = rewards[k][t]
-                V_t = vpreds[k][t]
-                V_tp1 = vpreds[k][t+1]
-                A_tp1 = advantages[k][t+1]
-                delta_t = -V_t + r_t + (1.-dones[t]) * gamma[k] * V_tp1
-                A_t = delta_t + (1.-dones[t]) * gamma[k] * lam[k] * A_tp1
-                advantages[k][t] = A_t
+            advantages[k] = gae_advantages(
+                seg_len=seg_len, extra_steps=extra_steps,
+                gamma=gamma[k], lam=lam[k],
+                rewards=rewards[k], vpreds=vpreds[k], dones=dones)
             td_lambda_returns[k] = advantages[k] + vpreds[k]
         trajectory.update({
             'advantages': advantages,

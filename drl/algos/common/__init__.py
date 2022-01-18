@@ -6,6 +6,9 @@ from drl.algos.common.trajectory import TrajectoryManager
 from drl.algos.common.losses import get_loss
 from drl.algos.common.wrapper_ops import update_trainable_wrappers
 from drl.algos.common.grad_ops import apply_pcgrad
+from drl.algos.common.credit_assignment import (
+    extract_reward_name, gae_advantages, nstep_advantages
+)
 
 
 __all__ = [
@@ -14,5 +17,6 @@ __all__ = [
     "TrajectoryManager",
     "get_loss",
     "update_trainable_wrappers",
-    "apply_pcgrad"
+    "apply_pcgrad",
+    "extract_reward_name", "gae_advantages", "nstep_advantages"
 ]
