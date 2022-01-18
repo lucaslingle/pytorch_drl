@@ -16,8 +16,8 @@ def gae_advantages(seg_len, extra_steps, gamma, lam, rewards, vpreds, dones):
         V_t = vpreds[t]
         V_tp1 = vpreds[t+1]
         A_tp1 = advantages[t+1]
-        delta_t = -V_t + r_t + (1. - dones[t]) * gamma * V_tp1
-        A_t = delta_t + (1. - dones[t]) * gamma * lam * A_tp1
+        delta_t = -V_t + r_t + (1.-dones[t]) * gamma * V_tp1
+        A_t = delta_t + (1.-dones[t]) * gamma * lam * A_tp1
         advantages[t] = A_t
     return advantages
 
@@ -32,7 +32,7 @@ def nstep_advantages(seg_len, extra_steps, gamma, rewards, vpreds, dones):
         R_t = V_tpn
         for s in reversed(range(0, extra_steps+1)):  # ((n-1)+1)-1 = n-1, ..., 0
             r_tps = rewards[t+s]                     # r[t+n-1], ..., r[t+0].
-            R_t = r_tps + (1. - dones[t+s]) * gamma * R_t
+            R_t = r_tps + (1.-dones[t+s]) * gamma * R_t
         V_t = vpreds[t]
         advantages[t] = R_t - V_t
     return advantages
