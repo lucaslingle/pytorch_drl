@@ -167,7 +167,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         normalized = self._synced_normalizer(obs.unsqueeze(0))
         _ = self._unsynced_normalizer.update(obs)
         y, yhat = self._teacher_net(normalized), self._student_net(normalized)
-        rewards_dict = {self._reward_name: tc.square(y-yhat).sum(dim=-1).item()}
+        rewards_dict = {self._reward_name: tc.square(y-yhat).mean(dim=-1).item()}
         if isinstance(rew, dict):
             rewards_dict.update(rew)
         else:
@@ -187,7 +187,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
                 obs_batch = self._random_drop(obs_batch)
             normalized = self._synced_normalizer(obs_batch)
             y, yhat = self._teacher_net(normalized), self._student_net(normalized)
-            loss = tc.square(y-yhat).sum(dim=-1).mean(dim=0)
+            loss = tc.square(y-yhat).mean(dim=-1).mean(dim=0)
             loss.backward()
             self._optimizer.step()
         self._sync_normalizers_global()
