@@ -15,6 +15,7 @@ algo:
     vf_loss_coef: 1.0
     vf_loss_cls: MSELoss
     vf_loss_clipping: False
+    vf_simple_weighting: True
     gae_lambda:
         extrinsic: 0.95
         intrinsic_rnd: 0.95
