@@ -11,6 +11,7 @@ class StickyActionsWrapper(ActionWrapper):
         u = self.unwrapped.np_random.uniform(low=0., high=1.)
         if u < self._stick_prob:
             return self._last_action
+        self._last_action = action
         return action
 
     def reverse_action(self, action):
