@@ -176,11 +176,11 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
 
     def learn(self, obs_batch, **kwargs):
         if self._synced_normalizer.steps >= self._non_learning_steps:
+            self._optimizer.zero_grad()
             normalized = self._synced_normalizer(obs_batch)
             y, yhat = self._teacher_net(normalized), self._student_net(normalized)
             loss = tc.square(y-yhat).sum(dim=-1).mean(dim=0)
             loss.backward()
             self._optimizer.step()
-            self._optimizer.zero_grad()
         self._sync_normalizers_global()
         self._sync_normalizers_local()
