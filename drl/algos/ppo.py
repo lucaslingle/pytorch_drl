@@ -113,16 +113,13 @@ class PPO(Algo):
 
     def _annotate(self, trajectory, policy_net, value_net, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
-            # decide who should predict what.
+            # make policy and value predictions.
             separate_value_net = value_net is not None
             policy_predict, value_predict = self._maybe_split_prediction_keys(
                 separate_value_net=separate_value_net)
-
-            # make policy and value predictions.
             predictions = policy_net(
                 trajectory['observations'], predict=policy_predict)
             pi = predictions['policy']
-
             if not separate_value_net:
                 vpreds = {k: predictions[k] for k in value_predict}
             else:
