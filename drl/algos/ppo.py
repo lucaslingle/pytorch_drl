@@ -80,6 +80,22 @@ class PPO(Algo):
         global_step = self._maybe_load_checkpoints(checkpointables_, step=None)
         return {'global_step': global_step, 'env': env, **checkpointables}
 
+    def _get_reward_keys(self, omit_raw=True):
+        reward_spec = self._learning_system['env'].reward_spec
+        reward_keys = reward_spec.keys
+        if omit_raw:
+            reward_keys = [k for k in reward_keys if not k.endswith('_raw')]
+            assert len(reward_keys) > 0
+        return reward_keys
+
+    def _maybe_split_prediction_keys(self, separate_value_net):
+        reward_keys = self._get_reward_keys(omit_raw=True)
+        policy_predict = ['policy']
+        value_predict = [f'value_{k}' for k in reward_keys]
+        if not separate_value_net:
+            policy_predict.extend(value_predict)
+        return policy_predict, value_predict
+
     def _slice_minibatch(self, trajectory, indices):
         results = dict()
         for field in trajectory:
@@ -90,166 +106,175 @@ class PPO(Algo):
             results[field] = slice
         return results
 
+    def _standardize(self, vector, eps=1e-8):
+        vector -= tc.mean(vector)
+        vector /= (tc.std(vector) + eps)
+        return vector
+
     def _annotate(self, trajectory, policy_net, value_net, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
-            # get config variables.
-            algo_config = self._config.get('algo')
-            seg_len = algo_config.get('seg_len')
-
-            # get trajectory variables.
-            observations = trajectory.get('observations')
-            actions = trajectory.get('actions')
-            rewards = trajectory.get('rewards')
-
             # decide who should predict what.
-            reward_keys = rewards.keys()
-            relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
-            policy_predict = ['policy']
-            value_predict = [f'value_{k}' for k in relevant_reward_keys]
-            if value_net is None:
-                policy_predict.extend(value_predict)
+            separate_value_net = value_net is not None
+            policy_predict, value_predict = self._maybe_split_prediction_keys(
+                separate_value_net=separate_value_net)
 
-            # compute logprobs of actions.
-            predictions = policy_net(observations, predict=policy_predict)
-            pi = predictions.get('policy')
-            logprobs = pi.log_prob(actions)
-            entropies = pi.entropy()
+            # make policy and value predictions.
+            predictions = policy_net(
+                trajectory['observations'], predict=policy_predict)
+            pi = predictions['policy']
 
-            # compute value estimates.
-            if value_net is None:
+            if not separate_value_net:
                 vpreds = {k: predictions[k] for k in value_predict}
             else:
-                vpreds = value_net(observations, predict=value_predict)
-            vpreds = {extract_reward_name(k): vpreds[k] for k in vpreds}
+                vpreds = value_net(
+                    trajectory['observations'], predict=value_predict)
 
-            # shallow copy of trajectory dict, point to initial/new values
+            # shallow copy of trajectory dict, point to initial/new values.
             trajectory_new = {
                 'observations': trajectory['observations'],
                 'actions': trajectory['actions'],
-                'logprobs': logprobs,
-                'entropies': entropies
+                'logprobs': pi.log_prob(trajectory['actions']),
+                'entropies': pi.entropy()
             }
-            trajectory_new = self._slice_minibatch(trajectory_new, slice(0, seg_len))
+            trajectory_new = self._slice_minibatch(
+                trajectory_new, slice(0, self._config['algo']['seg_len']))
             trajectory_new.update({
                 'rewards': trajectory['rewards'],
                 'dones': trajectory['dones'],
-                'vpreds': vpreds
+                'vpreds': {extract_reward_name(k): vpreds[k] for k in vpreds}
             })
             return trajectory_new
 
     @tc.no_grad()
     def _credit_assignment(self, trajectory):
-        # get config variables.
-        algo_config = self._config.get('algo')
-        seg_len = algo_config.get('seg_len')
-        extra_steps = self._config['algo']['gae_extra_steps']
-        lam = algo_config.get('gae_lambda')
-        gamma = algo_config.get('discount_gamma')
-        standardize_adv = algo_config.get('standardize_adv')
-        # todo(lucaslingle):
-        #    support standardization at other aggregation levels besides
-        #    per-trajectory.
-
-        # get trajectory variables.
-        rewards = trajectory.get('rewards')
-        dones = trajectory.get('dones')
-        vpreds = trajectory.get('vpreds')
-
-        # get reward keys.
-        reward_keys = rewards.keys()
-        relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
-        assert len(relevant_reward_keys) > 0
-
-        # assign credit.
-        advantages = dict()
-        td_lambda_returns = dict()
-        for k in relevant_reward_keys:
+        advantages, td_lambda_returns = dict(), dict()
+        for k in self._get_reward_keys():
             advantages[k] = gae_advantages(
-                seg_len=seg_len, extra_steps=extra_steps,
-                gamma=gamma[k], lam=lam[k],
-                rewards=rewards[k], vpreds=vpreds[k], dones=dones)
-            td_lambda_returns[k] = advantages[k] + vpreds[k]
+                seg_len=self._config['algo']['seg_len'],
+                extra_steps=self._config['algo']['gae_extra_steps'],
+                gamma=self._config['algo']['discount_gamma'][k],
+                lam=self._config['algo']['gae_lambda'][k],
+                rewards=trajectory['rewards'][k],
+                vpreds=trajectory['vpreds'][k],
+                dones=trajectory['dones'])
+            td_lambda_returns[k] = advantages[k] + trajectory['vpreds'][k]
         trajectory.update({
             'advantages': advantages,
             'td_lambda_returns': td_lambda_returns
         })
-        trajectory = self._slice_minibatch(trajectory, slice(0, seg_len))
-        if standardize_adv:
-            for k in relevant_reward_keys:
-                trajectory['advantages'][k] -= tc.mean(advantages[k])
-                trajectory['advantages'][k] /= (tc.std(advantages[k]) + 1e-8)
+        trajectory = self._slice_minibatch(
+            trajectory, slice(0, self._config['algo']['seg_len']))
+        trajectory = self._maybe_standardize_advantages(trajectory)
         return trajectory
 
-    def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef, no_grad):
+    @tc.no_grad()
+    def _maybe_standardize_advantages(self, trajectory):
+        if self._config['algo']['standardize_adv']:
+            for k in self._get_reward_keys():
+                trajectory['advantages'][k] = self._standardize(
+                    trajectory['advantages'][k])
+        return trajectory
+
+    def _get_reward_weightings(self):
+        reward_weightings = {'extrinsic': 1.0}
+        if hasattr(self._config['algo'], 'reward_weightings'):
+            reward_weightings.update(self._config['algo']['reward_weightings'])
+        assert set(reward_weightings.keys()) == set(self._get_reward_keys())
+        return reward_weightings
+
+    def _ppo_policy_entropy_bonus(self, mb_new, ent_coef, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
-            mb_new = self._annotate(mb, policy_net, value_net, no_grad=no_grad)
+            meanent = tc.mean(mb_new['entropies'])
+            policy_entropy_bonus = ent_coef * meanent
+            return {
+                'meanent': meanent,
+                'policy_entropy_bonus': policy_entropy_bonus
+            }
 
-            # get reward keys.
-            reward_keys = mb_new['rewards'].keys()
-            relevant_reward_keys = [k for k in reward_keys if k != 'extrinsic_raw']
-            assert len(relevant_reward_keys) > 0
+    def _ppo_policy_surrogate_objective(self, mb_new, mb, clip_param, no_grad):
+        with tc.no_grad() if no_grad else ExitStack():
+            policy_surrogate_objective = tc.tensor(0.0)
+            policy_ratios = tc.exp(mb_new['logprobs'] - mb['logprobs'])
+            clipped_policy_ratios = tc.clip(
+                policy_ratios, 1-clip_param, 1+clip_param)
+            reward_weightings = self._get_reward_weightings()
+            for key in self._get_reward_keys():
+                surr1 = mb['advantages'][key] * policy_ratios
+                surr2 = mb['advantages'][key] * clipped_policy_ratios
+                pol_surr_for_rew = tc.mean(tc.min(surr1, surr2))
+                if key == 'extrinsic':
+                    clipfrac = tc.mean(tc.greater(surr1, surr2).float())
+                weight = reward_weightings[key]
+                policy_surrogate_objective += weight * pol_surr_for_rew
+            return {
+                'policy_surrogate_objective': policy_surrogate_objective,
+                'clipfrac': clipfrac
+            }
 
-            # entropy
-            entropies = mb_new['entropies']
-            mean_entropy = tc.mean(entropies)
-            policy_entropy_bonus = ent_coef * mean_entropy
-
-            # ppo policy loss, value loss
-            policy_ratio = tc.exp(mb_new['logprobs'] - mb['logprobs'])
-            clipped_policy_ratio = tc.clip(policy_ratio, 1-clip_param, 1+clip_param)
-            policy_surrogate_objective = 0.
-            value_loss = 0.
-            clipfrac = 0.
+    def _ppo_vf_loss(self, mb_new, mb, clip_param, no_grad):
+        with tc.no_grad() if no_grad else ExitStack():
+            vf_loss = tc.tensor(0.0)
+            vf_clipfrac = tc.tensor(0.0)
             vf_loss_criterion = get_loss(self._config['algo']['vf_loss_cls'])
             vf_loss_clipping = self._config['algo']['vf_loss_clipping']
-            if not hasattr(self._config['algo'], 'reward_weightings'):
-                reward_weightings = {'extrinsic': 1.0}
-            else:
-                reward_weightings = self._config['algo']['reward_weightings']
-
-            for key in relevant_reward_keys:
-                advantages = mb['advantages'][key]
+            reward_weightings = self._get_reward_weightings()
+            for key in self._get_reward_keys():
                 tdlam_rets = mb['td_lambda_returns'][key]
                 vpreds = mb['vpreds'][key]
                 vpreds_new = mb_new['vpreds'][key]
-
-                surr1 = advantages * policy_ratio
-                surr2 = advantages * clipped_policy_ratio
-                pol_surr_for_rew = tc.mean(tc.min(surr1, surr2))
-                clipfrac_for_rew = tc.mean(tc.greater(surr1, surr2).float())
-                if not vf_loss_clipping:
-                    val_loss_for_rew = tc.mean(vf_loss_criterion(
-                        input=vpreds_new, target=tdlam_rets))
-                else:
+                if vf_loss_clipping:
                     vpreds_new_clipped = tc.clip(
                         vpreds_new, vpreds-clip_param, vpreds+clip_param)
                     vsurr1 = vf_loss_criterion(
                         input=vpreds_new, target=tdlam_rets)
                     vsurr2 = vf_loss_criterion(
                         input=vpreds_new_clipped, target=tdlam_rets)
-                    val_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
-
+                    vf_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
+                    if key == 'extrinsic':
+                        vf_clipfrac = tc.mean(tc.less(vsurr1, vsurr2).float())
+                else:
+                    vf_loss_for_rew = tc.mean(vf_loss_criterion(
+                        input=vpreds_new, target=tdlam_rets))
                 weight = reward_weightings[key]
-                policy_surrogate_objective += weight * pol_surr_for_rew
-                value_loss += (weight ** 2) * val_loss_for_rew
-                clipfrac += clipfrac_for_rew
-                # todo(lucaslingle): Investigate if official implementation
-                #    of RND uses the value loss weighting above.
-                # todo(lucaslingle): Add suppport for configuring
-                #    clipped or non-clipped value losses.
+                vf_loss += (weight ** 2) * vf_loss_for_rew
+                # todo(lucaslingle): support other vf loss weightings
+                #    besides implicit mse loss weighting used here.
+            return {
+                'vf_loss': vf_loss,
+                'vf_clipfrac': vf_clipfrac
+            }
 
-            # todo(lucaslingle): Add support for non-aggregated losses,
-            #  which could be useful if combining multiple intrinsic rewards.
-            #  Apply disaggregation to both policy loss and value loss.
-            policy_loss = -(policy_surrogate_objective + policy_entropy_bonus)
-            weight = 1. if value_net else self._config['algo']['vf_loss_coef']
-            composite_loss = policy_loss + weight * value_loss
+    def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef, no_grad):
+        with tc.no_grad() if no_grad else ExitStack():
+            mb_new = self._annotate(mb, policy_net, value_net, no_grad=no_grad)
+
+            entropy_quantities = self._ppo_policy_entropy_bonus(
+                mb_new=mb_new, ent_coef=ent_coef, no_grad=no_grad)
+
+            policy_quantities = self._ppo_policy_surrogate_objective(
+                mb_new=mb_new, mb=mb, clip_param=clip_param, no_grad=no_grad)
+
+            value_quantities = self._ppo_vf_loss(
+                mb_new=mb_new, mb=mb, clip_param=clip_param, no_grad=no_grad)
+
+            policy_objective = policy_quantities['policy_surrogate_objective']
+            policy_objective += entropy_quantities['policy_entropy_bonus']
+            policy_loss = -policy_objective
+
+            value_loss = value_quantities['vf_loss']
+
+            separate_value_net = value_net is not None
+            vf_loss_coef = self._config['algo']['vf_loss_coef']
+            vf_weight = 1. if separate_value_net else vf_loss_coef
+            composite_loss = policy_loss + vf_weight * value_loss
+
             return {
                 'policy_loss': policy_loss,
                 'value_loss': value_loss,
                 'composite_loss': composite_loss,
-                'meanent': mean_entropy,
-                'clipfrac': clipfrac / len(relevant_reward_keys)
+                'meanent': entropy_quantities['meanent'],
+                'clipfrac': policy_quantities['clipfrac'],
+                'vf_clipfrac': value_quantities['vf_clipfrac']
             }
 
     def _pcgrad_checks(self):
