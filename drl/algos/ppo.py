@@ -339,7 +339,7 @@ class PPO(Algo):
                     mb_indices = indices[i:i+batch_size]
                     mb = self._slice_minibatch(trajectory, mb_indices)
                     update_trainable_wrappers(env, mb)
-                    if global_step < non_learning_steps:
+                    if global_step <= non_learning_steps:
                         continue
                     losses = self._compute_losses(
                         mb=mb, policy_net=policy_net, value_net=value_net,
