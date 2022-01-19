@@ -207,7 +207,6 @@ class PPO(Algo):
                 'clipfrac': clipfrac
             }
 
-
     def _ppo_vf_loss(self, mb_new, mb, clip_param, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
             vf_loss = tc.tensor(0.0)
