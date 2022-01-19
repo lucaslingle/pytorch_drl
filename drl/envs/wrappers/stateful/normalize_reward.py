@@ -2,46 +2,16 @@ import torch as tc
 
 from drl.envs.wrappers.stateless.abstract import Wrapper, RewardSpec
 from drl.envs.wrappers.stateful.abstract import TrainableWrapper
+from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.algos.common import global_mean
 
 
 class ReturnAcc(tc.nn.Module):
-    # todo(lucaslingle):
-    #      consider using this algorithm instead
-    #      https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     def __init__(self, gamma, clip_low, clip_high):
         super().__init__()
         self._gamma = gamma
-        self._clip_low = clip_low
-        self._clip_high = clip_high
         self._current_ep_rewards = []
-        self.register_buffer('_steps', tc.tensor(0.))
-        self.register_buffer('_mean', tc.tensor(0.))
-        self.register_buffer('_var', tc.tensor(1.))
-
-    @property
-    def steps(self):
-        return self._steps
-
-    @steps.setter
-    def steps(self, value):
-        self.register_buffer('_steps', value)
-
-    @property
-    def mean(self):
-        return self._mean
-
-    @mean.setter
-    def mean(self, value):
-        self.register_buffer('_mean', value)
-
-    @property
-    def var(self):
-        return self._var
-
-    @var.setter
-    def var(self, value):
-        self.register_buffer('_var', value)
+        self._normalizer = Normalizer([], clip_low, clip_high)
 
     def update(self, r_t, d_t):
         self._current_ep_rewards.append(r_t)
@@ -57,34 +27,26 @@ class ReturnAcc(tc.nn.Module):
                 returns.append(R_t)
 
             ep_steps = len(returns)
-            steps = self.steps + ep_steps
+            steps = self._normalizer.steps + ep_steps
 
             returns = tc.tensor(returns)
 
-            mean = self.mean
-            mean *= ((steps-ep_steps) / steps)
+            moment1 = self._normalizer.moment1
+            moment1 *= ((steps-ep_steps) / steps)
             ep_ret_mean = tc.mean(returns)
-            mean += (ep_steps / steps) * ep_ret_mean
+            moment1 += (ep_steps / steps) * ep_ret_mean
 
-            var = self.var
-            var *= ((steps-ep_steps) / steps)
-            ep_ret_var = tc.mean(tc.square(returns - mean.unsqueeze(0)))
-            var += (ep_steps / steps) * ep_ret_var
+            moment2 = self._normalizer.moment2
+            moment2 *= ((steps-ep_steps) / steps)
+            ep_ret_var = tc.mean(tc.square(returns))
+            moment2 += (ep_steps / steps) * ep_ret_var
 
-            self.steps = steps
-            self.mean = mean
-            self.var = var
+            self._normalizer.steps = steps
+            self._normalizer.moment1 = moment1
+            self._normalizer.moment2 = moment2
 
-    def forward(self, r_t):
-        mean, var = self.mean.unsqueeze(0), self._var.unsqueeze(0)
-        r_t *= tc.rsqrt(var + 1e-4)
-        if self._clip_low is not None:
-            low = self._clip_low * tc.ones_like(r_t)
-            r_t = tc.max(low, r_t)
-        if self._clip_high is not None:
-            high = self._clip_high * tc.ones_like(r_t)
-            r_t = tc.min(r_t, high)
-        return r_t
+    def forward(self, r_t, shift=False, scale=True):
+        return self._normalizer(r_t, shift=shift, scale=scale)
 
 
 class NormalizeRewardWrapper(TrainableWrapper):
