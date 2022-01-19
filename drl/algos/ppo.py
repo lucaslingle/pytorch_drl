@@ -154,7 +154,7 @@ class PPO(Algo):
                 rewards=trajectory['rewards'][k],
                 vpreds=trajectory['vpreds'][k],
                 dones=trajectory['dones'],
-                use_dones=self._config['algo'][k])
+                use_dones=self._config['algo']['use_dones'][k])
             td_lambda_returns[k] = advantages[k] + trajectory['vpreds'][k]
         trajectory.update({
             'advantages': advantages,
