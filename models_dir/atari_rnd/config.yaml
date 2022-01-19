@@ -12,7 +12,7 @@ algo:
     clip_param_final: 0.1
     ent_coef_init: 0.001
     ent_coef_final: 0.001
-    vf_loss_coef: 1.0
+    vf_loss_coef: 0.5
     vf_loss_cls: MSELoss
     vf_loss_clipping: False
     vf_simple_weighting: True  # Burda 2018 src code weights all vf losses same
