@@ -105,8 +105,8 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             cls_name=rnd_optimizer_cls_name,
             cls_args=rnd_optimizer_args)
         self._reward_name = 'intrinsic_rnd'
+        self._reward_spec = self._get_reward_spec()
         self._run_checks()
-        self._set_reward_spec()
 
     @property
     def reward_name(self):
@@ -123,17 +123,14 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             msg = f"Attempted to wrap env with unsupported shape {space.shape}."
             raise ValueError(msg)
 
-    def _set_reward_spec(self):
-        def spec_exists():
-            if isinstance(self.env, Wrapper):
-                return self.env.reward_spec is not None
-            return False
-        if spec_exists:
-            keys = copy.deepcopy(self.env.reward_spec.keys)
-            keys.append(self._reward_name)
+    def _get_reward_spec(self):
+        parent_reward_spec = self.env.reward_spec
+        if parent_reward_spec is None:
+            reward_keys = ['extrinsic_raw', 'extrinsic', self._reward_name]
         else:
-            keys = ['extrinsic_raw', 'extrinsic', self._reward_name]
-        self.reward_spec = RewardSpec(keys)
+            reward_keys = copy.deepcopy(parent_reward_spec.keys)
+            reward_keys.append(self._reward_name)
+        return RewardSpec(keys=reward_keys)
 
     def _sync_normalizers_global(self):
         self._synced_normalizer.steps = global_mean(
