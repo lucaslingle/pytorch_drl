@@ -39,7 +39,7 @@ env:
     wrappers:
         TimeLimitWrapper: {max_episode_steps: 18000}
         StickyActionsWrapper: {stick_prob: 0.25}
-        MaxAndSkipWrapper: {num_skip: 4, apply_max: true}
+        MaxAndSkipWrapper: {num_skip: 4, apply_max: True}
         ResizeWrapper: {target_height: 84, target_width: 84, use_grayscale: True}
         ActionResetWrapper: {action_reset_sequence: [1, 2]}
         ClipRewardWrapper: {low: -1.0, high: 1.0}
