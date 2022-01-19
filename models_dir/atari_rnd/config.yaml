@@ -26,7 +26,7 @@ algo:
     use_dones:
         extrinsic: True
         intrinsic_rnd: False
-    standardize_adv: True
+    standardize_adv: False
     reward_weights:
         extrinsic: 2.0
         intrinsic_rnd: 1.0
@@ -51,6 +51,10 @@ env:
             world_size: 32
             widening: 1
             non_learning_steps: 12800
+        NormalizeRewardWrapper:
+            gamma: 0.99
+            world_size: 32
+            key: intrinsic_rnd
 networks:
     policy_net:
         preprocessing:
