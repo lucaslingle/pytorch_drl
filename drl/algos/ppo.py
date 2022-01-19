@@ -195,13 +195,11 @@ class PPO(Algo):
         with tc.no_grad() if no_grad else ExitStack():
             policy_ratios = tc.exp(mb_new['logprobs'] - mb['logprobs'])
             clipped_policy_ratios = tc.clip(policy_ratios, 1-clip_param, 1+clip_param)
-
             reward_weightings = self._get_reward_weightings()
             advantage_shape = mb['advantages']['extrinsic'].shape
             advantages = tc.zeros(advantage_shape, dtype=tc.float32)
-            for k in self._get_reward_keys():
-                advantages += reward_weightings[k] * mb['advantages'][k]
-
+            for key in self._get_reward_keys():
+                advantages += reward_weightings[key] * mb['advantages'][key]
             surr1 = advantages * policy_ratios
             surr2 = advantages * clipped_policy_ratios
             policy_surrogate_objective = tc.mean(tc.min(surr1, surr2))
@@ -212,9 +210,10 @@ class PPO(Algo):
             }
 
     def _ppo_vf_loss(self, mb_new, mb, clip_param, no_grad):
+        # todo(lucaslingle): support other vf loss weightings
+        #    besides implicit mse loss weighting used here.
         with tc.no_grad() if no_grad else ExitStack():
             vf_loss = tc.tensor(0.0)
-            vf_clipfrac = tc.tensor(0.0)
             vf_loss_criterion = get_loss(self._config['algo']['vf_loss_cls'])
             vf_loss_clipping = self._config['algo']['vf_loss_clipping']
             reward_weightings = self._get_reward_weightings()
@@ -235,8 +234,6 @@ class PPO(Algo):
                         input=vpreds_new, target=tdlam_rets))
                 weight = reward_weightings[key]
                 vf_loss += (weight ** 2) * vf_loss_for_rew
-                # todo(lucaslingle): support other vf loss weightings
-                #    besides implicit mse loss weighting used here.
             return {
                 'vf_loss': vf_loss
             }
@@ -298,17 +295,16 @@ class PPO(Algo):
         return policy_losses, value_losses
 
     def _optimize_losses(self, net, optimizer, losses, retain_graph, use_pcgrad):
+        optimizer.zero_grad()
         if not use_pcgrad:
-            optimizer.zero_grad()
             losses['composite_loss'].backward(retain_graph=retain_graph)
-            optimizer.step()
         else:
             apply_pcgrad(
                 network=net,
                 optimizer=optimizer,
                 task_losses=losses,
                 normalize=False)
-            optimizer.step()
+        optimizer.step()
 
     def training_loop(self):
         world_size = self._config['distributed']['world_size']
