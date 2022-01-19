@@ -207,13 +207,13 @@ class PPO(Algo):
                 'clipfrac': clipfrac
             }
 
+
     def _ppo_vf_loss(self, mb_new, mb, clip_param, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
-            algo_config = self._config['algo']
-            vf_loss_criterion = get_loss(algo_config['vf_loss_cls'])
-            vf_loss_clipping = algo_config['vf_loss_clipping']
-            vf_loss_simple_weighting = algo_config['vf_loss_simple_weighting']
             vf_loss = tc.tensor(0.0)
+            vf_loss_criterion = get_loss(self._config['algo']['vf_loss_cls'])
+            vf_loss_clipping = self._config['algo']['vf_loss_clipping']
+            vf_simple_weighting = self._config['algo']['vf_simple_weighting']
             reward_weightings = self._get_reward_weightings()
             for key in self._get_reward_keys():
                 tdlam_rets = mb['td_lambda_returns'][key]
@@ -230,10 +230,8 @@ class PPO(Algo):
                 else:
                     vf_loss_for_rew = tc.mean(vf_loss_criterion(
                         input=vpreds_new, target=tdlam_rets))
-                if vf_loss_simple_weighting:
-                    vf_loss += vf_loss_for_rew
-                else:
-                    vf_loss += (reward_weightings[key] ** 2) * vf_loss_for_rew
+                weight = 1. if vf_simple_weighting else reward_weightings[key]
+                vf_loss += (weight ** 2) * vf_loss_for_rew
             return {
                 'vf_loss': vf_loss
             }
