@@ -153,7 +153,8 @@ class PPO(Algo):
                 lam=self._config['algo']['gae_lambda'][k],
                 rewards=trajectory['rewards'][k],
                 vpreds=trajectory['vpreds'][k],
-                dones=trajectory['dones'])
+                dones=trajectory['dones'],
+                use_dones=self._config['algo'][k])
             td_lambda_returns[k] = advantages[k] + trajectory['vpreds'][k]
         trajectory.update({
             'advantages': advantages,

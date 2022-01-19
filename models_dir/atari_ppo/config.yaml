@@ -20,6 +20,8 @@ algo:
     gae_extra_steps: 0
     discount_gamma:
         extrinsic: 0.99
+    use_dones:
+        extrinsic: True
     standardize_adv: True
     use_pcgrad: False
     stats_memory_len: 100
