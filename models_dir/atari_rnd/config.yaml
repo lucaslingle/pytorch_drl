@@ -15,7 +15,7 @@ algo:
     vf_loss_coef: 1.0
     vf_loss_cls: MSELoss
     vf_loss_clipping: False
-    vf_simple_weighting: True  # weight all vf losses same; used by Burda 2018.
+    vf_simple_weighting: True  # Burda 2018 src code weights all vf losses same
     gae_lambda:
         extrinsic: 0.95
         intrinsic_rnd: 0.95
@@ -37,9 +37,9 @@ algo:
     max_steps: 500000000        # 50M
 env:
     wrappers:
+        TimeLimitWrapper: {max_episode_steps: 18000}
         StickyActionsWrapper: {stick_prob: 0.25}
         MaxAndSkipWrapper: {num_skip: 4, apply_max: true}
-        TimeLimitWrapper: {max_episode_steps: 18000}
         ResizeWrapper: {target_height: 84, target_width: 84, use_grayscale: True}
         ActionResetWrapper: {action_reset_sequence: [1, 2]}
         ClipRewardWrapper: {low: -1.0, high: 1.0}
