@@ -34,7 +34,7 @@ algo:
     stats_memory_len: 100
     checkpoint_frequency: 100
     non_learning_steps: 409600  # RNDWrapper nonlearning steps * world_size
-    max_steps: 500000000        # 50M
+    max_steps: 500000000        # 0.5B
 env:
     wrappers:
         TimeLimitWrapper: {max_episode_steps: 18000}
