@@ -91,7 +91,8 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             rnd_optimizer_cls_name: str,
             rnd_optimizer_args: Dict[str, Any],
             world_size: int,
-            widening: int
+            widening: int,
+            non_learning_steps: int
     ):
         super().__init__(env)
         self._data_shape = (84, 84, 4)
@@ -104,6 +105,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             model=self._student_net,
             cls_name=rnd_optimizer_cls_name,
             cls_args=rnd_optimizer_args)
+        self._non_learning_steps = non_learning_steps
         self._reward_name = 'intrinsic_rnd'
         self._reward_spec = self._get_reward_spec()
         self._run_checks()
@@ -173,11 +175,12 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         return obs, rewards_dict, done, info
 
     def learn(self, obs_batch, **kwargs):
-        normalized = self._synced_normalizer(obs_batch)
-        y, yhat = self._teacher_net(normalized), self._student_net(normalized)
-        loss = tc.square(y-yhat).sum(dim=-1).mean(dim=0)
-        loss.backward()
-        self._optimizer.step()
-        self._optimizer.zero_grad()
+        if self._synced_normalizer.steps >= self._non_learning_steps:
+            normalized = self._synced_normalizer(obs_batch)
+            y, yhat = self._teacher_net(normalized), self._student_net(normalized)
+            loss = tc.square(y-yhat).sum(dim=-1).mean(dim=0)
+            loss.backward()
+            self._optimizer.step()
+            self._optimizer.zero_grad()
         self._sync_normalizers_global()
         self._sync_normalizers_local()

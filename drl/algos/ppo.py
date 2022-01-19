@@ -193,19 +193,19 @@ class PPO(Algo):
 
     def _ppo_policy_surrogate_objective(self, mb_new, mb, clip_param, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
-            policy_surrogate_objective = tc.tensor(0.0)
             policy_ratios = tc.exp(mb_new['logprobs'] - mb['logprobs'])
-            clipped_policy_ratios = tc.clip(
-                policy_ratios, 1-clip_param, 1+clip_param)
+            clipped_policy_ratios = tc.clip(policy_ratios, 1-clip_param, 1+clip_param)
+
             reward_weightings = self._get_reward_weightings()
-            for key in self._get_reward_keys():
-                surr1 = mb['advantages'][key] * policy_ratios
-                surr2 = mb['advantages'][key] * clipped_policy_ratios
-                pol_surr_for_rew = tc.mean(tc.min(surr1, surr2))
-                if key == 'extrinsic':
-                    clipfrac = tc.mean(tc.greater(surr1, surr2).float())
-                weight = reward_weightings[key]
-                policy_surrogate_objective += weight * pol_surr_for_rew
+            advantage_shape = mb['advantages']['extrinsic'].shape
+            advantages = tc.zeros(advantage_shape, dtype=tc.float32)
+            for k in self._get_reward_keys():
+                advantages += reward_weightings[k] * mb['advantages'][k]
+
+            surr1 = advantages * policy_ratios
+            surr2 = advantages * clipped_policy_ratios
+            policy_surrogate_objective = tc.mean(tc.min(surr1, surr2))
+            clipfrac = tc.mean(tc.greater(surr1, surr2).float())
             return {
                 'policy_surrogate_objective': policy_surrogate_objective,
                 'clipfrac': clipfrac
@@ -230,8 +230,6 @@ class PPO(Algo):
                     vsurr2 = vf_loss_criterion(
                         input=vpreds_new_clipped, target=tdlam_rets)
                     vf_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
-                    if key == 'extrinsic':
-                        vf_clipfrac = tc.mean(tc.less(vsurr1, vsurr2).float())
                 else:
                     vf_loss_for_rew = tc.mean(vf_loss_criterion(
                         input=vpreds_new, target=tdlam_rets))
@@ -240,8 +238,7 @@ class PPO(Algo):
                 # todo(lucaslingle): support other vf loss weightings
                 #    besides implicit mse loss weighting used here.
             return {
-                'vf_loss': vf_loss,
-                'vf_clipfrac': vf_clipfrac
+                'vf_loss': vf_loss
             }
 
     def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef, no_grad):
@@ -273,8 +270,7 @@ class PPO(Algo):
                 'value_loss': value_loss,
                 'composite_loss': composite_loss,
                 'meanent': entropy_quantities['meanent'],
-                'clipfrac': policy_quantities['clipfrac'],
-                'vf_clipfrac': value_quantities['vf_clipfrac']
+                'clipfrac': policy_quantities['clipfrac']
             }
 
     def _pcgrad_checks(self):
