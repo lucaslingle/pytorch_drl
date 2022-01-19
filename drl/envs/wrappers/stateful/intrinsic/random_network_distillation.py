@@ -163,7 +163,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         if self._unsynced_normalizer.steps < self._synced_normalizer.steps:
             self._sync_normalizers_local()
         obs, rew, done, info = self.env.step(ac)
-        obs = tc.tensor(obs).float()[:, :, -1]
+        obs = tc.tensor(obs).float()[:, :, -1:]
         normalized = self._synced_normalizer(obs.unsqueeze(0))
         _ = self._unsynced_normalizer.update(obs)
         y, yhat = self._teacher_net(normalized), self._student_net(normalized)
