@@ -241,27 +241,20 @@ class PPO(Algo):
     def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
             mb_new = self._annotate(mb, policy_net, value_net, no_grad=no_grad)
-
             entropy_quantities = self._ppo_policy_entropy_bonus(
                 mb_new=mb_new, ent_coef=ent_coef, no_grad=no_grad)
-
             policy_quantities = self._ppo_policy_surrogate_objective(
                 mb_new=mb_new, mb=mb, clip_param=clip_param, no_grad=no_grad)
-
             value_quantities = self._ppo_vf_loss(
                 mb_new=mb_new, mb=mb, clip_param=clip_param, no_grad=no_grad)
-
             policy_objective = policy_quantities['policy_surrogate_objective']
             policy_objective += entropy_quantities['policy_entropy_bonus']
             policy_loss = -policy_objective
-
             value_loss = value_quantities['vf_loss']
-
             separate_value_net = value_net is not None
             vf_loss_coef = self._config['algo']['vf_loss_coef']
             vf_weight = 1. if separate_value_net else vf_loss_coef
             composite_loss = policy_loss + vf_weight * value_loss
-
             return {
                 'policy_loss': policy_loss,
                 'value_loss': value_loss,
