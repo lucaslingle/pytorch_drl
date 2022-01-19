@@ -391,7 +391,6 @@ class PPO(Algo):
                         tag=f"metadata/{name}",
                         scalar_value=self._metadata_acc.mean(name),
                         global_step=global_step)
-                self._writer.flush()
 
                 if (global_step // seg_len) % checkpoint_frequency == 0:
                     self._save_checkpoints(
