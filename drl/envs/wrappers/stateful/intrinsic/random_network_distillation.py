@@ -95,7 +95,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             non_learning_steps: int
     ):
         super().__init__(env)
-        self._data_shape = (84, 84, 4)
+        self._data_shape = (84, 84, 1)
         self._world_size = world_size
         self._synced_normalizer = Normalizer(self._data_shape, -5, 5)
         self._unsynced_normalizer = Normalizer(self._data_shape, -5, 5)
@@ -117,7 +117,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
     def _run_checks(self):
         space = self.env.observation_space
         cond1 = str(space.dtype) == 'float32'
-        cond2 = space.shape == self._data_shape
+        cond2 = space.shape[0:2] == self._data_shape[0:2]
         if not cond1:
             msg = "Attempted to wrap env with non-float32 obs dtype."
             raise TypeError(msg)
@@ -163,7 +163,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         if self._unsynced_normalizer.steps < self._synced_normalizer.steps:
             self._sync_normalizers_local()
         obs, rew, done, info = self.env.step(ac)
-        obs = tc.tensor(obs).float()
+        obs = tc.tensor(obs).float()[:, :, -1]
         normalized = self._synced_normalizer(obs.unsqueeze(0))
         _ = self._unsynced_normalizer.update(obs)
         y, yhat = self._teacher_net(normalized), self._student_net(normalized)

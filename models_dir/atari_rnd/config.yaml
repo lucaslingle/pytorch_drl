@@ -1,0 +1,65 @@
+distributed:
+    backend: gloo
+    world_size: 32
+    master_addr: localhost
+    master_port: '12345'
+algo:
+    cls_name: PPO
+    seg_len: 256
+    opt_epochs: 4
+    learner_batch_size: 64
+    clip_param_init: 0.2
+    clip_param_final: 0.0
+    ent_coef_init: 0.01
+    ent_coef_final: 0.01
+    vf_loss_coef: 1.0
+    vf_loss_cls: MSELoss
+    vf_loss_clipping: False
+    gae_lambda:
+        extrinsic: 0.95
+        intrinsic_rnd: 0.95
+    gae_extra_steps: 0
+    discount_gamma:
+        extrinsic: 0.999
+        intrinsic_rnd: 0.99
+    use_dones:
+        extrinsic: True
+        intrinsic_rnd: False
+    standardize_adv: True
+    use_pcgrad: False
+    stats_memory_len: 100
+    checkpoint_frequency: 100
+    max_steps: 10000000
+env:
+    wrappers:
+        AtariWrapper: {} # todo: make configurable AtariWrapper without noops
+        DeepmindWrapper: {frame_stack: True, episodic_life: False, lazy: False}
+        # todo: make sticky action wrapper
+networks:
+    policy_net:
+        preprocessing:
+            ToChannelMajor: {}
+        architecture:
+            cls_name: NatureCNN
+            cls_args: {img_channels: 4, ortho_init: False}
+        predictors:
+            policy:
+                cls_name: LinearCategoricalPolicyHead
+                cls_args: {num_features: 512, ortho_init: False}
+            value_extrinsic:
+                cls_name: LinearValueHead
+                cls_args: {num_features: 512, ortho_init: False}
+        optimizer:
+            cls_name: Adam
+            cls_args: {lr: 0.001, betas: [0.90, 0.999], eps: 0.00001}
+        scheduler:
+            cls_name: OneCycleLR
+            cls_args:
+                max_lr: 0.001
+                total_steps: 4883
+                pct_start: 0.0
+                anneal_strategy: linear
+                cycle_momentum: False
+                div_factor: 1.0
+    value_net:
+        use_shared_architecture: True
