@@ -15,7 +15,7 @@ algo:
     vf_loss_coef: 1.0
     vf_loss_cls: MSELoss
     vf_loss_clipping: False
-    vf_simple_weighting: True
+    vf_simple_weighting: True  # weight all vf losses same; used by Burda 2018.
     gae_lambda:
         extrinsic: 0.95
         intrinsic_rnd: 0.95
@@ -33,10 +33,11 @@ algo:
     use_pcgrad: False
     stats_memory_len: 100
     checkpoint_frequency: 100
-    non_learning_steps: 12800
-    max_steps: 500000000
+    non_learning_steps: 409600  # RNDWrapper nonlearning steps * world_size
+    max_steps: 500000000        # 50M
 env:
     wrappers:
+        StickyActionsWrapper: {stick_prob: 0.25}
         MaxAndSkipWrapper: {num_skip: 4, apply_max: true}
         TimeLimitWrapper: {max_episode_steps: 18000}
         ResizeWrapper: {target_height: 84, target_width: 84, use_grayscale: True}
@@ -44,7 +45,6 @@ env:
         ClipRewardWrapper: {low: -1.0, high: 1.0}
         ScaleObservationsWrapper: {scale_factor: 0.00392156862745098}  # 1/255
         FrameStackWrapper: {num_stack: 4, lazy: False}
-        # todo: make sticky action wrapper
         RandomNetworkDistillationWrapper:
             rnd_optimizer_cls_name: Adam
             rnd_optimizer_args: {lr: 0.0001, eps: 0.00001}
