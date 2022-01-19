@@ -26,6 +26,7 @@ algo:
     use_pcgrad: False
     stats_memory_len: 100
     checkpoint_frequency: 100
+    non_learning_steps: 0
     max_steps: 10000000
 env:
     wrappers:

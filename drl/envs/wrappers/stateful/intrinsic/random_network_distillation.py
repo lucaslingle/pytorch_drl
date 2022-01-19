@@ -174,9 +174,17 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             rewards_dict.update({'extrinsic_raw': rew, 'extrinsic': rew})
         return obs, rewards_dict, done, info
 
-    def learn(self, obs_batch, **kwargs):
+    def _random_drop(self, obs_batch):
+        keepfrac = min(self._world_size / 32, 1)
+        keepnum = int(keepfrac * obs_batch.shape[0])
+        idxs = np.random.permutation(obs_batch.shape[0])
+        return obs_batch[idxs][0:keepnum]
+
+    def learn(self, obs_batch, apply_dropping=True, **kwargs):
         if self._synced_normalizer.steps >= self._non_learning_steps:
             self._optimizer.zero_grad()
+            if apply_dropping:
+                obs_batch = self._random_drop(obs_batch)
             normalized = self._synced_normalizer(obs_batch)
             y, yhat = self._teacher_net(normalized), self._student_net(normalized)
             loss = tc.square(y-yhat).sum(dim=-1).mean(dim=0)

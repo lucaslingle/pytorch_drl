@@ -5,13 +5,13 @@ distributed:
     master_port: '12345'
 algo:
     cls_name: PPO
-    seg_len: 256
+    seg_len: 128
     opt_epochs: 4
-    learner_batch_size: 64
-    clip_param_init: 0.2
-    clip_param_final: 0.0
-    ent_coef_init: 0.01
-    ent_coef_final: 0.01
+    learner_batch_size: 32
+    clip_param_init: 0.1
+    clip_param_final: 0.1
+    ent_coef_init: 0.001
+    ent_coef_final: 0.001
     vf_loss_coef: 1.0
     vf_loss_cls: MSELoss
     vf_loss_clipping: False
@@ -26,40 +26,52 @@ algo:
         extrinsic: True
         intrinsic_rnd: False
     standardize_adv: True
+    reward_weights:
+        extrinsic: 2.0
+        intrinsic_rnd: 1.0
     use_pcgrad: False
     stats_memory_len: 100
     checkpoint_frequency: 100
-    max_steps: 10000000
+    non_learning_steps: 12800
+    max_steps: 500000000
 env:
     wrappers:
-        AtariWrapper: {} # todo: make configurable AtariWrapper without noops
-        DeepmindWrapper: {frame_stack: True, episodic_life: False, lazy: False}
+        MaxAndSkipWrapper: {num_skip: 4, apply_max: true}
+        TimeLimitWrapper: {max_episode_steps: 18000}
+        ResizeWrapper: {target_height: 84, target_width: 84, use_grayscale: True}
+        ActionResetWrapper: {action_reset_sequence: [1, 2]}
+        ClipRewardWrapper: {low: -1.0, high: 1.0}
+        ScaleObservationsWrapper: {scale_factor: 0.00392156862745098}  # 1/255
+        FrameStackWrapper: {num_stack: 4, lazy: False}
         # todo: make sticky action wrapper
+        RandomNetworkDistillationWrapper:
+            rnd_optimizer_cls_name: Adam
+            rnd_optimizer_args: {lr: 0.0001, eps: 0.00001}
+            world_size: 32
+            widening: 1
+            non_learning_steps: 12800
 networks:
     policy_net:
         preprocessing:
             ToChannelMajor: {}
         architecture:
             cls_name: NatureCNN
-            cls_args: {img_channels: 4, ortho_init: False}
+            cls_args: {img_channels: 4, ortho_init: True}
         predictors:
             policy:
                 cls_name: LinearCategoricalPolicyHead
-                cls_args: {num_features: 512, ortho_init: False}
+                cls_args: {num_features: 512, ortho_init: True}
             value_extrinsic:
                 cls_name: LinearValueHead
-                cls_args: {num_features: 512, ortho_init: False}
+                cls_args: {num_features: 512, ortho_init: True}
+            value_intrinsic_rnd:
+                cls_name: LinearValueHead
+                cls_args: {num_features: 512, ortho_init: True}
         optimizer:
             cls_name: Adam
-            cls_args: {lr: 0.001, betas: [0.90, 0.999], eps: 0.00001}
+            cls_args: {lr: 0.0001, eps: 0.00001}
         scheduler:
-            cls_name: OneCycleLR
-            cls_args:
-                max_lr: 0.001
-                total_steps: 4883
-                pct_start: 0.0
-                anneal_strategy: linear
-                cycle_momentum: False
-                div_factor: 1.0
+            cls_name: None
+            cls_args: {}
     value_net:
         use_shared_architecture: True

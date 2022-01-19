@@ -309,6 +309,7 @@ class PPO(Algo):
         value_scheduler = self._learning_system.get('value_scheduler')
         clip_param_annealer = self._learning_system.get('clip_param_annealer')
         ent_coef_annealer = self._learning_system.get('ent_coef_annealer')
+        global_step = self._learning_system.get('global_step')
 
         algo_config = self._config.get('algo')
         max_steps = algo_config.get('max_steps')
@@ -317,18 +318,19 @@ class PPO(Algo):
         batch_size = algo_config.get('learner_batch_size')
         checkpoint_frequency = algo_config.get('checkpoint_frequency')
         use_pcgrad = algo_config.get('use_pcgrad')
+        non_learning_steps = algo_config.get('non_learning_steps')
         if use_pcgrad:
             self._pcgrad_checks()
         separate_value_net = value_net is not None
 
-        while self._learning_system.get('global_step') < max_steps:
+        while global_step < max_steps:
             # generate trajectory.
             trajectory = self._trajectory_mgr.generate()
             metadata = trajectory.pop('metadata')
             trajectory = self._annotate(
                 trajectory, policy_net, value_net, no_grad=True)
             trajectory = self._credit_assignment(trajectory)
-            self._learning_system['global_step'] += seg_len * world_size
+            global_step += seg_len * world_size
 
             # update policy.
             for opt_epoch in range(opt_epochs):
@@ -336,6 +338,9 @@ class PPO(Algo):
                 for i in range(0, seg_len, batch_size):
                     mb_indices = indices[i:i+batch_size]
                     mb = self._slice_minibatch(trajectory, mb_indices)
+                    update_trainable_wrappers(env, mb)
+                    if global_step < non_learning_steps:
+                        continue
                     losses = self._compute_losses(
                         mb=mb, policy_net=policy_net, value_net=value_net,
                         ent_coef=ent_coef_annealer.value,
@@ -353,7 +358,6 @@ class PPO(Algo):
                             net=value_net, optimizer=value_optimizer,
                             losses=value_losses, retain_graph=False,
                             use_pcgrad=use_pcgrad)
-                    update_trainable_wrappers(env, mb)
 
                 metrics = self._compute_losses(
                     mb=trajectory, policy_net=policy_net, value_net=value_net,
@@ -368,7 +372,7 @@ class PPO(Algo):
                         self._writer.add_scalar(
                             tag=f"epoch_{opt_epoch}/{name}",
                             scalar_value=global_metrics[name],
-                            global_step=self._learning_system['global_step'])
+                            global_step=global_step)
 
             if policy_scheduler:
                 policy_scheduler.step()
@@ -386,7 +390,7 @@ class PPO(Algo):
                     self._writer.add_scalar(
                         tag=f"metadata/{name}",
                         scalar_value=self._metadata_acc.mean(name),
-                        global_step=self._learning_system['global_step'])
+                        global_step=global_step)
 
                 global_step = self._learning_system['global_step']
                 if (global_step // seg_len) % checkpoint_frequency == 0:
