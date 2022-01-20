@@ -84,7 +84,7 @@ class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
             rewards: Torch tensor of rewards at each timestep,
                 with shape [seg_len + extra_steps].
             qpreds: Torch tensor of action-value predictions at each timestep,
-                with shape [seg_len + extra_steps +1].
+                with shape [seg_len + extra_steps + 1].
             dones: Torch tensor of done signals at each timestep,
                 with shape [seg_len + extra_steps].
 
