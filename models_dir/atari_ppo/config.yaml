@@ -71,5 +71,5 @@ networks:
                 anneal_strategy: linear
                 cycle_momentum: False
                 div_factor: 1.0
-    value_net:
+    value:
         use_shared_architecture: True
