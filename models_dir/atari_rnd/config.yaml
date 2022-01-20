@@ -54,6 +54,10 @@ env:
                 world_size: 32
                 widening: 1
                 non_learning_steps: 12800
+            ClipRewardWrapper:
+                low: -5.0
+                high: 5.0
+                key: intrinsic_rnd
             NormalizeRewardWrapper:
                 gamma: 0.99
                 world_size: 32
