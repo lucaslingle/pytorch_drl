@@ -16,13 +16,11 @@ algo:
     vf_loss_cls: MSELoss
     vf_loss_clipping: False
     vf_simple_weighting: True
-    gae_lambda:
-        extrinsic: 0.95
-    gae_extra_steps: 0
-    discount_gamma:
-        extrinsic: 0.99
-    use_dones:
-        extrinsic: True
+    credit_assignment_spec:
+        extrinsic:
+            cls_name: GAE
+            cls_args: {lambda_: 0.95, gamma: 0.99, use_dones: True}
+    extra_steps: 0
     standardize_adv: True
     use_pcgrad: False
     stats_memory_len: 100
