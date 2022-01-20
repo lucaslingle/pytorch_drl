@@ -45,6 +45,7 @@ class PPO(Algo):
             checkpoint_frequency: int,
             non_learning_steps: int,
             max_steps: int,
+            global_step: int,
             env: Union[gym.core.Env, Wrapper],
             policy_net: Union[Agent, DDP],
             policy_optimizer: tc.optim.Optimizer,
@@ -53,7 +54,8 @@ class PPO(Algo):
             value_optimizer: Optional[tc.optim.Optimizer],
             value_scheduler: Optional[tc.optim.lr_scheduler._LRScheduler],
             log_dir: str,
-            checkpoint_dir: str
+            checkpoint_dir: str,
+            media_dir: str
     ):
         """
         Args:
@@ -90,6 +92,7 @@ class PPO(Algo):
             non_learning_steps: Number of global steps to skip agent learning.
                 Useful in conjunction with wrappers that maintain rolling statistics.
             max_steps: Maximum number of global steps.
+            global_step: Global step of learning so far.
             env: Environment instance or wrapped environment.
             policy_net: Agent instance or DDP-wrapped Agent instance.
                 Must have 'policy' as a prediction key.
@@ -104,8 +107,9 @@ class PPO(Algo):
                 Required if value_net is not None.
             value_scheduler: Optional learning rate scheduler for
                 value_optimizer.
-            log_dir: Directory for tensorboard logs.
             checkpoint_dir: Directory for checkpoints.
+            log_dir: Directory for tensorboard logs.
+            media_dir: Directory for video.
         """
         super().__init__(rank, config)
         self._seg_len = seg_len
@@ -129,6 +133,7 @@ class PPO(Algo):
         self._non_learning_steps = non_learning_steps
         self._max_steps = max_steps
 
+        self._global_step = global_step
         self._env = env
         self._policy_net = policy_net
         self._policy_optimizer = policy_optimizer

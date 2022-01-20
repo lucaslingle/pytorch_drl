@@ -46,19 +46,20 @@ env:
                 frame_stack: True
                 lazy: False
 networks:
-    policy_net:
-        preprocessing:
-            ToChannelMajor: {}
-        architecture:
-            cls_name: NatureCNN
-            cls_args: {img_channels: 4, ortho_init: False}
-        predictors:
-            policy:
-                cls_name: LinearCategoricalPolicyHead
-                cls_args: {num_features: 512, ortho_init: False}
-            value_extrinsic:
-                cls_name: LinearValueHead
-                cls_args: {num_features: 512, ortho_init: False}
+    policy:
+        net:
+            preprocessing:
+                ToChannelMajor: {}
+            architecture:
+                cls_name: NatureCNN
+                cls_args: {img_channels: 4, ortho_init: False}
+            predictors:
+                policy:
+                    cls_name: LinearCategoricalPolicyHead
+                    cls_args: {num_features: 512, ortho_init: False}
+                value_extrinsic:
+                    cls_name: LinearValueHead
+                    cls_args: {num_features: 512, ortho_init: False}
         optimizer:
             cls_name: Adam
             cls_args: {lr: 0.001, betas: [0.90, 0.999], eps: 0.00001}
