@@ -1,8 +1,11 @@
+from typing import Mapping, Tuple, Any, Union, Optional
 from contextlib import ExitStack
 
 import torch as tc
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
+import gym
 
 from drl.algos.abstract import Algo
 from drl.algos.common import (
@@ -10,24 +13,140 @@ from drl.algos.common import (
     get_loss, global_means, global_gathers,
     update_trainable_wrappers, apply_pcgrad, pretty_print
 )
+from drl.envs.wrappers import Wrapper
+from drl.agents.integration import Agent
+from drl.utils.configuration import ConfigParser
 
 
 class PPO(Algo):
     # PPO speed todos:
     #    after reproducability done, add support for vectorized environment.
     #    test speed of vectorized vs non-vectorized environments.
-    def __init__(self, rank, config):
+    def __init__(
+            self,
+            rank: int,
+            config: ConfigParser,
+            seg_len: int,
+            opt_epochs: int,
+            learner_batch_size: int,
+            clip_param_init: float,
+            clip_param_final: float,
+            ent_coef_init: float,
+            ent_coef_final: float,
+            vf_loss_cls: str,
+            vf_loss_coef: float,
+            vf_loss_clipping: bool,
+            vf_simple_weighting: bool,
+            credit_assignment_spec: Mapping[str, Tuple[str, Mapping[str, Any]]],
+            extra_steps: int,
+            standardize_adv: bool,
+            use_pcgrad: bool,
+            stats_memory_len: int,
+            checkpoint_frequency: int,
+            non_learning_steps: int,
+            max_steps: int,
+            env: Union[gym.core.Env, Wrapper],
+            policy_net: Union[Agent, DDP],
+            policy_optimizer: tc.optim.Optimizer,
+            policy_scheduler: Optional[tc.optim.lr_scheduler._LRScheduler],
+            value_net: Optional[Union[Agent, DDP]],
+            value_optimizer: Optional[tc.optim.Optimizer],
+            value_scheduler: Optional[tc.optim.lr_scheduler._LRScheduler],
+            log_dir: str,
+            checkpoint_dir: str
+    ):
+        """
+        Args:
+            rank: Process rank.
+            config: ConfigParser.
+            seg_len: Trajectory segment length.
+            opt_epochs: Optimization epochs per policy improvement phase in PPO.
+            learner_batch_size: Batch size per learner process.
+            clip_param_init: Initial PPO clip parameter.
+            clip_param_final: Final PPO clip parameter, to which clip_param_init
+                will be linearly annealed.
+            ent_coef_init: Initial entropy bonus coefficient.
+            ent_coef_final: Final entropy bonus coefficient, to which
+                ent_coef_init will be linearly annealed.
+            vf_loss_cls: Value function loss class name. Name must match
+                a derived class of _Loss in torch.nn.modules.loss.
+                The most useful classes are MSELoss and SmoothL1Loss.
+            vf_loss_coef: Value function loss coefficient.
+                Ignored if value network is separate from policy network.
+            vf_loss_clipping: If true, use pessimistic value function loss.
+            vf_simple_weighting: If true, use equal weighting of all value
+                function losses. Ignored if env.reward_spec.keys() does not
+                contain any intrinsic rewards.
+            credit_assignment_spec: Mapping from reward names to
+                advantage estimator classes and their arguments.
+            extra_steps: Extra steps required for credit assignment.
+                Should be set to n-1 if using n-step return-based advantage
+                estimation.
+            standardize_adv: Standardize advantages per trajectory segment?
+            use_pcgrad: Use the PCGrad algorithm from Yu et al., 2020?
+                Only allowed if policy and value architecture is shared.
+            stats_memory_len: Window size for moving average of episode metadata.
+            checkpoint_frequency: Checkpoint frequency, measured in rollouts.
+            non_learning_steps: Number of global steps to skip agent learning.
+                Useful in conjunction with wrappers that maintain rolling statistics.
+            max_steps: Maximum number of global steps.
+            env: Environment instance or wrapped environment.
+            policy_net: Agent instance or DDP-wrapped Agent instance.
+                Must have 'policy' as a prediction key.
+            policy_optimizer: Optimizer for policy_net.
+            policy_scheduler: Optional learning rate scheduler for
+                policy_optimizer.
+            value_net: Optional Agent instance, DDP-wrapped Agent instance.
+                If not None, must have a 'value_{reward_name}' prediction key
+                for each reward_name in env.reward_spec.keys()
+                other than 'extrinsic_raw'.
+            value_optimizer: Optional Optimizer for value_net.
+                Required if value_net is not None.
+            value_scheduler: Optional learning rate scheduler for
+                value_optimizer.
+            log_dir: Directory for tensorboard logs.
+            checkpoint_dir: Directory for checkpoints.
+        """
         super().__init__(rank, config)
-        self._learning_system = self._get_learning_system()
+        self._seg_len = seg_len
+        self._opt_epochs = opt_epochs
+        self._learner_batch_size = learner_batch_size
+        self._clip_param_init = clip_param_init
+        self._clip_param_final = clip_param_final
+        self._ent_coef_init = ent_coef_init
+        self._ent_coef_final = ent_coef_final
+        self._vf_loss_criterion = get_loss(vf_loss_cls)
+        self._vf_loss_coef = vf_loss_coef
+        self._vf_loss_clipping = vf_loss_clipping
+        self._vf_simple_weighting = vf_simple_weighting
+        self._credit_assignment_spec = credit_assignment_spec
+        self._extra_steps = extra_steps
+        self._standardize_adv = standardize_adv
+        self._use_pcgrad = use_pcgrad
+
+        self._stats_memory_len = stats_memory_len
+        self._checkpoint_frequency = checkpoint_frequency
+        self._non_learning_steps = non_learning_steps
+        self._max_steps = max_steps
+
+        self._env = env
+        self._policy_net = policy_net
+        self._policy_optimizer = policy_optimizer
+        self._policy_scheduler = policy_scheduler
+        self._value_net = value_net
+        self._value_optimizer = value_optimizer
+        self._value_scheduler = value_scheduler
+
+        self._log_dir = log_dir
+        self._checkpoint_dir = checkpoint_dir
+
+        #self._learning_system = self._get_learning_system()
         self._trajectory_mgr = TrajectoryManager(
-            env=self._learning_system['env'],
-            policy_net=self._learning_system['policy_net'],
-            seg_len=self._config['algo']['seg_len'],
-            extra_steps=self._config['algo']['gae_extra_steps'])
-        self._metadata_acc = MultiDeque(
-            memory_len=self._config['algo']['stats_memory_len'])
+            env=env, policy_net=policy_net, seg_len=seg_len,
+            extra_steps=extra_steps)
+        self._metadata_acc = MultiDeque(memory_len=stats_memory_len)
         if self._rank == 0:
-            self._writer = SummaryWriter(self._config.get('log_dir'))
+            self._writer = SummaryWriter(log_dir)
 
     def _get_learning_system(self):
         env_config = self._config.get('env')
