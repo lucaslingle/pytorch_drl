@@ -3,7 +3,7 @@ import drl.envs.wrappers.stateless.atari.constants as acs
 
 
 class AtariWrapper(ws.Wrapper):
-    def __init__(self, env, use_noop, use_sticky_actions, max_episode_frames=None):
+    def __init__(self, env, use_noop=True, use_sticky_actions=False, max_episode_frames=None):
         assert 'NoFrameskip' in env.spec.id
         super().__init__(env)
         self._use_noop = use_noop
