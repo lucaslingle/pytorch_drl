@@ -50,10 +50,10 @@ def get_config(args):
     return config
 
 
-def get_algo(rank, config):
+def get_algo(cls_name):
     module = importlib.import_module('drl.algos')
-    algo = getattr(module, config.get('algo').get('cls_name'))
-    return algo(rank, config)
+    algo_cls = getattr(module, cls_name)
+    return algo_cls
 
 
 def setup(rank, config):
@@ -67,7 +67,7 @@ def setup(rank, config):
 
     learning_system = make_learning_system(rank, config)
     algo_config = config.get('algo')
-    algo_cls = get_algo(rank, config)
+    algo_cls = get_algo(algo_config.get('cls_name'))
     algo = algo_cls(
         rank=rank,
         checkpoint_dir=config.get('checkpoint_dir'),
