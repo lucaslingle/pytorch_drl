@@ -180,13 +180,13 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         idxs = np.random.permutation(obs_batch.shape[0])
         return obs_batch[idxs][0:keepnum]
 
-    def learn(self, obs_batch, apply_dropping=True, **kwargs):
+    def learn(self, observations, apply_dropping=True, **kwargs):
         if self._synced_normalizer.steps >= self._non_learning_steps:
             self._optimizer.zero_grad()
             if apply_dropping:
-                obs_batch = self._random_drop(obs_batch)
-            obs_batch = obs_batch[:, :, :, -1:]
-            normalized = self._synced_normalizer(obs_batch)
+                observations = self._random_drop(observations)
+            observations = observations[:, :, :, -1:]
+            normalized = self._synced_normalizer(observations)
             y, yhat = self._teacher_net(normalized), self._student_net(normalized)
             loss = tc.square(y-yhat).mean(dim=-1).mean(dim=0)
             loss.backward()
