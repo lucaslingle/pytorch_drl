@@ -3,6 +3,7 @@ REWARD_CLIP_LOW = -1.0
 REWARD_CLIP_HIGH = 1.0
 LIVES_FN = lambda env: env.unwrapped.ale.lives()
 NOOP_ACTION = 0
+STICK_PROB = 0.25
 NUM_STACK = 4
 NUM_SKIP = 4
 APPLY_MAX = True

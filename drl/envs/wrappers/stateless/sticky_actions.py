@@ -16,6 +16,3 @@ class StickyActionsWrapper(ActionWrapper):
 
     def reverse_action(self, action):
         raise NotImplementedError
-
-    def step(self, action):
-        return self.env.step(self.action(action))

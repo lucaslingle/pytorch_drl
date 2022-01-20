@@ -38,14 +38,16 @@ algo:
 env:
     wrappers:
         train:
-            TimeLimitWrapper: {max_episode_steps: 18000}
-            StickyActionsWrapper: {stick_prob: 0.25}
-            MaxAndSkipWrapper: {num_skip: 4, apply_max: True}
-            ResizeWrapper: {target_height: 84, target_width: 84, use_grayscale: True}
-            ActionResetWrapper: {action_reset_sequence: [1, 2]}
-            ClipRewardWrapper: {low: -1.0, high: 1.0}
-            ScaleObservationsWrapper: {scale_factor: 0.00392156862745098}  # 1/255
-            FrameStackWrapper: {num_stack: 4, lazy: False}
+            AtariWrapper:
+                use_noop: False
+                use_sticky_actions: True
+                max_episode_frames: 18000
+            DeepmindWrapper:
+                episode_life: False
+                clip_rewards: True
+                scale: True
+                frame_stack: True
+                lazy: False
             RandomNetworkDistillationWrapper:
                 rnd_optimizer_cls_name: Adam
                 rnd_optimizer_args: {lr: 0.0001, eps: 0.00001}
@@ -57,13 +59,16 @@ env:
                 world_size: 32
                 key: intrinsic_rnd
         evaluate:
-            TimeLimitWrapper: {max_episode_steps: 18000}
-            StickyActionsWrapper: {stick_prob: 0.25}
-            MaxAndSkipWrapper: {num_skip: 4, apply_max: True}
-            ResizeWrapper: {target_height: 84, target_width: 84, use_grayscale: True}
-            ActionResetWrapper: {action_reset_sequence: [1, 2]}
-            ScaleObservationsWrapper: {scale_factor: 0.00392156862745098}  # 1/255
-            FrameStackWrapper: {num_stack: 4, lazy: False}
+            AtariWrapper:
+                use_noop: False
+                use_sticky_actions: True
+                max_episode_frames: 18000
+            DeepmindWrapper:
+                episode_life: False
+                clip_rewards: True
+                scale: True
+                frame_stack: True
+                lazy: False
 networks:
     policy_net:
         preprocessing:

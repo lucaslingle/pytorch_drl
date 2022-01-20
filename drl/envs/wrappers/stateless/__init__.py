@@ -11,12 +11,14 @@ from drl.envs.wrappers.stateless.resize import ResizeWrapper
 from drl.envs.wrappers.stateless.scale_observations import ScaleObservationsWrapper
 from drl.envs.wrappers.stateless.time_limit import TimeLimitWrapper
 from drl.envs.wrappers.stateless.to_tensor import ToTensorWrapper
+from drl.envs.wrappers.stateless.reward_to_dict import RewardToDictWrapper
+from drl.envs.wrappers.stateless.sticky_actions import StickyActionsWrapper
 from drl.envs.wrappers.stateless.atari import AtariWrapper, DeepmindWrapper
 
 
 __all__ = [
     "RewardSpec", "Wrapper",
-    "ObservationWrapper", "ActionWrapper", "RewardWrapper"
+    "ObservationWrapper", "ActionWrapper", "RewardWrapper",
     "ActionResetWrapper",
     "ClipRewardWrapper",
     "EpisodicLifeWrapper",
@@ -27,6 +29,8 @@ __all__ = [
     "ScaleObservationsWrapper",
     "TimeLimitWrapper",
     "ToTensorWrapper",
+    "RewardToDictWrapper",
+    "StickyActionsWrapper",
     "AtariWrapper",
     "DeepmindWrapper"
 ]
