@@ -73,7 +73,8 @@ def setup(rank, config):
         checkpoint_dir=config.get('checkpoint_dir'),
         log_dir=config.get('log_dir'),
         media_dir=config.get('media_dir'),
-        **algo_config, **learning_system)
+        **algo_config.get('cls_args'),
+        **learning_system)
     return algo
 
 
