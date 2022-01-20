@@ -65,7 +65,7 @@ env:
                 max_episode_frames: 18000
             DeepmindWrapper:
                 episode_life: False
-                clip_rewards: True
+                clip_rewards: False
                 scale: True
                 frame_stack: True
                 lazy: False

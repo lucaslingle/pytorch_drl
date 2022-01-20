@@ -44,7 +44,8 @@ class DeepmindWrapper(ws.Wrapper):
                 env=env, action_sequence=acs.ACTION_RESET_SEQUENCE)
         if self._clip_rewards:
             env = ws.ClipRewardWrapper(
-                env=env, low=acs.REWARD_CLIP_LOW, high=acs.REWARD_CLIP_HIGH)
+                env=env, low=acs.REWARD_CLIP_LOW, high=acs.REWARD_CLIP_HIGH,
+                key='extrinsic')
         if self._scale:
             env = ws.ScaleObservationsWrapper(
                 env=env, scale_factor=acs.SCALE_FACTOR)

@@ -32,12 +32,17 @@ algo:
 env:
     wrappers:
         train:
-            AtariWrapper: {}
-            DeepmindWrapper: {frame_stack: True, lazy: False}
+            AtariWrapper: {use_noop: True, use_sticky_actions: False}
+            DeepmindWrapper:
+                episode_life: True
+                clip_rewards: True
+                frame_stack: True
+                lazy: False
         evaluate:
-            AtariWrapper: {}
+            AtariWrapper: {use_noop: True, use_sticky_actions: False}
             DeepmindWrapper:
                 episode_life: False
+                clip_rewards: False
                 frame_stack: True
                 lazy: False
 networks:
