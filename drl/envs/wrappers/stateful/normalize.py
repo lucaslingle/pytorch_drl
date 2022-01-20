@@ -20,7 +20,7 @@ class Normalizer(tc.nn.Module):
 
     @steps.setter
     def steps(self, value):
-        self.register_buffer(self._steps, value)
+        self.register_buffer('_steps', value)
 
     @property
     def moment1(self):
