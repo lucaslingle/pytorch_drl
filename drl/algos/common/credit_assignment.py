@@ -74,6 +74,25 @@ class AdvantageEstimator(CreditAssignmentOp, metaclass=abc.ABCMeta):
         """
 
 
+class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def estimate_action_values(self, rewards, qpreds, dones, **kwargs):
+        """
+        Estimate action values.
+
+        Args:
+            rewards: Torch tensor of rewards at each timestep,
+                with shape [seg_len + extra_steps].
+            qpreds: Torch tensor of action-value predictions at each timestep,
+                with shape [seg_len + extra_steps +1].
+            dones: Torch tensor of done signals at each timestep,
+                with shape [seg_len + extra_steps].
+
+        Returns:
+            Torch tensor of action-value estimates with shape [seg_len].
+        """
+
+
 class GAE(AdvantageEstimator):
     """
     Generalized Advantage Estimation (Schulman et al., 2016).
@@ -87,9 +106,9 @@ class GAE(AdvantageEstimator):
         for t in reversed(range(0, self._seg_len + self._extra_steps)):  # T+(n-1)-1, ..., 0
             r_t = rewards[t]
             V_t = vpreds[t]
-            V_tp1 = vpreds[t + 1]
-            A_tp1 = advantages[t + 1]
-            nonterminal_t = (1. - dones[t]) if self._use_dones else 1.
+            V_tp1 = vpreds[t+1]
+            A_tp1 = advantages[t+1]
+            nonterminal_t = (1.-dones[t]) if self._use_dones else 1.
             delta_t = -V_t + r_t + nonterminal_t * self._gamma * V_tp1
             A_t = delta_t + nonterminal_t * self._gamma * self._lambda * A_tp1
             advantages[t] = A_t
@@ -118,3 +137,36 @@ class NStepAdvantageEstimator(AdvantageEstimator):
             V_t = vpreds[t]
             advantages[t] = R_t - V_t
         return advantages
+
+
+class BellmanOptimalityOperator(BellmanOperator):
+    """
+    Bellman optimality operator.
+    """
+    def __init__(self, seg_len, extra_steps, gamma, use_dones, double_q):
+        super().__init__(seg_len, extra_steps, gamma, use_dones)
+        self._double_q = double_q
+
+    def estimate_action_values(self, rewards, qpreds, tgt_qpreds, dones):
+        # r_t + gamma * r_tp1 + ... + gamma^nm1 * r_tpnm1 + gamma^n * Q(s_tpn, a_tpn)
+        # todo: think about this more and add a unit test.
+        #  extra steps equals n-1 for n-step returns.
+        bellman_backups = tc.zeros(self._seg_len, dtype=tc.float32)
+        for t in reversed(range(0, self._seg_len)):  # T-1, ..., 0
+            Qs_tpn_tgt = tgt_qpreds[t+self._extra_steps+1]  # Q[t+(n-1)+1] = Q[t+n]
+            if self._double_q:
+                Qs_tpn = qpreds[t+self._extra_steps+1]  # Q[t+(n-1)+1] = Q[t+n]
+                greedy_a_tpn = tc.argmax(Qs_tpn, dim=-1)
+            else:
+                greedy_a_tpn = tc.argmax(Qs_tpn_tgt, dim=-1)
+            Q_tpn_tgt = tc.gather(
+                input=Qs_tpn_tgt, dim=-1,
+                index=greedy_a_tpn.unsqueeze(-1)
+            ).squeeze(-1)
+            R_t = Q_tpn_tgt
+            for s in reversed(range(0, self._extra_steps+1)):  # ((n-1)+1)-1 = n-1, ..., 0
+                r_tps = rewards[t+s]  # r[t+n-1], ..., r[t+0].
+                nonterminal_tps = (1.-dones[t+s]) if self._use_dones else 1.
+                R_t = r_tps + nonterminal_tps * self._gamma * R_t
+            bellman_backups[t] = R_t
+        return bellman_backups
