@@ -15,7 +15,7 @@ from drl.algos.common import (
 )
 from drl.envs.wrappers import Wrapper
 from drl.agents.integration import Agent
-from drl.utils.configuration import ConfigParser
+from drl.utils.checkpointing import save_checkpoints
 
 
 class PPO(Algo):
@@ -26,7 +26,6 @@ class PPO(Algo):
             self,
             rank: int,
             world_size: int,
-            config: ConfigParser,
             seg_len: int,
             opt_epochs: int,
             learner_batch_size: int,
@@ -56,13 +55,13 @@ class PPO(Algo):
             value_scheduler: Optional[tc.optim.lr_scheduler._LRScheduler],
             log_dir: str,
             checkpoint_dir: str,
-            media_dir: str
+            media_dir: str,
+            reward_weights: Optional[Mapping[str, float]] = None
     ):
         """
         Args:
             rank: Process rank.
             world_size: Total number of processes.
-            config: ConfigParser.
             seg_len: Trajectory segment length.
             opt_epochs: Optimization epochs per policy improvement phase in PPO.
             learner_batch_size: Batch size per learner process.
@@ -112,8 +111,12 @@ class PPO(Algo):
             checkpoint_dir: Directory for checkpoints.
             log_dir: Directory for tensorboard logs.
             media_dir: Directory for video.
+            reward_weights: Optional reward weights mapping,
+                keyed by reward name. Ignored if env.reward_spec.keys()
+                does not contain any intrinsic rewards. Required if it does.
+                Default value is None.
         """
-        super().__init__(rank, config)
+        super().__init__(rank)
         self._world_size = world_size
         self._seg_len = seg_len
         self._opt_epochs = opt_epochs
@@ -131,6 +134,7 @@ class PPO(Algo):
         self._extra_steps = extra_steps
         self._standardize_adv = standardize_adv
         self._use_pcgrad = use_pcgrad
+        self._reward_weights = reward_weights
 
         self._stats_memory_len = stats_memory_len
         self._checkpoint_frequency = checkpoint_frequency
@@ -211,7 +215,7 @@ class PPO(Algo):
                 'entropies': pi.entropy()
             }
             trajectory_new = self._slice_minibatch(
-                trajectory_new, slice(0, self._config['algo']['seg_len']))
+                trajectory_new, slice(0, self._seg_len))
             trajectory_new.update({
                 'rewards': trajectory['rewards'],
                 'dones': trajectory['dones'],
@@ -233,13 +237,13 @@ class PPO(Algo):
             'td_lambda_returns': td_lambda_returns
         })
         trajectory = self._slice_minibatch(
-            trajectory, slice(0, self._config['algo']['seg_len']))
+            trajectory, slice(0, self._seg_len))
         trajectory = self._maybe_standardize_advantages(trajectory)
         return trajectory
 
     @tc.no_grad()
     def _maybe_standardize_advantages(self, trajectory):
-        if self._config['algo']['standardize_adv']:
+        if self._standardize_adv:
             for k in self._get_reward_keys():
                 trajectory['advantages'][k] = self._standardize(
                     trajectory['advantages'][k])
@@ -247,8 +251,8 @@ class PPO(Algo):
 
     def _get_reward_weightings(self):
         reward_weightings = {'extrinsic': 1.0}
-        if 'reward_weights' in self._config['algo']:
-            reward_weightings.update(self._config['algo']['reward_weights'])
+        if self._reward_weights is not None:
+            reward_weightings.update(self._reward_weights)
         assert set(reward_weightings.keys()) == set(self._get_reward_keys())
         return reward_weightings
 
@@ -320,7 +324,7 @@ class PPO(Algo):
             policy_loss = -policy_objective
             value_loss = value_quantities['vf_loss']
             separate_value_net = value_net is not None
-            vf_loss_coef = self._config['algo']['vf_loss_coef']
+            vf_loss_coef = self._vf_loss_coef
             vf_weight = 1. if separate_value_net else vf_loss_coef
             composite_loss = policy_loss + vf_weight * value_loss
             return {
@@ -440,7 +444,8 @@ class PPO(Algo):
                         global_step=self._global_step)
 
                 if self._global_step % self._checkpoint_frequency == 0:
-                    self._save_checkpoints(
+                    save_checkpoints(
+                        checkpoint_dir=self._checkpoint_dir,
                         checkpointables={
                             'policy_net': self._policy_net,
                             'policy_optimizer': self._policy_optimizer,
@@ -450,7 +455,7 @@ class PPO(Algo):
                             'value_scheduler': self._value_scheduler,
                             **self._env.get_checkpointables()
                         },
-                        step=self._global_step)
+                        steps=self._global_step)
 
     def evaluation_loop(self):
         raise NotImplementedError
@@ -478,16 +483,12 @@ class PPO(Algo):
             print(r_tot)
 
 
-class Annealer(tc.nn.Module):
-    def __init__(
-            self, initial_value, final_value, max_steps
-    ):
-        super().__init__()
+class Annealer:
+    def __init__(self, initial_value, final_value, max_steps):
         self._initial_value = initial_value
         self._final_value = final_value
         self._max_steps = max_steps
 
-    @property
     def value(self, global_step):
         frac_done = global_step / self._max_steps
         s = min(max(0., frac_done), 1.)
