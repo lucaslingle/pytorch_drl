@@ -39,6 +39,7 @@ def get_config(args):
         defaults={
             'env.id': args.env_name,
             'seed': args.seed,
+            'mode': args.mode,
             'checkpoint_dir': checkpoint_dir,
             'log_dir': log_dir,
             'media_dir': media_dir

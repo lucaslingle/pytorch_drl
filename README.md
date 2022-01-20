@@ -75,7 +75,7 @@ In this section, we describe the algorithms whose published results we've replic
 | Breakout       |           114.3  |                 274.8 |        424.4 |
 | Enduro         |           350.2  |                 758.3 |              |
 | Pong           |            13.7  |                  20.7 |         19.8 |
-| Qbert          |          7012.1  |               14293.3 |      15157.25 seed 0, 16619.50 seed 1 |
+| Qbert          |          7012.1  |               14293.3 |      16600.8 |
 | Seaquest       |          1218.9  |                1204.5 |              |
 | Space Invaders |           557.3  |                 942.5 |              |
 

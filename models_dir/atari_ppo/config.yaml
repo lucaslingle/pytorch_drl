@@ -31,8 +31,15 @@ algo:
     max_steps: 10000000
 env:
     wrappers:
-        AtariWrapper: {}
-        DeepmindWrapper: {frame_stack: True, lazy: False}
+        train:
+            AtariWrapper: {}
+            DeepmindWrapper: {frame_stack: True, lazy: False}
+        evaluate:
+            AtariWrapper: {}
+            DeepmindWrapper:
+                episode_life: False
+                frame_stack: True
+                lazy: False
 networks:
     policy_net:
         preprocessing:

@@ -36,10 +36,16 @@ class Algo(metaclass=abc.ABCMeta):
             np.random.seed(self.worker_seed % 2 ** 32)
             random.seed(self.worker_seed % 2 ** 32)
 
-    def _get_env(self, env_config):
+    @staticmethod
+    def _get_env(env_config, worker_seed, mode):
         env = gym.make(env_config.get('id'))
-        env.seed(self.worker_seed)
-        env = get_wrappers(env, **env_config.get('wrappers'))
+        env.seed(worker_seed)
+        wrapper_config = env_config.get('wrappers')
+        if mode == 'train':
+            mode_wrappers = wrapper_config.get('train')
+        else:
+            mode_wrappers = wrapper_config.get('evaluate')
+        env = get_wrappers(env, **mode_wrappers)
         return env
 
     @staticmethod
