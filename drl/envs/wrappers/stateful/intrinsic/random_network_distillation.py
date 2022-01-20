@@ -185,6 +185,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             self._optimizer.zero_grad()
             if apply_dropping:
                 obs_batch = self._random_drop(obs_batch)
+            obs_batch = obs_batch[:, :, :, -1:]
             normalized = self._synced_normalizer(obs_batch)
             y, yhat = self._teacher_net(normalized), self._student_net(normalized)
             loss = tc.square(y-yhat).mean(dim=-1).mean(dim=0)
