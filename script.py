@@ -7,7 +7,7 @@ import os
 import torch as tc
 
 from drl.utils.configuration import ConfigParser
-from helpers import make_learning_system
+from drl.utils.launch import make_learning_system
 
 
 def create_argparser():
