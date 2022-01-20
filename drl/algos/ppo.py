@@ -177,7 +177,7 @@ class PPO(Algo):
     def _get_reward_weightings(self):
         reward_weightings = {'extrinsic': 1.0}
         if hasattr(self._config['algo'], 'reward_weightings'):
-            reward_weightings.update(self._config['algo']['reward_weightings'])
+            reward_weightings.update(self._config['algo']['reward_weights'])
         assert set(reward_weightings.keys()) == set(self._get_reward_keys())
         return reward_weightings
 
