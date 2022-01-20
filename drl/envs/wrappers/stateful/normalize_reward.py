@@ -13,6 +13,30 @@ class ReturnAcc(tc.nn.Module):
         self._current_ep_rewards = []
         self._normalizer = Normalizer([], clip_low, clip_high)
 
+    @property
+    def steps(self):
+        return self._normalizer.steps
+
+    @steps.setter
+    def steps(self, value):
+        self._normalizer.steps = value
+
+    @property
+    def moment1(self):
+        return self._normalizer.moment1
+
+    @moment1.setter
+    def moment1(self, tensor):
+        self._normalizer.moment1 = tensor
+
+    @property
+    def moment2(self):
+        return self._normalizer.moment2
+
+    @moment2.setter
+    def moment2(self, tensor):
+        self._normalizer.moment2 = tensor
+
     def update(self, r_t, d_t):
         self._current_ep_rewards.append(r_t)
         if d_t:
