@@ -10,9 +10,9 @@ class Normalizer(tc.nn.Module):
         self._data_shape = data_shape
         self._clip_low = clip_low
         self._clip_high = clip_high
-        self.register_buffers("_steps", tc.tensor(0.))
-        self.register_buffers("_moment1", tc.zeros(data_shape, dtype=tc.float32))
-        self.register_buffers("_moment2", tc.zeros(data_shape, dtype=tc.float32))
+        self.register_buffer("_steps", tc.tensor(0.))
+        self.register_buffer("_moment1", tc.zeros(data_shape, dtype=tc.float32))
+        self.register_buffer("_moment2", tc.zeros(data_shape, dtype=tc.float32))
 
     @property
     def steps(self):

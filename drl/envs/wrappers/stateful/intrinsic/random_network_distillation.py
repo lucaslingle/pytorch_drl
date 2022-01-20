@@ -119,7 +119,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         cond1 = str(space.dtype) == 'float32'
         cond2 = space.shape[0:2] == self._data_shape[0:2]
         if not cond1:
-            msg = "Attempted to wrap env with non-float32 obs dtype."
+            msg = f"Attempted to wrap env with non-float32 obs dtype {space.dtype}."
             raise TypeError(msg)
         if not cond2:
             msg = f"Attempted to wrap env with unsupported shape {space.shape}."
