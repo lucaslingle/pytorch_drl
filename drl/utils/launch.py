@@ -13,17 +13,17 @@ from drl.utils.optimization import get_optimizer, get_scheduler
 from drl.utils.checkpointing import maybe_load_checkpoints
 
 
-def get_process_seed(rank, config):
+def _get_process_seed(rank, config):
     return config['seed'] + 10000 * rank
 
 
-def set_seed(process_seed):
+def _set_seed(process_seed):
     tc.manual_seed(process_seed)
     np.random.seed(process_seed % 2 ** 32)
     random.seed(process_seed % 2 ** 32)
 
 
-def get_env(env_config, process_seed, mode):
+def _get_env(env_config, process_seed, mode):
     env = gym.make(env_config.get('id'))
     env.seed(process_seed)
     wrapper_config = env_config.get('wrappers')
@@ -35,31 +35,45 @@ def get_env(env_config, process_seed, mode):
     return env
 
 
-def get_net(net_config, env, rank):
+def _get_net(net_config, env, rank):
     preprocessing = get_preprocessings(**net_config.get('preprocessing'))
     architecture = get_architecture(**net_config.get('architecture'))
     predictors = get_predictors(rank, env, **net_config.get('predictors'))
     return DDP(Agent(preprocessing, architecture, predictors))
 
 
-def get_opt(opt_config, agent):
+def _get_opt(opt_config, agent):
     optimizer = get_optimizer(model=agent, **opt_config)
     return optimizer
 
 
-def get_sched(sched_config, optimizer):
+def _get_sched(sched_config, optimizer):
     scheduler = get_scheduler(optimizer=optimizer, **sched_config)
     return scheduler
 
 
 def make_learning_system(rank, config):
+    """
+    Provides a simple, flexible, and reproducible launch framework
+        for the drl library.
+
+    For use in conjunction with the configuration files provided in models_dir.
+
+    Args:
+        rank: Process rank.
+        config: drl.utils.ConfigParser instance.
+
+    Returns:
+        Dictionary with environment, networks, optimizers, schedulers,
+        and global step of the learning process thus far.
+    """
     mode = config.get('mode')
 
-    process_seed = get_process_seed(rank, config)
-    set_seed(process_seed)
+    process_seed = _get_process_seed(rank, config)
+    _set_seed(process_seed)
 
     env_config = config.get('env')
-    env = get_env(env_config, process_seed, mode)
+    env = _get_env(env_config, process_seed, mode)
 
     learners_config = config.get('networks')
     learning_system = dict()
@@ -69,15 +83,15 @@ def make_learning_system(rank, config):
             name = f'{prefix}_{suffix}'
             if suffix == 'net':
                 net_config = learner_config.get(suffix)
-                net = get_net(net_config, env, rank)
+                net = _get_net(net_config, env, rank)
                 learning_system[name] = net
             elif suffix == 'optimizer':
                 opt_config = learner_config.get(suffix)
-                opt = get_opt(opt_config, learning_system[f'{prefix}_net'])
+                opt = _get_opt(opt_config, learning_system[f'{prefix}_net'])
                 learning_system[name] = opt
             elif suffix == 'scheduler':
                 sched_config = learner_config.get(suffix)
-                sched = get_sched(
+                sched = _get_sched(
                     sched_config, learning_system[f'{prefix}_optimizer'])
                 learning_system[name] = sched
             elif suffix == 'use_shared_architecture':
