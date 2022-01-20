@@ -6,13 +6,6 @@ class Algo(metaclass=abc.ABCMeta):
         self._rank = rank
 
     @abc.abstractmethod
-    def _get_learning_system(self):
-        """
-        Parse a config file to create the relevant env and networks.
-        """
-        pass
-
-    @abc.abstractmethod
     def _annotate(self, trajectory, no_grad, **kwargs):
         """
         Forward pass through the networks.
