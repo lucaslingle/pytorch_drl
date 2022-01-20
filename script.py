@@ -70,6 +70,7 @@ def setup(rank, config):
     algo_cls = get_algo(algo_config.get('cls_name'))
     algo = algo_cls(
         rank=rank,
+        world_size=distributed_config.get('world_size'),
         checkpoint_dir=config.get('checkpoint_dir'),
         log_dir=config.get('log_dir'),
         media_dir=config.get('media_dir'),
