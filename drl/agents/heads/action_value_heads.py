@@ -79,14 +79,13 @@ class DistributionalCategoricalActionValueHead(
         q_value_logits_flat = self._action_value_head(features)
         q_value_logits = q_value_logits_flat.reshape(
             -1, self._num_actions, self._num_bins)
-        q_value_dists = tc.distributions.Categorical(logits=q_value_logits)
 
         bin_width = (self._vmax - self._vmin) / self._num_bins
         bin_values = self._vmin + bin_width * tc.arange(self._num_bins).float()
         bin_values = bin_values.view(1, 1, self._num_bins)
         q_value_means = (tc.nn.Softmax(dim=-1)(q_value_logits) * bin_values).sum(dim=-1)
         return {
-            "q_value_dists": q_value_dists,
+            "q_value_logits": q_value_logits,
             "q_value_means": q_value_means
         }
 
@@ -100,14 +99,13 @@ class DistributionalIngressActionValueHead(
     def forward(self, features, **kwargs):
         q_value_logits_flat = self._action_value_head(features)
         q_value_logits = q_value_logits_flat.reshape(-1, self._num_bins)
-        q_value_dists = tc.distributions.Categorical(logits=q_value_logits)
 
         bin_width = (self._vmax - self._vmin) / self._num_bins
         bin_values = self._vmin + bin_width * tc.arange(self._num_bins).float()
         bin_values = bin_values.view(1, self._num_bins)
         q_value_means = (tc.nn.Softmax(dim=-1)(q_value_logits) * bin_values).sum(dim=-1)
         return {
-            "q_value_dists": q_value_dists,
+            "q_value_logits": q_value_logits,
             "q_value_means": q_value_means
         }
 
