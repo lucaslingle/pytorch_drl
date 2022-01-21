@@ -57,7 +57,7 @@ networks:
                     cls_name: LinearCategoricalPolicyHead
                     cls_args: {num_features: 512, ortho_init: False}
                 value_extrinsic:
-                    cls_name: LinearValueHead
+                    cls_name: LinearSimpleValueHead
                     cls_args: {num_features: 512, ortho_init: False}
         optimizer:
             cls_name: Adam
