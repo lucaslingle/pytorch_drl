@@ -357,6 +357,7 @@ class PPO(Algo):
             if not use_pcgrad:
                 if k == 'composite_loss':
                     policy_losses[k] = losses[k]
+                    value_losses[k] = losses[k]
         return policy_losses, value_losses
 
     def _optimize_losses(self, net, optimizer, losses, retain_graph, use_pcgrad):

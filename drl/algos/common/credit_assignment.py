@@ -130,8 +130,8 @@ class NStepAdvantageEstimator(AdvantageEstimator):
         for t in reversed(range(0, self._seg_len)):  # T-1, ..., 0
             V_tpn = vpreds[t+self._extra_steps+1]    # V[t+(n-1)+1] = V[t+n]
             R_t = V_tpn
-            for s in reversed(range(0, self._extra_steps + 1)):  # ((n-1)+1)-1 = n-1, ..., 0
-                r_tps = rewards[t+s]                             # r[t+n-1], ..., r[t+0].
+            for s in reversed(range(0, self._extra_steps+1)):  # ((n-1)+1)-1 = n-1, ..., 0
+                r_tps = rewards[t+s]                           # r[t+n-1], ..., r[t+0].
                 nonterminal_tps = (1.-dones[t+s]) if self._use_dones else 1.
                 R_t = r_tps + nonterminal_tps * self._gamma * R_t
             V_t = vpreds[t]
@@ -155,7 +155,7 @@ class BellmanOptimalityOperator(BellmanOperator):
         for t in reversed(range(0, self._seg_len)):  # T-1, ..., 0
             Qs_tpn_tgt = tgt_qpreds[t+self._extra_steps+1]  # Q[t+(n-1)+1] = Q[t+n]
             if self._double_q:
-                Qs_tpn = qpreds[t+self._extra_steps+1]  # Q[t+(n-1)+1] = Q[t+n]
+                Qs_tpn = qpreds[t+self._extra_steps+1]      # Q[t+(n-1)+1] = Q[t+n]
                 greedy_a_tpn = tc.argmax(Qs_tpn, dim=-1)
             else:
                 greedy_a_tpn = tc.argmax(Qs_tpn_tgt, dim=-1)
@@ -165,7 +165,7 @@ class BellmanOptimalityOperator(BellmanOperator):
             ).squeeze(-1)
             R_t = Q_tpn_tgt
             for s in reversed(range(0, self._extra_steps+1)):  # ((n-1)+1)-1 = n-1, ..., 0
-                r_tps = rewards[t+s]  # r[t+n-1], ..., r[t+0].
+                r_tps = rewards[t+s]                           # r[t+n-1], ..., r[t+0].
                 nonterminal_tps = (1.-dones[t+s]) if self._use_dones else 1.
                 R_t = r_tps + nonterminal_tps * self._gamma * R_t
             bellman_backups[t] = R_t
