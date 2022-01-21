@@ -103,11 +103,11 @@ def make_learning_system(rank, config):
                 msg = f'Unrecognized suffix {suffix} in config file.'
                 raise ValueError(msg)
 
-        checkpointables = {k: v for k,v in learning_system.items()}
-        checkpointables.update(env.get_checkpointables())
-        global_step = maybe_load_checkpoints(
-            checkpoint_dir=config.get('checkpoint_dir'),
-            checkpointables=checkpointables,
-            map_location='cpu',
-            steps=None)
-        return {'global_step': global_step, 'env': env, **learning_system}
+    checkpointables = {k: v for k,v in learning_system.items()}
+    checkpointables.update(env.get_checkpointables())
+    global_step = maybe_load_checkpoints(
+        checkpoint_dir=config.get('checkpoint_dir'),
+        checkpointables=checkpointables,
+        map_location='cpu',
+        steps=None)
+    return {'global_step': global_step, 'env': env, **learning_system}

@@ -227,7 +227,7 @@ class PPO(Algo):
     def _credit_assignment(self, trajectory):
         advantages, td_lambda_returns = dict(), dict()
         for k in self._get_reward_keys():
-            advantages[k] = self._credit_assignment_ops[k].estimate_advantage(
+            advantages[k] = self._credit_assignment_ops[k].estimate_advantages(
                 rewards=trajectory['rewards'][k],
                 vpreds=trajectory['vpreds'][k],
                 dones=trajectory['dones'])
