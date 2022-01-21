@@ -2,7 +2,6 @@ import abc
 
 import torch as tc
 
-
 from drl.agents.heads.abstract import Head
 from drl.agents.architectures.common import normc_init_
 from drl.agents.preprocessing.tabular import one_hot
@@ -71,9 +70,16 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
 
 class EpsilonGreedyCategoricalPolicyHead(CategoricalPolicyHead):
     """
-    Policy head for use in conjunction with an action-value function.
+    Epsilon-greedy policy head for use in conjunction with an action-value
+    function.
     """
     def __init__(self, action_value_head, epsilon_schedule, **kwargs):
+        """
+        Args:
+            action_value_head: ActionValueHead instance.
+            epsilon_schedule: EpsilonSchedule instance.
+            **kwargs:
+        """
         super().__init__()
         self._action_value_head = action_value_head
         self._epsilon_schedule = epsilon_schedule
@@ -100,6 +106,38 @@ class EpsilonGreedyCategoricalPolicyHead(CategoricalPolicyHead):
         uniform_policy /= uniform_policy.sum(dim=-1, keepdim=True)
         probs = (1-epsilon) * greedy_policy + epsilon * uniform_policy
         dist = tc.distributions.Categorical(probs=probs)
+        return dist
+
+
+class GreedyCategoricalPolicyHead(CategoricalPolicyHead):
+    """
+    Greedy policy head for use in conjunction with an action-value function.
+    """
+    def __init__(self, action_value_head, **kwargs):
+        """
+        Args:
+            action_value_head: ActionValueHead instance.
+            **kwargs:
+        """
+        super().__init__()
+        self._action_value_head = action_value_head
+
+    def forward(self, features, step, **kwargs):
+        """
+        Args:
+            features: Torch tensor with shape [batch_size, num_features].
+            step: Whether to step the epsilon scheduler on this forward call.
+            **kwargs: Keyword arguments.
+
+        Returns:
+            Torch categorical distribution with batch shape [batch_size],
+            and element shape [action_dim].
+        """
+        q_values = self._action_value_head(features)
+        num_actions = q_values.shape[-1]
+        greedy_action = tc.argmax(q_values, dim=-1)
+        greedy_policy = one_hot(greedy_action, depth=num_actions)
+        dist = tc.distributions.Categorical(probs=greedy_policy)
         return dist
 
 

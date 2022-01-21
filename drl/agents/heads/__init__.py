@@ -6,6 +6,7 @@ from drl.agents.heads.policy_heads import (
     CategoricalPolicyHead,
     DiagonalGaussianPolicyHead,
     EpsilonGreedyCategoricalPolicyHead,
+    GreedyCategoricalPolicyHead,
     LinearCategoricalPolicyHead,
     LinearDiagonalGaussianPolicyHead
 )
@@ -38,6 +39,7 @@ __all__ = [
     "CategoricalPolicyHead",
     "DiagonalGaussianPolicyHead",
     "EpsilonGreedyCategoricalPolicyHead",
+    "GreedyCategoricalPolicyHead",
     "LinearCategoricalPolicyHead",
     "LinearDiagonalGaussianPolicyHead",
     "ValueHead",
