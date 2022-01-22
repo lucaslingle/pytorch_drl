@@ -24,8 +24,9 @@ class DistributionalActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     """
     Abstract class for distributional action-value prediction heads.
 
-    Reference: Bellemare et al., 2017 -
-        'A Distributional Perspective on Reinforcement Learning'.
+    Reference:
+        M. Bellemare et al., 2017 -
+            'A Distributional Perspective on Reinforcement Learning'.
     """
     def __init__(self, vmin, vmax, num_bins):
         """
@@ -68,6 +69,12 @@ class SimpleDiscreteActionValueHead(
     SimpleActionValueHead, DiscreteActionValueHead):
     """
     Simple discrete-action action-value prediction head.
+
+    References:
+        V. Mnih et al., 2015 -
+            'Human Level Control through Deep Reinforcement Learning'
+        Z. Wang et al., 2016 -
+            'Dueling Network Architectures for Deep Reinforcement Learning'
     """
     def __init__(
             self,
@@ -137,6 +144,10 @@ class SimpleContinuousActionValueHead(
     SimpleActionValueHead, ContinuousActionValueHead):
     """
     Simple continuous-action action-value prediction head.
+
+    Reference:
+        T. Lillicrap et al., 2015 -
+            'Continuous Control with Deep Reinforcement Learning'.
     """
     def __init__(
             self,
@@ -176,8 +187,9 @@ class DistributionalDiscreteActionValueHead(
     """
     Distributional discrete-action action-value prediction head.
 
-    Reference: Bellemare et al., 2017 -
-        'A Distributional Perspective on Reinforcement Learning'.
+    Reference:
+        M. Bellemare et al., 2017 -
+            'A Distributional Perspective on Reinforcement Learning'.
     """
     def __init__(
             self,
