@@ -1,9 +1,10 @@
+from typing import Tuple, Mapping, Any
 import abc
 
 import torch as tc
 
 from drl.agents.heads.abstract import Head
-from drl.agents.architectures.common import normc_init_
+from drl.agents.integration import get_architecture
 
 
 class ActionValueHead(Head, metaclass=abc.ABCMeta):
@@ -22,8 +23,16 @@ class SimpleActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
 class DistributionalActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     """
     Abstract class for distributional action-value prediction heads.
-    Reference: Bellemare et al., 2017.
+
+    Reference: Bellemare et al., 2017 -
+        'A Distributional Perspective on Reinforcement Learning'.
     """
+    def __init__(self, vmin, vmax, num_bins):
+        super().__init__()
+        self._vmin = vmin
+        self._vmax = vmax
+        self._num_bins = num_bins
+
     def returns_to_bin_ids(self, returns):
         returns = tc.clip(returns, self._vmin, self._vmax)
         bin_width = (self._vmax - self._vmin) / self._num_bins
@@ -32,49 +41,118 @@ class DistributionalActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
         return indices
 
 
-class CategoricalActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
+class DiscreteActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     """
     Abstract class for action-value prediction heads
     with outputted predictions for each action.
     """
+    def __init__(self, num_actions):
+        super().__init__()
+        self._num_actions = num_actions
 
 
-class IngressActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
+class ContinuousActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     """
     Abstract class for action-value prediction heads
     with predictions for only the inputted action.
     """
 
 
-class SimpleCategoricalActionValueHead(
-    SimpleActionValueHead, CategoricalActionValueHead, metaclass=abc.ABCMeta
-):
+class SimpleDiscreteActionValueHead(SimpleActionValueHead, DiscreteActionValueHead):
     """
-    Abstract class for simple categorical-action action-value heads.
+    Simple discrete-action action-value prediction head.
     """
+    def __init__(
+            self,
+            num_features: int,
+            num_actions: int,
+            architecture_cls_name: str,
+            w_init_spec: Tuple[str, Mapping[str, Any]],
+            b_init_spec: Tuple[str, Mapping[str, Any]]
+    ):
+        SimpleActionValueHead.__init__(self)
+        DiscreteActionValueHead.__init__(self, num_actions)
+        self._action_value_head = get_architecture(
+            cls_name=architecture_cls_name,
+            cls_args={
+                'input_dim': num_features,
+                'output_dim': num_actions,
+                'w_init_spec': w_init_spec,
+                'b_init_spec': b_init_spec
+            })
+
     def forward(self, features, **kwargs):
         q_values = self._action_value_head(features)
         return q_values
 
 
-class SimpleIngressActionValueHead(
-        SimpleActionValueHead, IngressActionValueHead, metaclass=abc.ABCMeta
+class SimpleContinuousActionValueHead(SimpleActionValueHead, ContinuousActionValueHead):
+    """
+    Simple continuous-action action-value prediction head.
+    """
+    def __init__(
+            self,
+            num_features: int,
+            num_actions: int,
+            architecture_cls_name: str,
+            w_init_spec: Tuple[str, Mapping[str, Any]],
+            b_init_spec: Tuple[str, Mapping[str, Any]]
     ):
-    """
-    Abstract class for simple ingress-action action-value heads.
-    Useful primarily for off-policy continuous control.
-    """
+        SimpleActionValueHead.__init__(self)
+        ContinuousActionValueHead.__init__(self)
+        self._action_value_head = get_architecture(
+            cls_name=architecture_cls_name,
+            cls_args={
+                'input_dim': num_features,
+                'output_dim': num_actions,
+                'w_init_spec': w_init_spec,
+                'b_init_spec': b_init_spec
+            })
+
     def forward(self, features, **kwargs):
         q_value = self._action_value_head(features).squeeze(-1)
         return q_value
 
 
-class DistributionalCategoricalActionValueHead(
-    DistributionalActionValueHead, CategoricalActionValueHead, metaclass=abc.ABCMeta
-):
+class DistributionalDiscreteActionValueHead(DistributionalActionValueHead, DiscreteActionValueHead):
     """
-    Abstract class for distributional categorical-action action-value heads.
+    Distributional discrete-action action-value prediction head.
+    Reference: Bellemare et al., 2017.
     """
+    def __init__(
+            self,
+            num_features: int,
+            num_actions: int,
+            architecture_cls_name: str,
+            w_init_spec: Tuple[str, Mapping[str, Any]],
+            b_init_spec: Tuple[str, Mapping[str, Any]],
+            vmin: float,
+            vmax: float,
+            num_bins: int
+    ):
+        """
+        Args:
+            num_features: Number of input features.
+            num_actions: Number of actions.
+            architecture_cls_name: Class name for policy head architecture.
+                Must be a derived class of StatelessArchitecture.
+            w_init_spec: Tuple containing weight initializer name and kwargs.
+            b_init_spec: Tuple containing bias initializer name and kwargs.
+            vmin: Minimum return value.
+            vmax: Maximum return value.
+            num_bins: Number of bins for distributional value learning.
+        """
+        DistributionalActionValueHead.__init__(self, vmin, vmax, num_bins)
+        DiscreteActionValueHead.__init__(self, num_actions)
+        self._action_value_head = get_architecture(
+            cls_name=architecture_cls_name,
+            cls_args={
+                'input_dim': num_features,
+                'output_dim': num_actions,
+                'w_init_spec': w_init_spec,
+                'b_init_spec': b_init_spec
+            })
+
     def forward(self, features, **kwargs):
         q_value_logits_flat = self._action_value_head(features)
         q_value_logits = q_value_logits_flat.reshape(
@@ -88,190 +166,3 @@ class DistributionalCategoricalActionValueHead(
             "q_value_logits": q_value_logits,
             "q_value_means": q_value_means
         }
-
-
-class DistributionalIngressActionValueHead(
-    DistributionalActionValueHead, IngressActionValueHead, metaclass=abc.ABCMeta
-):
-    """
-    Abstract class for distributional ingress-based action-value heads.
-    """
-    def forward(self, features, **kwargs):
-        q_value_logits_flat = self._action_value_head(features)
-        q_value_logits = q_value_logits_flat.reshape(-1, self._num_bins)
-
-        bin_width = (self._vmax - self._vmin) / self._num_bins
-        bin_values = self._vmin + bin_width * tc.arange(self._num_bins).float()
-        bin_values = bin_values.view(1, self._num_bins)
-        q_value_means = (tc.nn.Softmax(dim=-1)(q_value_logits) * bin_values).sum(dim=-1)
-        return {
-            "q_value_logits": q_value_logits,
-            "q_value_means": q_value_means
-        }
-
-
-class LinearSimpleCategoricalActionValueHead(SimpleCategoricalActionValueHead):
-    """
-    Simple action-value prediction head for categorical actions,
-    using a linear projection of state features.
-    """
-    def __init__(
-            self,
-            num_features,
-            num_actions,
-            ortho_init,
-            ortho_gain=0.01,
-            **kwargs
-    ):
-        """
-        Args:
-            num_features: Number of features.
-            num_actions: Number of actions.
-            ortho_init: Use orthogonal initialization?
-            ortho_gain: Gain parameter for orthogonal initialization.
-                Ignored if ortho_init is False.
-            **kwargs: Keyword arguments.
-        """
-        super().__init__()
-        self._action_value_head = tc.nn.Linear(num_features, num_actions)
-        self._ortho_init = ortho_init
-        self._ortho_gain = ortho_gain
-        self._init_weights()
-
-    def _init_weights(self):
-        if self._ortho_init:
-            tc.nn.init.orthogonal_(
-                self._action_value_head.weight, gain=self._ortho_gain)
-        else:
-            normc_init_(self._action_value_head.weight, gain=0.01)
-        tc.nn.init.zeros_(self._value_head.bias)
-
-
-class LinearSimpleIngressActionValueHead(SimpleIngressActionValueHead):
-    """
-    Simple action-value prediction head,
-    using a linear projection of state-action features.
-
-    Useful primarily for off-policy continuous control.
-    """
-    def __init__(self, num_features, ortho_init, ortho_gain=0.01, **kwargs):
-        """
-        Args:
-            num_features: Number of features.
-            ortho_init: Use orthogonal initialization?
-            ortho_gain: Gain parameter for orthogonal initialization.
-                Ignored if ortho_init is False.
-            **kwargs: Keyword arguments.
-        """
-        super().__init__()
-        self._action_value_head = tc.nn.Linear(num_features, 1)
-        self._ortho_init = ortho_init
-        self._ortho_gain = ortho_gain
-        self._init_weights()
-
-    def _init_weights(self):
-        if self._ortho_init:
-            tc.nn.init.orthogonal_(
-                self._action_value_head.weight, gain=self._ortho_gain)
-        else:
-            normc_init_(self._action_value_head.weight, gain=0.01)
-        tc.nn.init.zeros_(self._value_head.bias)
-
-
-class LinearDistributionalCategoricalActionValueHead(
-    DistributionalCategoricalActionValueHead
-):
-    """
-    Distributional action-value prediction head for categorical actions,
-    using a linear projection of state features.
-    """
-    def __init__(
-            self,
-            num_features,
-            num_actions,
-            vmin,
-            vmax,
-            num_bins,
-            ortho_init,
-            ortho_gain=0.01,
-            **kwargs
-    ):
-        """
-        Args:
-            num_features: Number of features.
-            num_actions: Number of actions.
-            vmin: Minimum value for discounted total returns.
-            vmax: Maximum value for discounted total returns.
-            num_bins: Number of bins for returns.
-            ortho_init: Use orthogonal initialization?
-            ortho_gain: Gain parameter for orthogonal initialization.
-                Ignored if ortho_init is False.
-            **kwargs: Keyword arguments.
-        """
-        super().__init__()
-        self._action_value_head = tc.nn.Linear(
-            num_features, num_actions * num_bins)
-        self._num_features = num_features
-        self._num_actions = num_actions
-        self._vmin = vmin
-        self._vmax = vmax
-        self._num_bins = num_bins
-        self._ortho_init = ortho_init
-        self._ortho_gain = ortho_gain
-        self._init_weights()
-
-    def _init_weights(self):
-        if self._ortho_init:
-            tc.nn.init.orthogonal_(
-                self._action_value_head.weight, gain=self._ortho_gain)
-        else:
-            normc_init_(self._action_value_head.weight, gain=0.01)
-        tc.nn.init.zeros_(self._value_head.bias)
-
-
-class LinearDistributionalIngressActionValueHead(
-    DistributionalIngressActionValueHead
-):
-    """
-    Distributional action-value prediction head,
-    using a linear projection of state-action features.
-
-    Useful primarily for off-policy continuous control.
-    """
-    def __init__(
-            self,
-            num_features,
-            vmin,
-            vmax,
-            num_bins,
-            ortho_init,
-            ortho_gain=0.01,
-            **kwargs):
-        """
-        Args:
-            num_features: Number of features.
-            vmin: Minimum value for discounted total returns.
-            vmax: Maximum value for discounted total returns.
-            num_bins: Number of bins for returns.
-            ortho_init: Use orthogonal initialization?
-            ortho_gain: Gain parameter for orthogonal initialization.
-                Ignored if ortho_init is False.
-            **kwargs: Keyword arguments.
-        """
-        super().__init__()
-        self._action_value_head = tc.nn.Linear(num_features, num_bins)
-        self._num_features = num_features
-        self._vmin = vmin
-        self._vmax = vmax
-        self._num_bins = num_bins
-        self._ortho_init = ortho_init
-        self._ortho_gain = ortho_gain
-        self._init_weights()
-
-    def _init_weights(self):
-        if self._ortho_init:
-            tc.nn.init.orthogonal_(
-                self._action_value_head.weight, gain=self._ortho_gain)
-        else:
-            normc_init_(self._action_value_head.weight, gain=0.01)
-        tc.nn.init.zeros_(self._value_head.bias)

@@ -5,29 +5,21 @@ from drl.agents.heads.policy_heads import (
     ContinuousPolicyHead,
     CategoricalPolicyHead,
     DiagonalGaussianPolicyHead,
-    EpsilonGreedyCategoricalPolicyHead,
-    GreedyCategoricalPolicyHead,
-    LinearCategoricalPolicyHead,
-    LinearDiagonalGaussianPolicyHead
+    EpsilonGreedyCategoricalPolicyHead
 )
 from drl.agents.heads.value_heads import (
     ValueHead,
-    SimpleValueHead,
-    DistributionalValueHead,
-    LinearSimpleValueHead
+    SimpleValueHead
 )
 from drl.agents.heads.action_value_heads import (
     ActionValueHead,
     SimpleActionValueHead,
     DistributionalActionValueHead,
-    SimpleCategoricalActionValueHead,
-    SimpleIngressActionValueHead,
-    DistributionalCategoricalActionValueHead,
-    DistributionalIngressActionValueHead,
-    LinearSimpleCategoricalActionValueHead,
-    LinearSimpleIngressActionValueHead,
-    LinearDistributionalCategoricalActionValueHead,
-    LinearDistributionalIngressActionValueHead
+    DiscreteActionValueHead,
+    ContinuousActionValueHead,
+    SimpleDiscreteActionValueHead,
+    SimpleContinuousActionValueHead,
+    DistributionalDiscreteActionValueHead
 )
 
 
@@ -39,22 +31,15 @@ __all__ = [
     "CategoricalPolicyHead",
     "DiagonalGaussianPolicyHead",
     "EpsilonGreedyCategoricalPolicyHead",
-    "GreedyCategoricalPolicyHead",
-    "LinearCategoricalPolicyHead",
-    "LinearDiagonalGaussianPolicyHead",
     "ValueHead",
     "SimpleValueHead",
-    "DistributionalValueHead",
-    "LinearSimpleValueHead",
     "ActionValueHead",
     "SimpleActionValueHead",
     "DistributionalActionValueHead",
-    "SimpleCategoricalActionValueHead",
-    "SimpleIngressActionValueHead",
-    "DistributionalCategoricalActionValueHead",
-    "DistributionalIngressActionValueHead",
-    "LinearSimpleCategoricalActionValueHead",
-    "LinearSimpleIngressActionValueHead",
-    "LinearDistributionalCategoricalActionValueHead",
-    "LinearDistributionalIngressActionValueHead"
+    "DiscreteActionValueHead",
+    "ContinuousActionValueHead",
+    "SimpleDiscreteActionValueHead",
+    "SimpleContinuousActionValueHead",
+    "DistributionalDiscreteActionValueHead"
+
 ]

@@ -8,9 +8,8 @@ from drl.agents.preprocessing import Preprocessing
 from drl.agents.architectures import Architecture
 from drl.agents.heads import (
     Head,
-    SimpleCategoricalActionValueHead,
-    EpsilonGreedyCategoricalPolicyHead,
-    GreedyCategoricalPolicyHead
+    DiscreteActionValueHead,
+    EpsilonGreedyCategoricalPolicyHead
 )
 
 
@@ -71,7 +70,7 @@ def get_predictors(rank, env, **predictors_spec: Dict[str, Dict[str, Any]]):
         predictors[key] = predictor
 
         # add additional predictor for epsilon-greedy policy in DQN.
-        if isinstance(predictor, SimpleCategoricalActionValueHead):
+        if isinstance(predictor, DiscreteActionValueHead):
             if epsilon_schedule_spec is None:
                 msg = "Required predictor epsilon_schedule missing from config."
                 raise ValueError(msg)
@@ -79,10 +78,7 @@ def get_predictors(rank, env, **predictors_spec: Dict[str, Dict[str, Any]]):
                 rank=rank, **epsilon_schedule_spec)
             eps_greedy_policy_predictor = EpsilonGreedyCategoricalPolicyHead(
                 action_value_head=predictor, epsilon_schedule=epsilon_schedule)
-            greedy_policy_predictor = GreedyCategoricalPolicyHead(
-                action_value_head=predictor)
             predictors['policy'] = eps_greedy_policy_predictor
-            predictors['policy_greedy'] = greedy_policy_predictor
 
     return predictors
 
