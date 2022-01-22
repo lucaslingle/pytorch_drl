@@ -76,6 +76,7 @@ class SimpleDiscreteActionValueHead(
             architecture_cls_name: str,
             w_init_spec: Tuple[str, Mapping[str, Any]],
             b_init_spec: Tuple[str, Mapping[str, Any]],
+            dueling: bool = False,
             **kwargs: Mapping[str, Any]
     ):
         """
@@ -86,21 +87,49 @@ class SimpleDiscreteActionValueHead(
                 Must be a derived class of StatelessArchitecture.
             w_init_spec: Tuple containing weight initializer name and kwargs.
             b_init_spec: Tuple containing bias initializer name and kwargs.
+            dueling: Use the dueling architecture from Wang et al., 2016?
+                If true, architecture_cls_name is ignored, and two MLPs are used.
+                Default: False.
             **kwargs: Keyword arguments.
         """
         SimpleActionValueHead.__init__(self)
         DiscreteActionValueHead.__init__(self, num_actions)
-        self._action_value_head = get_architecture(
-            cls_name=architecture_cls_name,
-            cls_args={
-                'input_dim': num_features,
-                'output_dim': num_actions,
-                'w_init_spec': w_init_spec,
-                'b_init_spec': b_init_spec
-            })
+        self._dueling = dueling
+        if dueling:
+            self._advantage_head = get_architecture(
+                cls_name=architecture_cls_name,
+                cls_args={
+                    'input_dim': num_features,
+                    'output_dim': num_actions,
+                    'w_init_spec': w_init_spec,
+                    'b_init_spec': b_init_spec
+                })
+            self._value_head = get_architecture(
+                cls_name=architecture_cls_name,
+                cls_args={
+                    'input_dim': num_features,
+                    'output_dim': 1,
+                    'w_init_spec': w_init_spec,
+                    'b_init_spec': b_init_spec
+                })
+        else:
+            self._action_value_head = get_architecture(
+                cls_name=architecture_cls_name,
+                cls_args={
+                    'input_dim': num_features,
+                    'output_dim': num_actions,
+                    'w_init_spec': w_init_spec,
+                    'b_init_spec': b_init_spec
+                })
 
     def forward(self, features, **kwargs):
-        q_values = self._action_value_head(features)
+        if self._dueling:
+            advantages = self._advantage_head(features)
+            advantages -= advantages.mean(dim=-1, keepdim=True)
+            values = self._value_head(features)
+            q_values = advantages + values
+        else:
+            q_values = self._action_value_head(features)
         return q_values
 
 
