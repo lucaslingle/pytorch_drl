@@ -40,13 +40,8 @@ def get_predictor(cls_name, cls_args):
     return cls(**cls_args)
 
 
-def get_predictors(rank, env, **predictors_spec: Dict[str, Dict[str, Any]]):
+def get_predictors(env, **predictors_spec: Dict[str, Dict[str, Any]]):
     predictors = dict()
-
-    if 'epsilon_schedule' in predictors_spec:
-        epsilon_schedule_spec = predictors_spec.pop('epsilon_schedule')
-    else:
-        epsilon_schedule_spec = None
 
     for key, spec in predictors_spec.items():
         # infer number of actions or action dimensionality.
@@ -65,9 +60,6 @@ def get_predictors(rank, env, **predictors_spec: Dict[str, Dict[str, Any]]):
 
         # add additional predictor for epsilon-greedy policy in DQN.
         if isinstance(predictor, DiscreteActionValueHead):
-            if epsilon_schedule_spec is None:
-                msg = "Required predictor epsilon_schedule missing from config."
-                raise ValueError(msg)
             eps_greedy_policy_predictor = EpsilonGreedyCategoricalPolicyHead(
                 action_value_head=predictor)
             predictors['policy'] = eps_greedy_policy_predictor

@@ -35,10 +35,10 @@ def _get_env(env_config, process_seed, mode):
     return env
 
 
-def _get_net(net_config, env, rank):
+def _get_net(net_config, env):
     preprocessing = get_preprocessings(**net_config.get('preprocessing'))
     architecture = get_architecture(**net_config.get('architecture'))
-    predictors = get_predictors(rank, env, **net_config.get('predictors'))
+    predictors = get_predictors(env, **net_config.get('predictors'))
     return DDP(Agent(preprocessing, architecture, predictors))
 
 
@@ -83,7 +83,7 @@ def make_learning_system(rank, config):
             name = f'{prefix}_{suffix}'
             if suffix == 'net':
                 net_config = learner_config.get(suffix)
-                net = _get_net(net_config, env, rank)
+                net = _get_net(net_config, env)
                 learning_system[name] = net
             elif suffix == 'optimizer':
                 opt_config = learner_config.get(suffix)
