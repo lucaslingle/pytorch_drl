@@ -46,7 +46,8 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
             num_actions: int,
             architecture_cls_name: str,
             w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]]
+            b_init_spec: Tuple[str, Mapping[str, Any]],
+            **kwargs: Mapping[str, Any]
     ):
         """
         Args:
@@ -56,6 +57,7 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
                 Must be a derived class of StatelessArchitecture.
             w_init_spec: Tuple containing weight initializer name and kwargs.
             b_init_spec: Tuple containing bias initializer name and kwargs.
+            **kwargs: Keyword arguments.
         """
         super().__init__(num_features, num_actions)
         self._policy_head = get_architecture(
@@ -92,7 +94,8 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
             action_dim: int,
             architecture_cls_name: str,
             w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]]
+            b_init_spec: Tuple[str, Mapping[str, Any]],
+            **kwargs: Mapping[str, Any]
     ):
         """
         Args:
@@ -102,6 +105,7 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
                 Must be a derived class of StatelessArchitecture.
             w_init_spec: Tuple containing weight initializer name and kwargs.
             b_init_spec: Tuple containing bias initializer name and kwargs.
+            **kwargs: Keyword arguments.
         """
         super().__init__(num_features, action_dim)
         self._policy_head = get_architecture(

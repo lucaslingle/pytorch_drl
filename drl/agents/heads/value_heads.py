@@ -19,17 +19,26 @@ class SimpleValueHead(ValueHead):
     def __init__(
             self,
             num_features: int,
-            num_actions: int,
             architecture_cls_name: str,
             w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]]
+            b_init_spec: Tuple[str, Mapping[str, Any]],
+            **kwargs: Mapping[str, Any]
     ):
+        """
+        Args:
+            num_features: Number of input features.
+            architecture_cls_name: Class name for policy head architecture.
+                Must be a derived class of StatelessArchitecture.
+            w_init_spec: Tuple containing weight initializer name and kwargs.
+            b_init_spec: Tuple containing bias initializer name and kwargs.
+            **kwargs: Keyword arguments.
+        """
         super().__init__()
         self._value_head = get_architecture(
             cls_name=architecture_cls_name,
             cls_args={
                 'input_dim': num_features,
-                'output_dim': num_actions,
+                'output_dim': 1,
                 'w_init_spec': w_init_spec,
                 'b_init_spec': b_init_spec
             })

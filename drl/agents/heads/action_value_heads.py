@@ -28,6 +28,12 @@ class DistributionalActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
         'A Distributional Perspective on Reinforcement Learning'.
     """
     def __init__(self, vmin, vmax, num_bins):
+        """
+        Args:
+            vmin: Minimum return value.
+            vmax: Maximum return value.
+            num_bins: Number of bins for distributional value learning.
+        """
         super().__init__()
         self._vmin = vmin
         self._vmax = vmax
@@ -58,7 +64,8 @@ class ContinuousActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     """
 
 
-class SimpleDiscreteActionValueHead(SimpleActionValueHead, DiscreteActionValueHead):
+class SimpleDiscreteActionValueHead(
+    SimpleActionValueHead, DiscreteActionValueHead):
     """
     Simple discrete-action action-value prediction head.
     """
@@ -68,8 +75,19 @@ class SimpleDiscreteActionValueHead(SimpleActionValueHead, DiscreteActionValueHe
             num_actions: int,
             architecture_cls_name: str,
             w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]]
+            b_init_spec: Tuple[str, Mapping[str, Any]],
+            **kwargs: Mapping[str, Any]
     ):
+        """
+        Args:
+            num_features: Number of input features.
+            num_actions: Number of actions.
+            architecture_cls_name: Class name for policy head architecture.
+                Must be a derived class of StatelessArchitecture.
+            w_init_spec: Tuple containing weight initializer name and kwargs.
+            b_init_spec: Tuple containing bias initializer name and kwargs.
+            **kwargs: Keyword arguments.
+        """
         SimpleActionValueHead.__init__(self)
         DiscreteActionValueHead.__init__(self, num_actions)
         self._action_value_head = get_architecture(
@@ -86,25 +104,35 @@ class SimpleDiscreteActionValueHead(SimpleActionValueHead, DiscreteActionValueHe
         return q_values
 
 
-class SimpleContinuousActionValueHead(SimpleActionValueHead, ContinuousActionValueHead):
+class SimpleContinuousActionValueHead(
+    SimpleActionValueHead, ContinuousActionValueHead):
     """
     Simple continuous-action action-value prediction head.
     """
     def __init__(
             self,
             num_features: int,
-            num_actions: int,
             architecture_cls_name: str,
             w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]]
+            b_init_spec: Tuple[str, Mapping[str, Any]],
+            **kwargs: Mapping[str, Any]
     ):
+        """
+        Args:
+            num_features: Number of input features.
+            architecture_cls_name: Class name for policy head architecture.
+                Must be a derived class of StatelessArchitecture.
+            w_init_spec: Tuple containing weight initializer name and kwargs.
+            b_init_spec: Tuple containing bias initializer name and kwargs.
+            **kwargs: Keyword arguments.
+        """
         SimpleActionValueHead.__init__(self)
         ContinuousActionValueHead.__init__(self)
         self._action_value_head = get_architecture(
             cls_name=architecture_cls_name,
             cls_args={
                 'input_dim': num_features,
-                'output_dim': num_actions,
+                'output_dim': 1,
                 'w_init_spec': w_init_spec,
                 'b_init_spec': b_init_spec
             })
@@ -114,10 +142,13 @@ class SimpleContinuousActionValueHead(SimpleActionValueHead, ContinuousActionVal
         return q_value
 
 
-class DistributionalDiscreteActionValueHead(DistributionalActionValueHead, DiscreteActionValueHead):
+class DistributionalDiscreteActionValueHead(
+    DistributionalActionValueHead, DiscreteActionValueHead):
     """
     Distributional discrete-action action-value prediction head.
-    Reference: Bellemare et al., 2017.
+
+    Reference: Bellemare et al., 2017 -
+        'A Distributional Perspective on Reinforcement Learning'.
     """
     def __init__(
             self,
@@ -128,7 +159,8 @@ class DistributionalDiscreteActionValueHead(DistributionalActionValueHead, Discr
             b_init_spec: Tuple[str, Mapping[str, Any]],
             vmin: float,
             vmax: float,
-            num_bins: int
+            num_bins: int,
+            **kwargs: Mapping[str, Any]
     ):
         """
         Args:
@@ -141,6 +173,7 @@ class DistributionalDiscreteActionValueHead(DistributionalActionValueHead, Discr
             vmin: Minimum return value.
             vmax: Maximum return value.
             num_bins: Number of bins for distributional value learning.
+            **kwargs: Keyword arguments.
         """
         DistributionalActionValueHead.__init__(self, vmin, vmax, num_bins)
         DiscreteActionValueHead.__init__(self, num_actions)
@@ -148,7 +181,7 @@ class DistributionalDiscreteActionValueHead(DistributionalActionValueHead, Discr
             cls_name=architecture_cls_name,
             cls_args={
                 'input_dim': num_features,
-                'output_dim': num_actions,
+                'output_dim': num_bins * num_actions,
                 'w_init_spec': w_init_spec,
                 'b_init_spec': b_init_spec
             })
@@ -161,7 +194,8 @@ class DistributionalDiscreteActionValueHead(DistributionalActionValueHead, Discr
         bin_width = (self._vmax - self._vmin) / self._num_bins
         bin_values = self._vmin + bin_width * tc.arange(self._num_bins).float()
         bin_values = bin_values.view(1, 1, self._num_bins)
-        q_value_means = (tc.nn.Softmax(dim=-1)(q_value_logits) * bin_values).sum(dim=-1)
+        value_dists = tc.nn.Softmax(dim=-1)(q_value_logits)
+        q_value_means = (value_dists * bin_values).sum(dim=-1)
         return {
             "q_value_logits": q_value_logits,
             "q_value_means": q_value_means
