@@ -93,19 +93,19 @@ class Agent(tc.nn.Module):
     def keys(self):
         return self._predictors.keys()
 
-    def forward(self, x, predict, **kwargs):
+    def forward(self, observations, predict, **kwargs):
         """
         Args:
-            x: Batch of observations
+            observations: Batch of observations
             predict: Names of predictors to apply.
-            kwargs: Keyword arguments for predictors.
+            kwargs: Keyword arguments.
         Returns:
             Dictionary of predictions.
         """
         if self._detach_input:
-            x = x.detach()
-        preproc = self._preprocessing(x)
-        features = self._architecture(preproc)
+            observations = observations.detach()
+        preprocessed = self._preprocessing(observations)
+        features = self._architecture(preprocessed, **kwargs)
         predictions = {
             key: self._predictors[key](features, **kwargs) for key in predict
         }
