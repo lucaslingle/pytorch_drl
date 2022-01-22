@@ -84,6 +84,7 @@ class SimpleDiscreteActionValueHead(
             w_init_spec: Tuple[str, Mapping[str, Any]],
             b_init_spec: Tuple[str, Mapping[str, Any]],
             dueling: bool = False,
+            dueling_widening: int = 1,
             **kwargs: Mapping[str, Any]
     ):
         """
@@ -97,6 +98,9 @@ class SimpleDiscreteActionValueHead(
             dueling: Use the dueling architecture from Wang et al., 2016?
                 If true, architecture_cls_name is ignored, and two MLPs are used.
                 Default: False.
+            dueling_widening: Widening factor for dueling architecture.
+                Ignored if dueling is False.
+                Default: 1.
             **kwargs: Keyword arguments.
         """
         SimpleActionValueHead.__init__(self)
@@ -107,15 +111,15 @@ class SimpleDiscreteActionValueHead(
                 cls_name='Linear',
                 cls_args={
                     'input_dim': num_features,
-                    'output_dim': 50,
+                    'output_dim': 50 * dueling_widening,
                     'w_init_spec': w_init_spec,
                     'b_init_spec': b_init_spec
                 })
             self._advantage_head = get_architecture(
                 cls_name='MLP',
                 cls_args={
-                    'input_dim': 50,
-                    'hidden_dim': 25,
+                    'input_dim': 50 * dueling_widening,
+                    'hidden_dim': 25 * dueling_widening,
                     'output_dim': num_actions,
                     'w_init_spec': w_init_spec,
                     'b_init_spec': b_init_spec,
@@ -124,8 +128,8 @@ class SimpleDiscreteActionValueHead(
             self._value_head = get_architecture(
                 cls_name='MLP',
                 cls_args={
-                    'input_dim': 50,
-                    'hidden_dim': 25,
+                    'input_dim': 50 * dueling_widening,
+                    'hidden_dim': 25 * dueling_widening,
                     'output_dim': 1,
                     'w_init_spec': w_init_spec,
                     'b_init_spec': b_init_spec,
