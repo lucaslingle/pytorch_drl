@@ -244,17 +244,26 @@ class DistributionalDiscreteActionValueHead(
                 'b_init_spec': b_init_spec
             })
 
-    def forward(self, features, **kwargs):
-        q_value_logits_flat = self._action_value_head(features)
-        q_value_logits = q_value_logits_flat.reshape(
-            -1, self._num_actions, self._num_bins)
-
+    def logits_to_mean(self, q_value_logits):
         bin_width = (self._vmax - self._vmin) / self._num_bins
         bin_values = self._vmin + bin_width * tc.arange(self._num_bins).float()
         bin_values = bin_values.view(1, 1, self._num_bins)
-        value_dists = tc.nn.Softmax(dim=-1)(q_value_logits)
+        value_dists = tc.nn.functional.softmax(dim=-1)(q_value_logits)
         q_value_means = (value_dists * bin_values).sum(dim=-1)
-        return {
-            "q_value_logits": q_value_logits,
-            "q_value_means": q_value_means
-        }
+        return q_value_means
+
+    def forward(self, features, **kwargs):
+        """
+        Args:
+            features: Torch tensor with shape [batch_size, num_features].
+            **kwargs: Keyword arguments.
+
+        Returns:
+            Torch tensor with shappe [batch_size, num_actions, num_bins],
+            containing the logits of the estimated state-action-conditional
+            value distribution.
+        """
+        q_value_logits_flat = self._action_value_head(features)
+        q_value_logits = q_value_logits_flat.reshape(
+            -1, self._num_actions, self._num_bins)
+        return q_value_logits
