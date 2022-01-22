@@ -40,12 +40,6 @@ def get_predictor(cls_name, cls_args):
     return cls(**cls_args)
 
 
-def get_epsilon_sched(rank, cls_name, cls_args):
-    module = importlib.import_module('drl.agents.schedules')
-    cls = getattr(module, cls_name)
-    return cls(rank=rank, **cls_args)
-
-
 def get_predictors(rank, env, **predictors_spec: Dict[str, Dict[str, Any]]):
     predictors = dict()
 
@@ -74,10 +68,8 @@ def get_predictors(rank, env, **predictors_spec: Dict[str, Dict[str, Any]]):
             if epsilon_schedule_spec is None:
                 msg = "Required predictor epsilon_schedule missing from config."
                 raise ValueError(msg)
-            epsilon_schedule = get_epsilon_sched(
-                rank=rank, **epsilon_schedule_spec)
             eps_greedy_policy_predictor = EpsilonGreedyCategoricalPolicyHead(
-                action_value_head=predictor, epsilon_schedule=epsilon_schedule)
+                action_value_head=predictor)
             predictors['policy'] = eps_greedy_policy_predictor
 
     return predictors

@@ -134,39 +134,43 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
     Epsilon-greedy policy head for use in conjunction with an action-value
     function.
     """
-    def __init__(self, action_value_head, epsilon_schedule, **kwargs):
+    def __init__(self, action_value_head, **kwargs):
         """
         Args:
             action_value_head: ActionValueHead instance.
-            epsilon_schedule: EpsilonSchedule instance.
             **kwargs: Keyword arguments.
         """
         num_features = action_value_head.input_dim
         num_actions = action_value_head.output_dim
         super().__init__(num_features, num_actions)
         self._action_value_head = action_value_head
-        self._epsilon_schedule = epsilon_schedule
+        self._epsilon = None
 
-    def forward(self, features, step, **kwargs):
+    @property
+    def epsilon(self):
+        return self._epsilon
+
+    @epsilon.setter
+    def epsilon(self, value):
+        assert 0. <= value <= 1.
+        self._epsilon = value
+
+    def forward(self, features, **kwargs):
         """
         Args:
             features: Torch tensor with shape [batch_size, num_features].
-            step: Whether to step the epsilon scheduler on this forward call.
             **kwargs: Keyword arguments.
 
         Returns:
             Torch categorical distribution with batch shape [batch_size],
             and element shape [action_dim].
         """
-        epsilon = self._epsilon_schedule.value
-        if step:
-            self._epsilon_schedule.step()
         q_values = self._action_value_head(features)
         num_actions = q_values.shape[-1]
         greedy_action = tc.argmax(q_values, dim=-1)
         greedy_policy = one_hot(greedy_action, depth=num_actions)
         uniform_policy = tc.ones_like(q_values)
         uniform_policy /= uniform_policy.sum(dim=-1, keepdim=True)
-        probs = (1-epsilon) * greedy_policy + epsilon * uniform_policy
+        probs = (1.-self.epsilon) * greedy_policy + self.epsilon * uniform_policy
         dist = tc.distributions.Categorical(probs=probs)
         return dist
