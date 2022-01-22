@@ -103,21 +103,33 @@ class SimpleDiscreteActionValueHead(
         DiscreteActionValueHead.__init__(self, num_actions)
         self._dueling = dueling
         if dueling:
-            self._advantage_head = get_architecture(
-                cls_name=architecture_cls_name,
+            self._proj = get_architecture(
+                cls_name='Linear',
                 cls_args={
                     'input_dim': num_features,
-                    'output_dim': num_actions,
+                    'output_dim': 50,
                     'w_init_spec': w_init_spec,
                     'b_init_spec': b_init_spec
                 })
-            self._value_head = get_architecture(
-                cls_name=architecture_cls_name,
+            self._advantage_head = get_architecture(
+                cls_name='MLP',
                 cls_args={
-                    'input_dim': num_features,
+                    'input_dim': 50,
+                    'hidden_dim': 25,
+                    'output_dim': num_actions,
+                    'w_init_spec': w_init_spec,
+                    'b_init_spec': b_init_spec,
+                    'num_layers': 2
+                })
+            self._value_head = get_architecture(
+                cls_name='MLP',
+                cls_args={
+                    'input_dim': 50,
+                    'hidden_dim': 25,
                     'output_dim': 1,
                     'w_init_spec': w_init_spec,
-                    'b_init_spec': b_init_spec
+                    'b_init_spec': b_init_spec,
+                    'num_layers': 2
                 })
         else:
             self._action_value_head = get_architecture(
@@ -131,9 +143,10 @@ class SimpleDiscreteActionValueHead(
 
     def forward(self, features, **kwargs):
         if self._dueling:
-            advantages = self._advantage_head(features)
+            proj_feat = tc.nn.ReLU()(self._proj(features))
+            advantages = self._advantage_head(proj_feat)
             advantages -= advantages.mean(dim=-1, keepdim=True)
-            values = self._value_head(features)
+            values = self._value_head(proj_feat)
             q_values = advantages + values
         else:
             q_values = self._action_value_head(features)
