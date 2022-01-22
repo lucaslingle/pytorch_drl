@@ -84,7 +84,7 @@ class SimpleDiscreteActionValueHead(
             w_init_spec: Tuple[str, Mapping[str, Any]],
             b_init_spec: Tuple[str, Mapping[str, Any]],
             dueling: bool = False,
-            dueling_widening: int = 1,
+            widening: int = 1,
             **kwargs: Mapping[str, Any]
     ):
         """
@@ -111,15 +111,15 @@ class SimpleDiscreteActionValueHead(
                 cls_name='Linear',
                 cls_args={
                     'input_dim': num_features,
-                    'output_dim': 50 * dueling_widening,
+                    'output_dim': 50 * widening,
                     'w_init_spec': w_init_spec,
                     'b_init_spec': b_init_spec
                 })
             self._advantage_head = get_architecture(
                 cls_name='MLP',
                 cls_args={
-                    'input_dim': 50 * dueling_widening,
-                    'hidden_dim': 25 * dueling_widening,
+                    'input_dim': 50 * widening,
+                    'hidden_dim': 25 * widening,
                     'output_dim': num_actions,
                     'w_init_spec': w_init_spec,
                     'b_init_spec': b_init_spec,
@@ -128,8 +128,8 @@ class SimpleDiscreteActionValueHead(
             self._value_head = get_architecture(
                 cls_name='MLP',
                 cls_args={
-                    'input_dim': 50 * dueling_widening,
-                    'hidden_dim': 25 * dueling_widening,
+                    'input_dim': 50 * widening,
+                    'hidden_dim': 25 * widening,
                     'output_dim': 1,
                     'w_init_spec': w_init_spec,
                     'b_init_spec': b_init_spec,
