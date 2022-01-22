@@ -5,6 +5,7 @@ import torch as tc
 import gym
 
 from drl.agents.preprocessing import Preprocessing
+from drl.agents.architectures import Architecture
 from drl.agents.architectures.stateless.abstract import StatelessArchitecture
 from drl.agents.heads import (
     Head,
@@ -82,7 +83,7 @@ def get_predictor(cls_name: str, cls_args: Mapping[str, Any]) -> Head:
 
 def get_predictors(
         env: Union[gym.core.Env, Wrapper],
-        **predictors_spec: Mapping[str, Mapping[str, Any]]) -> Dict[str, Head]:
+        **predictors_spec: Mapping[str, Dict[str, Any]]) -> Dict[str, Head]:
     """
     Args:
         env: OpenAI gym environment instance or wrapped environment.
