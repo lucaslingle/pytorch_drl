@@ -222,7 +222,7 @@ class DistributionalDiscreteActionValueHead(
             cls_name=architecture_cls_name,
             cls_args={
                 'input_dim': num_features,
-                'output_dim': num_bins * num_actions,
+                'output_dim': num_actions * num_bins,
                 'w_init_spec': w_init_spec,
                 'b_init_spec': b_init_spec
             })
