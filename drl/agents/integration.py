@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Mapping, Union
 import importlib
 
 import torch as tc
@@ -11,15 +11,38 @@ from drl.agents.heads import (
     DiscreteActionValueHead,
     EpsilonGreedyCategoricalPolicyHead
 )
+from drl.envs.wrappers.stateless.abstract import Wrapper
 
 
-def get_preprocessing(cls_name, cls_args):
+def get_preprocessing(
+        cls_name: str, cls_args: Mapping[str, Any]) -> Preprocessing:
+    """
+    Args:
+        cls_name: Name of a derived class of Preprocessing.
+        cls_args: Arguments in the signature of the class constructor.
+
+    Returns:
+        Instantiated class.
+    """
     module = importlib.import_module('drl.agents.preprocessing')
     cls = getattr(module, cls_name)
     return cls(**cls_args)
 
 
-def get_preprocessings(**preprocessing_spec: Dict[str, Dict[str, Any]]):
+def get_preprocessings(
+        **preprocessing_spec: Mapping[str, Mapping[str, Any]]
+) -> List[Preprocessing]:
+    """
+    Args:
+        **preprocessing_spec: Variable length dictionary of preprocessing specs.
+            Each preprocessing spec is keyed by a class name,
+            which should be a derived class of Preprocessing.
+            Each preprocessing spec's key maps to a value, which is a dictionary
+            of arguments passed to the constructor of that class.
+
+    Returns:
+        List of instantiated Preprocessing subclasses.
+    """
     preprocessing_stack = list()
     for cls_name, cls_args in preprocessing_spec.items():
         preprocessing = get_preprocessing(
@@ -28,19 +51,52 @@ def get_preprocessings(**preprocessing_spec: Dict[str, Dict[str, Any]]):
     return preprocessing_stack
 
 
-def get_architecture(cls_name, cls_args):
+def get_architecture(
+        cls_name: str, cls_args: Mapping[str, Any]) -> Architecture:
+    """
+    Args:
+        cls_name: Name of a derived class of Architecture.
+        cls_args: Arguments in the signature of the class constructor.
+
+    Returns:
+        Instantiated class.
+    """
     module = importlib.import_module('drl.agents.architectures')
     cls = getattr(module, cls_name)
     return cls(**cls_args)
 
 
-def get_predictor(cls_name, cls_args):
+def get_predictor(cls_name: str, cls_args: Mapping[str, Any]) -> Head:
+    """
+    Args:
+        cls_name: Name of a derived class of Head.
+        cls_args: Arguments in the signature of the class constructor.
+
+    Returns:
+        Instantiated class.
+    """
     module = importlib.import_module('drl.agents.heads')
     cls = getattr(module, cls_name)
     return cls(**cls_args)
 
 
-def get_predictors(env, **predictors_spec: Dict[str, Dict[str, Any]]):
+def get_predictors(
+        env: Union[gym.core.Env, Wrapper],
+        **predictors_spec: Mapping[str, Mapping[str, Any]]) -> Dict[str, Head]:
+    """
+    Args:
+        env: OpenAI gym environment instance or wrapped environment.
+        **predictors_spec: Variable length dictionary of predictor specs.
+            Each predictor spec is keyed by a prediction key.
+            Each predictor spec's key maps to a value, which is a dictionary
+            with keys 'cls_name' and 'cls_args'.
+            These keys map to values for names of derived classes of Head,
+            and to dictionaries of arguments to be passed to each class'
+            constructor.
+
+    Returns:
+        Dictionary of predictors keyed by name.
+    """
     predictors = dict()
     for key, spec in predictors_spec.items():
         # infer number of actions or action dimensionality.
