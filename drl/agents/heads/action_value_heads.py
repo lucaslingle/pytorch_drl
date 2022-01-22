@@ -96,9 +96,9 @@ class SimpleDiscreteActionValueHead(
             w_init_spec: Tuple containing weight initializer name and kwargs.
             b_init_spec: Tuple containing bias initializer name and kwargs.
             dueling: Use the dueling architecture from Wang et al., 2016?
-                If true, architecture_cls_name is ignored, and two MLPs are used.
+                If true, architecture_cls_name is ignored.
                 Default: False.
-            dueling_widening: Widening factor for dueling architecture.
+            widening: Widening factor for dueling architecture.
                 Ignored if dueling is False.
                 Default: 1.
             **kwargs: Keyword arguments.
