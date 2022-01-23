@@ -99,7 +99,7 @@ class SimpleDiscreteActionValueHead(
         """
         SimpleActionValueHead.__init__(self)
         DiscreteActionValueHead.__init__(self, num_actions)
-        self._action_value_head = head_architecture_cls.__init__(
+        self._action_value_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=num_actions,
             w_init=w_init,
@@ -141,7 +141,7 @@ class SimpleContinuousActionValueHead(
         """
         SimpleActionValueHead.__init__(self)
         ContinuousActionValueHead.__init__(self)
-        self._action_value_head = head_architecture_cls.__init__(
+        self._action_value_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=1,
             w_init=w_init,
@@ -191,7 +191,7 @@ class DistributionalDiscreteActionValueHead(
         """
         DistributionalActionValueHead.__init__(self, vmin, vmax, num_bins)
         DiscreteActionValueHead.__init__(self, num_actions)
-        self._action_value_head = head_architecture_cls.__init__(
+        self._action_value_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=num_actions * num_bins,
             w_init=w_init,

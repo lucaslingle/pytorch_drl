@@ -3,7 +3,7 @@ import abc
 
 import torch as tc
 
-from drl.agents.heads import (
+from drl.agents.heads.action_value_heads import (
     Head, DiscreteActionValueHead,
     SimpleDiscreteActionValueHead, DistributionalDiscreteActionValueHead
 )
@@ -65,7 +65,7 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
             **kwargs: Keyword arguments.
         """
         super().__init__(num_features, num_actions)
-        self._policy_head = head_architecture_cls.__init__(
+        self._policy_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=num_actions,
             w_init=w_init,
@@ -113,7 +113,7 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
             **kwargs: Keyword arguments.
         """
         super().__init__(num_features, action_dim)
-        self._policy_head = head_architecture_cls.__init__(
+        self._policy_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=action_dim * 2,
             w_init=w_init,
@@ -177,6 +177,9 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
         elif isinstance(self._action_value_head, DistributionalDiscreteActionValueHead):
             q_logits = self._action_value_head(features)
             q_values = self._action_value_head.logits_to_mean(q_logits)
+        else:
+            msg = "Action-value head class not supported."
+            raise NotImplementedError(msg)
         num_actions = q_values.shape[-1]
         greedy_action = tc.argmax(q_values, dim=-1)
         greedy_policy = one_hot(greedy_action, depth=num_actions)

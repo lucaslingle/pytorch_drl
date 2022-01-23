@@ -38,7 +38,7 @@ class SimpleValueHead(ValueHead):
             **kwargs: Keyword arguments.
         """
         super().__init__()
-        self._value_head = head_architecture_cls.__init__(
+        self._value_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=1,
             w_init=w_init,
