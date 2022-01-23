@@ -26,7 +26,7 @@ class StatelessArchitecture(Architecture, metaclass=abc.ABCMeta):
         self._w_init = w_init
         self._b_init = b_init
 
-    def _init_weights(self, sequential_module):
+    def _init_weights(self, sequential_module: tc.nn.Sequential) -> None:
         for m in sequential_module:
             if hasattr(m, 'weights'):
                 self._w_init(m.weights)
