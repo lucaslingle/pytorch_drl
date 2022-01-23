@@ -1,4 +1,4 @@
-from typing import Dict, List, Any, Mapping, Union
+from typing import Dict, List, Any, Mapping, Union, Type, Tuple
 import importlib
 
 import torch as tc
@@ -7,10 +7,13 @@ import gym
 from drl.agents.preprocessing import Preprocessing
 from drl.agents.architectures import Architecture
 from drl.agents.architectures.stateless.abstract import StatelessArchitecture
+from drl.agents.architectures.initializers import get_initializer
 from drl.agents.heads import (
     Head,
     DiscreteActionValueHead,
-    EpsilonGreedyCategoricalPolicyHead
+    EpsilonGreedyCategoricalPolicyHead,
+    DiscretePolicyHead,
+    ContinuousPolicyHead
 )
 from drl.envs.wrappers.stateless.abstract import Wrapper
 
@@ -52,33 +55,84 @@ def get_preprocessings(
     return preprocessing_stack
 
 
+def get_architecturec_cls(cls_name: str) -> Type[Architecture]:
+    """
+    Args:
+        cls_name: Class name.
+
+    Returns:
+        Class object.
+    """
+    module = importlib.import_module('drl.agents.architectures')
+    cls = getattr(module, cls_name)
+    return cls
+
+
 def get_architecture(
-        cls_name: str, cls_args: Mapping[str, Any]) -> Architecture:
+        cls_name: str,
+        cls_args: Dict[str, Any],
+        w_init_spec: Tuple[str, Dict[str, Any]],
+        b_init_spec: Tuple[str, Dict[str, Any]]
+) -> Architecture:
     """
     Args:
         cls_name: Name of a derived class of Architecture.
         cls_args: Arguments in the signature of the class constructor.
+        w_init_spec: Tuple containing weight initializer name and args.
+        b_init_spec: Tuple containing bias initializer name and args.
 
     Returns:
         Instantiated class.
     """
-    module = importlib.import_module('drl.agents.architectures')
-    cls = getattr(module, cls_name)
-    return cls(**cls_args)
+    cls = get_architecturec_cls(cls_name)
+    args = {
+        **cls_args,
+        'w_init': get_initializer(w_init_spec),
+        'b_init': get_initializer(b_init_spec)
+    }
+    return cls(**args)
 
 
-def get_predictor(cls_name: str, cls_args: Mapping[str, Any]) -> Head:
+def get_predictor(
+        cls_name: str,
+        cls_args: Dict[str, Any],
+        head_architecture_cls_name: str,
+        head_architecture_cls_args: Dict[str, Any],
+        w_init_spec: Tuple[str, Dict[str, Any]],
+        b_init_spec: Tuple[str, Dict[str, Any]]
+) -> Head:
     """
     Args:
-        cls_name: Name of a derived class of Head.
-        cls_args: Arguments in the signature of the class constructor.
+        cls_name: Head class name.
+        cls_args: Head class constructor arguments.
+            Should contain at least 'num_features'
+            and either 'num_actions' or 'action_dim'.
+        head_architecture_cls_name: Class name for head architecture.
+            Should correspond to a derived class of HeadEligibleArchitecture.
+        head_architecture_cls_args: Class arguments for head architecture.
+        w_init_spec: Tuple containing weight initializer name and args.
+        b_init_spec: Tuple containing bias initializer name and args.
 
     Returns:
-        Instantiated class.
+        Instantiated Head subclass.
     """
+    assert 'num_features' in cls_args
     module = importlib.import_module('drl.agents.heads')
-    cls = getattr(module, cls_name)
-    return cls(**cls_args)
+    head_cls = getattr(module, cls_name)
+    if issubclass(head_cls, (DiscretePolicyHead, DiscreteActionValueHead)):
+        assert 'num_actions' in cls_args
+    if issubclass(head_cls, ContinuousPolicyHead):
+        assert 'action_dim' in cls_args
+
+    args = {
+        **cls_args,
+        'head_architecture_cls': get_architecturec_cls(
+            head_architecture_cls_name),
+        'head_architecture_cls_args': head_architecture_cls_args,
+        'w_init': get_initializer(w_init_spec),
+        'b_init': get_initializer(b_init_spec)
+    }
+    return head_cls(**args)
 
 
 def get_predictors(
@@ -101,7 +155,7 @@ def get_predictors(
     predictors = dict()
     for key, spec in predictors_spec.items():
         # infer number of actions or action dimensionality.
-        if key == 'policy' or key.startswith('action_value'):
+        if key == 'policy' or key.startswith('action_value_'):
             if isinstance(env.action_space, gym.spaces.Discrete):
                 spec['cls_args'].update({'num_actions': env.action_space.n})
             elif isinstance(env.action_space, gym.spaces.Box):

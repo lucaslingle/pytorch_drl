@@ -1,10 +1,10 @@
-from typing import Tuple, Mapping, Any
+from typing import Mapping, Any, Type, Callable, Dict
 import abc
 
 import torch as tc
 
 from drl.agents.heads.abstract import Head
-from drl.agents.integration import get_architecture
+from drl.agents.architectures.stateless.abstract import HeadEligibleArchitecture
 
 
 class ActionValueHead(Head, metaclass=abc.ABCMeta):
@@ -80,81 +80,35 @@ class SimpleDiscreteActionValueHead(
             self,
             num_features: int,
             num_actions: int,
-            architecture_cls_name: str,
-            w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]],
-            dueling: bool = False,
-            widening: int = 1,
+            head_architecture_cls: Type[HeadEligibleArchitecture],
+            head_architecture_cls_args: Dict[str, Any],
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None],
             **kwargs: Mapping[str, Any]
     ):
         """
         Args:
             num_features: Number of input features.
             num_actions: Number of actions.
-            architecture_cls_name: Class name for policy head architecture.
-                Must be a derived class of StatelessArchitecture.
-            w_init_spec: Tuple containing weight initializer name and kwargs.
-            b_init_spec: Tuple containing bias initializer name and kwargs.
-            dueling: Use the dueling architecture from Wang et al., 2016?
-                If true, architecture_cls_name is ignored.
-                Default: False.
-            widening: Widening factor for dueling architecture.
-                Ignored if dueling is False.
-                Default: 1.
+            head_architecture_cls: Class name for policy head architecture.
+                Must be a derived class of HeadEligibleArchitecture.
+            head_architecture_cls_args: Keyword arguments for head architecture.
+            w_init: Weight initializer.
+            b_init: Bias initializer.
             **kwargs: Keyword arguments.
         """
         SimpleActionValueHead.__init__(self)
         DiscreteActionValueHead.__init__(self, num_actions)
-        self._dueling = dueling
-        if dueling:
-            self._proj = get_architecture(
-                cls_name='Linear',
-                cls_args={
-                    'input_dim': num_features,
-                    'output_dim': 50 * widening,
-                    'w_init_spec': w_init_spec,
-                    'b_init_spec': b_init_spec
-                })
-            self._advantage_head = get_architecture(
-                cls_name='MLP',
-                cls_args={
-                    'input_dim': 50 * widening,
-                    'hidden_dim': 25 * widening,
-                    'output_dim': num_actions,
-                    'w_init_spec': w_init_spec,
-                    'b_init_spec': b_init_spec,
-                    'num_layers': 2
-                })
-            self._value_head = get_architecture(
-                cls_name='MLP',
-                cls_args={
-                    'input_dim': 50 * widening,
-                    'hidden_dim': 25 * widening,
-                    'output_dim': 1,
-                    'w_init_spec': w_init_spec,
-                    'b_init_spec': b_init_spec,
-                    'num_layers': 2
-                })
-        else:
-            self._action_value_head = get_architecture(
-                cls_name=architecture_cls_name,
-                cls_args={
-                    'input_dim': num_features,
-                    'output_dim': num_actions,
-                    'w_init_spec': w_init_spec,
-                    'b_init_spec': b_init_spec
-                })
+        self._action_value_head = head_architecture_cls.__init__(
+            input_dim=num_features,
+            output_dim=num_actions,
+            w_init=w_init,
+            b_init=b_init,
+            **head_architecture_cls_args)
 
     def forward(self, features, **kwargs):
-        if self._dueling:
-            proj_feat = tc.nn.ReLU()(self._proj(features))
-            advantages = self._advantage_head(proj_feat)
-            advantages -= advantages.mean(dim=-1, keepdim=True)
-            values = self._value_head(proj_feat)
-            q_values = advantages + values
-        else:
-            q_values = self._action_value_head(features)
-        return q_values
+        qpreds = self._action_value_head(features)
+        return qpreds
 
 
 class SimpleContinuousActionValueHead(
@@ -169,34 +123,34 @@ class SimpleContinuousActionValueHead(
     def __init__(
             self,
             num_features: int,
-            architecture_cls_name: str,
-            w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]],
+            head_architecture_cls: Type[HeadEligibleArchitecture],
+            head_architecture_cls_args: Dict[str, Any],
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None],
             **kwargs: Mapping[str, Any]
     ):
         """
         Args:
             num_features: Number of input features.
-            architecture_cls_name: Class name for policy head architecture.
-                Must be a derived class of StatelessArchitecture.
-            w_init_spec: Tuple containing weight initializer name and kwargs.
-            b_init_spec: Tuple containing bias initializer name and kwargs.
+            head_architecture_cls: Class name for policy head architecture.
+                Must be a derived class of HeadEligibleArchitecture.
+            head_architecture_cls_args: Keyword arguments for head architecture.
+            w_init: Weight initializer.
+            b_init: Bias initializer.
             **kwargs: Keyword arguments.
         """
         SimpleActionValueHead.__init__(self)
         ContinuousActionValueHead.__init__(self)
-        self._action_value_head = get_architecture(
-            cls_name=architecture_cls_name,
-            cls_args={
-                'input_dim': num_features,
-                'output_dim': 1,
-                'w_init_spec': w_init_spec,
-                'b_init_spec': b_init_spec
-            })
+        self._action_value_head = head_architecture_cls.__init__(
+            input_dim=num_features,
+            output_dim=1,
+            w_init=w_init,
+            b_init=b_init,
+            **head_architecture_cls_args)
 
     def forward(self, features, **kwargs):
-        q_value = self._action_value_head(features).squeeze(-1)
-        return q_value
+        qpred = self._action_value_head(features).squeeze(-1)
+        return qpred
 
 
 class DistributionalDiscreteActionValueHead(
@@ -212,9 +166,10 @@ class DistributionalDiscreteActionValueHead(
             self,
             num_features: int,
             num_actions: int,
-            architecture_cls_name: str,
-            w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]],
+            head_architecture_cls: Type[HeadEligibleArchitecture],
+            head_architecture_cls_args: Dict[str, Any],
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None],
             vmin: float,
             vmax: float,
             num_bins: int,
@@ -224,10 +179,11 @@ class DistributionalDiscreteActionValueHead(
         Args:
             num_features: Number of input features.
             num_actions: Number of actions.
-            architecture_cls_name: Class name for policy head architecture.
-                Must be a derived class of StatelessArchitecture.
-            w_init_spec: Tuple containing weight initializer name and kwargs.
-            b_init_spec: Tuple containing bias initializer name and kwargs.
+            head_architecture_cls: Class name for policy head architecture.
+                Must be a derived class of HeadEligibleArchitecture.
+            head_architecture_cls_args: Keyword arguments for head architecture.
+            w_init: Weight initializer.
+            b_init: Bias initializer.
             vmin: Minimum return value.
             vmax: Maximum return value.
             num_bins: Number of bins for distributional value learning.
@@ -235,16 +191,24 @@ class DistributionalDiscreteActionValueHead(
         """
         DistributionalActionValueHead.__init__(self, vmin, vmax, num_bins)
         DiscreteActionValueHead.__init__(self, num_actions)
-        self._action_value_head = get_architecture(
-            cls_name=architecture_cls_name,
-            cls_args={
-                'input_dim': num_features,
-                'output_dim': num_actions * num_bins,
-                'w_init_spec': w_init_spec,
-                'b_init_spec': b_init_spec
-            })
+        self._action_value_head = head_architecture_cls.__init__(
+            input_dim=num_features,
+            output_dim=num_actions * num_bins,
+            w_init=w_init,
+            b_init=b_init,
+            **head_architecture_cls_args)
 
-    def logits_to_mean(self, q_value_logits):
+    def logits_to_mean(self, q_value_logits: tc.Tensor) -> tc.Tensor:
+        """
+        Args:
+            q_value_logits: Torch tensor of shape
+                [batch_size, num_actions, num_bins]
+                containing action-value logits.
+
+        Returns:
+            Torch tensor of shape [batch_size, num_actions] containing the mean
+            q-value predicted for each action.
+        """
         bin_width = (self._vmax - self._vmin) / self._num_bins
         bin_values = self._vmin + bin_width * tc.arange(self._num_bins).float()
         bin_values = bin_values.view(1, 1, self._num_bins)

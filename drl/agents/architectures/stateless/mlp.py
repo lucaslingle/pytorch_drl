@@ -1,35 +1,33 @@
-from typing import Tuple, Mapping, Any, Optional
+from typing import Callable
 
 import torch as tc
 
-from drl.agents.architectures.stateless.abstract import StatelessArchitecture
+from drl.agents.architectures.stateless.abstract import HeadEligibleArchitecture
 
 
-class MLP(StatelessArchitecture):
+class MLP(HeadEligibleArchitecture):
     """
     Multilayer perceptron architecture.
     """
     def __init__(
             self,
             input_dim: int,
+            hidden_dim: int,
             output_dim: int,
-            w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]],
-            num_layers: int = 2,
-            hidden_dim: Optional[int] = None
+            num_layers: int,
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None],
     ):
         """
         Args:
             input_dim: Input dimensionality.
             hidden_dim: Intermediate layer dimensionality.
             output_dim: Output dimensionality.
-            w_init_spec: Tuple containing weight initializer name and kwargs.
-            b_init_spec: Tuple containing bias initializer name and kwargs.
+            num_layers: Number of layers.
+            w_init: Weight initializer.
+            b_init: Bias initializer.
         """
-        super().__init__(w_init_spec, b_init_spec)
-        self._input_dim = input_dim
-        self._hidden_dim = hidden_dim if hidden_dim else 2 * input_dim
-        self._output_dim = output_dim
+        super().__init__(input_dim, output_dim, w_init, b_init)
         self._network = tc.nn.Sequential(*[
             tc.nn.Sequential(
                 tc.nn.Linear(
@@ -38,16 +36,7 @@ class MLP(StatelessArchitecture):
                 tc.nn.ReLU())
             for l in range(num_layers)
         ])
-        self._init_weights()
-
-    @property
-    def input_shape(self):
-        shape = (self._input_dim,)
-        return shape
-
-    @property
-    def output_dim(self):
-        return self._output_dim
+        self._init_weights(self._network)
 
     def forward(self, x, **kwargs):
         features = self._network(x)

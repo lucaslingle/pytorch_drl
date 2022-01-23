@@ -1,11 +1,14 @@
-from typing import Tuple, Mapping, Any
+from typing import Mapping, Any, Type, Callable, Dict
 import abc
 
 import torch as tc
 
-from drl.agents.heads.abstract import Head
+from drl.agents.heads import (
+    Head, DiscreteActionValueHead,
+    SimpleDiscreteActionValueHead, DistributionalDiscreteActionValueHead
+)
+from drl.agents.architectures.stateless.abstract import HeadEligibleArchitecture
 from drl.agents.preprocessing.tabular import one_hot
-from drl.agents.integration import get_architecture
 
 
 class PolicyHead(Head, metaclass=abc.ABCMeta):
@@ -44,30 +47,30 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
             self,
             num_features: int,
             num_actions: int,
-            architecture_cls_name: str,
-            w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]],
+            head_architecture_cls: Type[HeadEligibleArchitecture],
+            head_architecture_cls_args: Dict[str, Any],
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None],
             **kwargs: Mapping[str, Any]
     ):
         """
         Args:
             num_features: Number of input features.
             num_actions: Number of actions.
-            architecture_cls_name: Class name for policy head architecture.
-                Must be a derived class of StatelessArchitecture.
-            w_init_spec: Tuple containing weight initializer name and kwargs.
-            b_init_spec: Tuple containing bias initializer name and kwargs.
+            head_architecture_cls: Class name for policy head architecture.
+                Must be a derived class of HeadEligibleArchitecture.
+            head_architecture_cls_args: Keyword arguments for head architecture.
+            w_init: Weight initializer.
+            b_init: Bias initializer.
             **kwargs: Keyword arguments.
         """
         super().__init__(num_features, num_actions)
-        self._policy_head = get_architecture(
-            cls_name=architecture_cls_name,
-            cls_args={
-                'input_dim': num_features,
-                'output_dim': num_actions,
-                'w_init_spec': w_init_spec,
-                'b_init_spec': b_init_spec
-            })
+        self._policy_head = head_architecture_cls.__init__(
+            input_dim=num_features,
+            output_dim=num_actions,
+            w_init=w_init,
+            b_init=b_init,
+            **head_architecture_cls_args)
 
     def forward(self, features, **kwargs):
         """
@@ -92,30 +95,30 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
             self,
             num_features: int,
             action_dim: int,
-            architecture_cls_name: str,
-            w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]],
+            head_architecture_cls: Type[HeadEligibleArchitecture],
+            head_architecture_cls_args: Dict[str, Any],
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None],
             **kwargs: Mapping[str, Any]
     ):
         """
         Args:
             num_features: Number of input features.
-            action_dim: Action space dimensionality.
-            architecture_cls_name: Class name for policy head architecture.
-                Must be a derived class of StatelessArchitecture.
-            w_init_spec: Tuple containing weight initializer name and kwargs.
-            b_init_spec: Tuple containing bias initializer name and kwargs.
+            num_actions: Number of actions.
+            head_architecture_cls: Class name for policy head architecture.
+                Must be a derived class of HeadEligibleArchitecture.
+            head_architecture_cls_args: Keyword arguments for head architecture.
+            w_init: Weight initializer.
+            b_init: Bias initializer.
             **kwargs: Keyword arguments.
         """
         super().__init__(num_features, action_dim)
-        self._policy_head = get_architecture(
-            cls_name=architecture_cls_name,
-            cls_args={
-                'input_dim': num_features,
-                'output_dim': action_dim * 2,
-                'w_init_spec': w_init_spec,
-                'b_init_spec': b_init_spec
-            })
+        self._policy_head = head_architecture_cls.__init__(
+            input_dim=num_features,
+            output_dim=action_dim * 2,
+            w_init=w_init,
+            b_init=b_init,
+            **head_architecture_cls_args)
 
     def forward(self, features, **kwargs):
         """
@@ -138,10 +141,10 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
     Epsilon-greedy policy head for use in conjunction with an action-value
     function.
     """
-    def __init__(self, action_value_head, **kwargs):
+    def __init__(self, action_value_head: DiscreteActionValueHead, **kwargs):
         """
         Args:
-            action_value_head: ActionValueHead instance.
+            action_value_head: SimpleDiscreteActionValueHead instance.
             **kwargs: Keyword arguments.
         """
         num_features = action_value_head.input_dim
@@ -169,7 +172,11 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
             Torch categorical distribution with batch shape [batch_size],
             and element shape [action_dim].
         """
-        q_values = self._action_value_head(features)
+        if isinstance(self._action_value_head, SimpleDiscreteActionValueHead):
+            q_values = self._action_value_head(features)
+        elif isinstance(self._action_value_head, DistributionalDiscreteActionValueHead):
+            q_logits = self._action_value_head(features)
+            q_values = self._action_value_head.logits_to_mean(q_logits)
         num_actions = q_values.shape[-1]
         greedy_action = tc.argmax(q_values, dim=-1)
         greedy_policy = one_hot(greedy_action, depth=num_actions)

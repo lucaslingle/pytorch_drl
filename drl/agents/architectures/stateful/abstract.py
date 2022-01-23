@@ -1,22 +1,23 @@
 import abc
 
 from drl.agents.architectures.abstract import Architecture
-from drl.agents.architectures.common import get_initializer
 
 
 class StatefulArchitecture(Architecture, metaclass=abc.ABCMeta):
     """
     Abstract class for stateful (i.e., memory-augmented) architectures.
     """
-    def __init__(self, w_init_spec, b_init_spec):
+    def __init__(self, w_init, b_init, **kwargs):
         super().__init__()
-        self._w_init = get_initializer(name=w_init_spec[0])(**w_init_spec[1])
-        self._b_init = get_initializer(name=b_init_spec[0])(**b_init_spec[1])
+        self._w_init = w_init
+        self._b_init = b_init
 
-    def _init_weights(self):
-        for m in self._network:
-            self._w_init(m.weights)
-            self._b_init(m.bias)
+    def _init_weights(self, sequential_module):
+        for m in sequential_module:
+            if hasattr(m, 'weights'):
+                self._w_init(m.weights)
+            if hasattr(m, 'bias'):
+                self._b_init(m.bias)
 
     @property
     @abc.abstractmethod

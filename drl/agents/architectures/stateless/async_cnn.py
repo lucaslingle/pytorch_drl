@@ -1,4 +1,4 @@
-from typing import Tuple, Mapping, Any
+from typing import Callable
 
 import torch as tc
 
@@ -13,16 +13,16 @@ class AsyncCNN(StatelessArchitecture):
     def __init__(
             self,
             img_channels: int,
-            w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]]
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None],
     ):
         """
         Args:
             img_channels: Image channels.
-            w_init_spec: Tuple containing weight initializer name and kwargs.
-            b_init_spec: Tuple containing bias initializer name and kwargs.
+            w_init: Weight initializer.
+            b_init: Bias initializer.
         """
-        super().__init__(w_init_spec, b_init_spec)
+        super().__init__(w_init, b_init)
         self._img_channels = img_channels
         self._num_features = 256
         self._network = tc.nn.Sequential(
@@ -34,7 +34,7 @@ class AsyncCNN(StatelessArchitecture):
             tc.nn.Linear(2592, self._num_features),
             tc.nn.ReLU()
         )
-        self._init_weights()
+        self._init_weights(self._network)
 
     @property
     def input_shape(self):

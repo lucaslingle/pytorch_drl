@@ -1,11 +1,11 @@
-from typing import Tuple, Mapping, Any
+from typing import Callable
 
 import torch as tc
 
-from drl.agents.architectures.stateless.abstract import StatelessArchitecture
+from drl.agents.architectures.stateless.abstract import HeadEligibleArchitecture
 
 
-class Linear(StatelessArchitecture):
+class Linear(HeadEligibleArchitecture):
     """
     Linear architecture.
     """
@@ -13,30 +13,19 @@ class Linear(StatelessArchitecture):
             self,
             input_dim,
             output_dim,
-            w_init_spec: Tuple[str, Mapping[str, Any]],
-            b_init_spec: Tuple[str, Mapping[str, Any]]
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None],
     ):
         """
         Args:
             input_dim: Input dimensionality.
             output_dim: Output dimensionality.
-            w_init_spec: Tuple containing weight initializer name and kwargs.
-            b_init_spec: Tuple containing bias initializer name and kwargs.
+            w_init: Weight initializer.
+            b_init: Bias initializer.
         """
-        super().__init__(w_init_spec, b_init_spec)
-        self._input_dim = input_dim
-        self._output_dim = output_dim
-        self._network = tc.nn.Linear(input_dim, output_dim)
-        self._init_weights()
-
-    @property
-    def input_shape(self):
-        shape = (self._input_dim,)
-        return shape
-
-    @property
-    def output_dim(self):
-        return self._output_dim
+        super().__init__(input_dim, output_dim, w_init, b_init)
+        self._network = tc.nn.Sequential(tc.nn.Linear(input_dim, output_dim))
+        self._init_weights(self._network)
 
     def forward(self, x, **kwargs):
         features = self._network(x)

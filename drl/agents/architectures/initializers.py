@@ -1,20 +1,35 @@
+from typing import Tuple, Mapping, Any, Callable
 import importlib
+import functools
 
 import torch as tc
 import numpy as np
 
 
-def get_initializer(name):
-    if name == 'normc':
-        return normc_init_
+def get_initializer(
+        init_spec: Tuple[str, Mapping[str, Any]]
+) -> Callable[[tc.Tensor], None]:
+    """
+    Args:
+        init_spec: Tuple containing initializer name, which should be either
+            'normc_' or an initializer from torch.nn.init, and initializer args,
+            which should be a dictionary of arguments for the initializer.
+
+    Returns:
+        Initializer as a partial function.
+    """
+    name, args = init_spec
+    if name == 'normc_':
+        return normc_
     module = importlib.import_module('torch.nn.init')
     initializer = getattr(module, name)
-    return initializer
+    return functools.partial(initializer, **args)
 
 
-def normc_init_(weight_tensor, gain=1.0):
+def normc_(weight_tensor: tc.Tensor, gain: float = 1.0) -> None:
     """Reference:
     https://github.com/openai/baselines/blob/master/baselines/common/tf_util.py#L97
+
     Note that in tensorflow the weight tensor in a linear layer is stored with the
     input dim first and the output dim second. See
     https://github.com/tensorflow/tensorflow/blob/v2.5.0/tensorflow/python/keras/layers/core.py#L1193

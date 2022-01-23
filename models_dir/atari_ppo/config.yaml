@@ -51,14 +51,24 @@ networks:
                 ToChannelMajor: {}
             architecture:
                 cls_name: NatureCNN
-                cls_args: {img_channels: 4, ortho_init: False}
+                cls_args: {img_channels: 4}
+                w_init_spec: ['xavier_uniform_', {}]
+                b_init_spec: ['zeros_', {}]
             predictors:
                 policy:
-                    cls_name: LinearCategoricalPolicyHead
-                    cls_args: {num_features: 512, ortho_init: False}
+                    cls_name: CategoricalPolicyHead
+                    cls_args: {num_features: 512}
+                    head_architecture_cls_name: Linear
+                    head_architecture_cls_args: {}
+                    w_init_spec: ['normc_', {'gain': 0.01}]
+                    b_init_spec: ['zeros_', {}]
                 value_extrinsic:
-                    cls_name: LinearSimpleValueHead
-                    cls_args: {num_features: 512, ortho_init: False}
+                    cls_name: SimpleValueHead
+                    cls_args: {num_features: 512}
+                    head_architecture_cls_name: Linear
+                    head_architecture_cls_args: {}
+                    w_init_spec: ['normc_', {'gain': 1.0}]
+                    b_init_spec: ['zeros_', {}]
         optimizer:
             cls_name: Adam
             cls_args: {lr: 0.001, betas: [0.90, 0.999], eps: 0.00001}
