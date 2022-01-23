@@ -36,7 +36,7 @@ class StatelessArchitecture(Architecture, metaclass=abc.ABCMeta):
         """
 
 
-class HeadEligibleArchitecture(StatelessArchitecture):
+class HeadEligibleArchitecture(StatelessArchitecture, metaclass=abc.ABCMeta):
     def __init__(self, input_dim, output_dim, w_init, b_init, **kwargs):
         super().__init__(w_init, b_init)
         self._input_dim = input_dim
