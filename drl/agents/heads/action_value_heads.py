@@ -43,8 +43,8 @@ class DistributionalActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     def returns_to_bin_ids(self, returns):
         returns = tc.clip(returns, self._vmin, self._vmax)
         bin_width = (self._vmax - self._vmin) / self._num_bins
-        bin_values = self._vmin + bin_width * tc.arange(self._num_bins).float()
-        indices = tc.bucketize(returns, bin_values)
+        bin_edges = self._vmin + bin_width * tc.arange(self._num_bins+1).float()
+        indices = tc.bucketize(returns, bin_edges)
         return indices
 
 
@@ -210,10 +210,11 @@ class DistributionalDiscreteActionValueHead(
             q-value predicted for each action.
         """
         bin_width = (self._vmax - self._vmin) / self._num_bins
-        bin_values = self._vmin + bin_width * tc.arange(self._num_bins).float()
-        bin_values = bin_values.view(1, 1, self._num_bins)
+        bin_midpoints = self._vmin + 0.5 * bin_width + \
+            bin_width * tc.arange(self._num_bins).float()
+        bin_midpoints = bin_midpoints.view(1, 1, self._num_bins)
         value_dists = tc.nn.functional.softmax(dim=-1)(q_value_logits)
-        q_value_means = (value_dists * bin_values).sum(dim=-1)
+        q_value_means = (value_dists * bin_midpoints).sum(dim=-1)
         return q_value_means
 
     def forward(self, features, **kwargs):
