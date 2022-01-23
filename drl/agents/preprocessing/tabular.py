@@ -1,7 +1,7 @@
 import torch as tc
 
 
-def one_hot(ys, depth):
+def one_hot(ys: tc.Tensor, depth: int) -> tc.Tensor:
     """
     Applies one-hot encoding to a batch of vectors.
 
