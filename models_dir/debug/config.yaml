@@ -1,3 +1,4 @@
+seed: 7357
 distributed:
     backend: gloo
     world_size: 1
@@ -20,7 +21,7 @@ algo:
         credit_assignment_spec:
             extrinsic:
                 cls_name: GAE
-                cls_args: {lambda_: 0.95, gamma: 0.99, use_dones: True}
+                cls_args: {gamma: 0.99, lambda_: 0.95, use_dones: True}
         extra_steps: 0
         standardize_adv: True
         use_pcgrad: False
@@ -31,14 +32,18 @@ algo:
 env:
     wrappers:
         train:
-            AtariWrapper: {use_noop: True, use_sticky_actions: False}
+            AtariWrapper:
+                use_noop: True
+                use_sticky_actions: False
             DeepmindWrapper:
                 episode_life: True
                 clip_rewards: True
                 frame_stack: True
                 lazy: False
         evaluate:
-            AtariWrapper: {use_noop: True, use_sticky_actions: False}
+            AtariWrapper:
+                use_noop: True
+                use_sticky_actions: False
             DeepmindWrapper:
                 episode_life: False
                 clip_rewards: False
@@ -51,14 +56,24 @@ networks:
                 ToChannelMajor: {}
             architecture:
                 cls_name: NatureCNN
-                cls_args: {img_channels: 4, ortho_init: False}
+                cls_args: {img_channels: 4}
+                w_init_spec: ['xavier_uniform_', {}]
+                b_init_spec: ['zeros_', {}]
             predictors:
                 policy:
-                    cls_name: LinearCategoricalPolicyHead
-                    cls_args: {num_features: 512, ortho_init: False}
+                    cls_name: CategoricalPolicyHead
+                    cls_args: {num_features: 512}
+                    head_architecture_cls_name: Linear
+                    head_architecture_cls_args: {}
+                    w_init_spec: ['normc_', {'gain': 0.01}]
+                    b_init_spec: ['zeros_', {}]
                 value_extrinsic:
-                    cls_name: LinearSimpleValueHead
-                    cls_args: {num_features: 512, ortho_init: False}
+                    cls_name: SimpleValueHead
+                    cls_args: {num_features: 512}
+                    head_architecture_cls_name: Linear
+                    head_architecture_cls_args: {}
+                    w_init_spec: ['normc_', {'gain': 1.0}]
+                    b_init_spec: ['zeros_', {}]
         optimizer:
             cls_name: Adam
             cls_args: {lr: 0.001, betas: [0.90, 0.999], eps: 0.00001}
