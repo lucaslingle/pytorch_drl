@@ -30,7 +30,7 @@ class SimpleValueHead(ValueHead):
         """
         Args:
             num_features: Number of input features.
-            head_architecture_cls: Class name for policy head architecture.
+            head_architecture_cls: Class object for policy head architecture.
                 Must be a derived class of HeadEligibleArchitecture.
             head_architecture_cls_args: Keyword arguments for head architecture.
             w_init: Weight initializer.

@@ -57,7 +57,7 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
         Args:
             num_features: Number of input features.
             num_actions: Number of actions.
-            head_architecture_cls: Class name for policy head architecture.
+            head_architecture_cls: Class object for policy head architecture.
                 Must be a derived class of HeadEligibleArchitecture.
             head_architecture_cls_args: Keyword arguments for head architecture.
             w_init: Weight initializer.
@@ -105,7 +105,7 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
         Args:
             num_features: Number of input features.
             num_actions: Number of actions.
-            head_architecture_cls: Class name for policy head architecture.
+            head_architecture_cls: Class object for policy head architecture.
                 Must be a derived class of HeadEligibleArchitecture.
             head_architecture_cls_args: Keyword arguments for head architecture.
             w_init: Weight initializer.
