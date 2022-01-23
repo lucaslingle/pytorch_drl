@@ -1,4 +1,7 @@
+from typing import Callable, Mapping, Any
 import abc
+
+import torch as tc
 
 from drl.agents.architectures.abstract import Architecture
 
@@ -7,7 +10,18 @@ class StatefulArchitecture(Architecture, metaclass=abc.ABCMeta):
     """
     Abstract class for stateful (i.e., memory-augmented) architectures.
     """
-    def __init__(self, w_init, b_init, **kwargs):
+    def __init__(
+            self,
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None],
+            **kwargs: Mapping[str, Any]
+    ):
+        """
+        Args:
+            w_init: Weight initializer.
+            b_init: Bias initializer.
+            **kwargs: Keyword arguments.
+        """
         super().__init__()
         self._w_init = w_init
         self._b_init = b_init
