@@ -58,7 +58,7 @@ def get_preprocessings(
 
 def get_architecture_cls(
         cls_name: str
-) -> Type[Union[StatelessArchitecture, StatefulArchitecture]]:
+) -> Union[Type[StatelessArchitecture], Type[StatefulArchitecture]]:
     """
     Args:
         cls_name: Class name.

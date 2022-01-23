@@ -1,5 +1,3 @@
-import torch as tc
-
 from drl.agents.preprocessing.abstract import Preprocessing
 
 
