@@ -7,6 +7,7 @@ import gym
 from drl.agents.preprocessing import Preprocessing
 from drl.agents.architectures import Architecture
 from drl.agents.architectures.stateless.abstract import StatelessArchitecture
+from drl.agents.architectures.stateful.abstract import StatefulArchitecture
 from drl.agents.architectures.initializers import get_initializer
 from drl.agents.heads import (
     Head,
@@ -55,7 +56,9 @@ def get_preprocessings(
     return preprocessing_stack
 
 
-def get_architecturec_cls(cls_name: str) -> Type[Architecture]:
+def get_architecture_cls(
+        cls_name: str
+) -> Type[Union[StatelessArchitecture, StatefulArchitecture]]:
     """
     Args:
         cls_name: Class name.
@@ -84,7 +87,7 @@ def get_architecture(
     Returns:
         Instantiated class.
     """
-    cls = get_architecturec_cls(cls_name)
+    cls = get_architecture_cls(cls_name)
     args = {
         **cls_args,
         'w_init': get_initializer(w_init_spec),
@@ -126,7 +129,7 @@ def get_predictor(
 
     args = {
         **cls_args,
-        'head_architecture_cls': get_architecturec_cls(
+        'head_architecture_cls': get_architecture_cls(
             head_architecture_cls_name),
         'head_architecture_cls_args': head_architecture_cls_args,
         'w_init': get_initializer(w_init_spec),
