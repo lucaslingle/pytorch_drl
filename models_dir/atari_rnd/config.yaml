@@ -16,16 +16,13 @@ algo:
     vf_loss_cls: MSELoss
     vf_loss_clipping: False
     vf_simple_weighting: True  # Burda 2018 src code weights all vf losses same
-    gae_lambda:
-        extrinsic: 0.95
-        intrinsic_rnd: 0.95
-    gae_extra_steps: 0
-    discount_gamma:
-        extrinsic: 0.999
-        intrinsic_rnd: 0.99
-    use_dones:
-        extrinsic: True
-        intrinsic_rnd: False
+    credit_assignment_spec:
+        extrinsic:
+            cls_name: GAE
+            cls_args: {gamma: 0.999, lambda_: 0.95, use_dones: True}
+        intinsic_rnd:
+            cls_name: GAE
+            cls_args: {gamma: 0.99, lambda_: 0.95, use_dones: False}
     standardize_adv: False
     reward_weights:
         extrinsic: 2.0
@@ -74,27 +71,42 @@ env:
                 frame_stack: True
                 lazy: False
 networks:
-    policy_net:
-        preprocessing:
-            ToChannelMajor: {}
-        architecture:
-            cls_name: NatureCNN
-            cls_args: {img_channels: 4, ortho_init: True}
-        predictors:
-            policy:
-                cls_name: LinearCategoricalPolicyHead
-                cls_args: {num_features: 512, ortho_init: True}
-            value_extrinsic:
-                cls_name: LinearSimpleValueHead
-                cls_args: {num_features: 512, ortho_init: True}
-            value_intrinsic_rnd:
-                cls_name: LinearSimpleValueHead
-                cls_args: {num_features: 512, ortho_init: True}
+    policy:
+        net:
+            preprocessing:
+                ToChannelMajor: {}
+            architecture:
+                cls_name: NatureCNN
+                cls_args: {img_channels: 4}
+                w_init_spec: ['orthogonal_', {gain: 1.4142}]  # sqrt 2
+                b_init_spec: ['zeros_', {}]
+            predictors:
+                policy:
+                    cls_name: CategoricalPolicyHead
+                    cls_args: {num_features: 512}
+                    head_architecture_cls_name: Linear
+                    head_architecture_cls_args: {}
+                    w_init_spec: ['orthogonal_', {gain: 1.4142}]  # sqrt 2
+                    b_init_spec: ['zeros_', {}]
+                value_extrinsic:
+                    cls_name: SimpleValueHead
+                    cls_args: {num_features: 512}
+                    head_architecture_cls_name: Linear
+                    head_architecture_cls_args: {}
+                    w_init_spec: ['orthogonal_', {gain: 1.4142}]  # sqrt 2
+                    b_init_spec: ['zeros_', {}]
+                value_intrinsic_rnd:
+                    cls_name: SimpleValueHead
+                    cls_args: {num_features: 512}
+                    head_architecture_cls_name: Linear
+                    head_architecture_cls_args: {}
+                    w_init_spec: ['orthogonal_', {gain: 1.4142}]  # sqrt 2
+                    b_init_spec: ['zeros_', {}]
         optimizer:
             cls_name: Adam
             cls_args: {lr: 0.0001, eps: 0.00001}
         scheduler:
             cls_name: None
             cls_args: {}
-    value_net:
+    value:
         use_shared_architecture: True

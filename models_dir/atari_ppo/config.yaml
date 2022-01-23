@@ -20,7 +20,7 @@ algo:
         credit_assignment_spec:
             extrinsic:
                 cls_name: GAE
-                cls_args: {lambda_: 0.95, gamma: 0.99, use_dones: True}
+                cls_args: {gamma: 0.99, lambda_: 0.95, use_dones: True}
         extra_steps: 0
         standardize_adv: True
         use_pcgrad: False
@@ -31,14 +31,18 @@ algo:
 env:
     wrappers:
         train:
-            AtariWrapper: {use_noop: True, use_sticky_actions: False}
+            AtariWrapper:
+                use_noop: True
+                use_sticky_actions: False
             DeepmindWrapper:
                 episode_life: True
                 clip_rewards: True
                 frame_stack: True
                 lazy: False
         evaluate:
-            AtariWrapper: {use_noop: True, use_sticky_actions: False}
+            AtariWrapper:
+                use_noop: True
+                use_sticky_actions: False
             DeepmindWrapper:
                 episode_life: False
                 clip_rewards: False
