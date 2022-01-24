@@ -47,7 +47,7 @@ def _clean(base_path, kind, n=5):
             os.remove(os.path.join(base_path, fname))
 
 
-def maybe_load_checkpoint(
+def _maybe_load_checkpoint(
         checkpoint_dir: str,
         kind_name: str,
         checkpointable: Checkpointable,
@@ -69,7 +69,7 @@ def maybe_load_checkpoint(
     return steps_
 
 
-def save_checkpoint(
+def _save_checkpoint(
         checkpoint_dir: str,
         kind_name: str,
         checkpointable: Checkpointable,

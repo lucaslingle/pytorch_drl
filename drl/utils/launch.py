@@ -52,7 +52,7 @@ def set_seed(process_seed: int) -> None:
     Sets the random number generators on this process to the provided RNG seed.
 
     Args:
-        process_seed: RNG seed integer.
+        process_seed (int): RNG seed integer.
 
     Returns:
         None.
@@ -65,17 +65,17 @@ def set_seed(process_seed: int) -> None:
 def get_wrapper(
         env: Union[gym.core.Env, Wrapper],
         cls_name: str,
-        cls_args: Mapping[str, Any]
+        cls_args: Dict[str, Any]
 ) -> Wrapper:
     """
     Args:
-        env: OpenAI gym environment or existing `Wrapper' to be further wrapped.
-        cls_name: Wrapper class name.
-        cls_args: Dictionary of wrapper constructor args.
+        env (Union[gym.core.Env, `Wrapper`]): OpenAI gym environment or
+            existing `Wrapper' to be further wrapped.
+        cls_name (str): Wrapper class name.
+        cls_args (Dict[str, Any]): Dictionary of wrapper constructor args.
 
     Returns:
-        Wrapped environment.
-
+        `Wrapper`: Wrapped environment.
     """
     module = importlib.import_module('drl.envs.wrappers')
     cls = getattr(module, cls_name)
@@ -88,13 +88,14 @@ def get_wrappers(
 ) -> Wrapper:
     """
     Args:
-        env: OpenAI gym environment or `Wrapper` thereof.
-        **wrappers_spec: Dictionary of all wrappers to apply.
+        env (Union[gym.core.Env, `Wrapper`]): OpenAI gym environment or `Wrapper` thereof.
+        **wrappers_spec (Dict[str, Dict[str, Any]]): Dictionary of all wrappers to apply.
             Python dictionaries are not inherently ordered, but here the
             ordering is assumed to be correct, since in our script pyyaml
             builds it by parsing the file sequentially.
+
     Returns:
-        Wrapped environment.
+        Union[gym.core.Env, `Wrapper`]: Wrapped environment.
     """
     for cls_name, cls_args in wrappers_spec.items():
         env = get_wrapper(env, cls_name, cls_args)
@@ -102,23 +103,23 @@ def get_wrappers(
 
 
 def get_env(
-        env_config: Mapping[str, Any], process_seed: int, mode: str
+        env_config: Dict[str, Any], process_seed: int, mode: str
 ) -> Union[gym.core.Env, Wrapper]:
     """
     Args:
-        env_config: Mapping containing keys 'id' and 'wrappers'.
+        env_config (Dict[str, Any]): Mapping containing keys 'id' and 'wrappers'.
             The 'id' key should map to a string corresponding
             to the name of an OpenAI gym environment.
             The 'wrappers' key should map to a dictionary with two keys,
             'train' and 'evaluate'. Each of these will be a dictionary keyed by
             wrapper class names and with wrapper class constructor
             arguments as values.
-        process_seed: Random number generator seed for this process.
-        mode: A string affecting the behavior of wrappers.
+        process_seed (int): Random number generator seed for this process.
+        mode (str): A string affecting the behavior of wrappers.
             If not 'train', the 'evaluate' wrapper specification is used.
 
     Returns:
-        OpenAI gym or wrapped environment.
+        Union[gym.core.Env, `Wrapper`]: OpenAI gym or wrapped environment.
     """
     env = gym.make(env_config.get('id'))
     env.seed(process_seed)
@@ -132,14 +133,16 @@ def get_env(
 
 
 def get_preprocessing(
-        cls_name: str, cls_args: Mapping[str, Any]) -> Preprocessing:
+        cls_name: str, cls_args: Dict[str, Any]
+) -> Preprocessing:
     """
     Args:
-        cls_name: Name of a derived class of Preprocessing.
-        cls_args: Arguments in the signature of the class constructor.
+        cls_name (str): Name of a derived class of Preprocessing.
+        cls_args (Dict[str, Any]): Arguments in the signature of the class
+            constructor.
 
     Returns:
-        Instantiated class.
+        Preprocessing: Instantiated class.
     """
     module = importlib.import_module('drl.agents.preprocessing')
     cls = getattr(module, cls_name)
@@ -147,18 +150,17 @@ def get_preprocessing(
 
 
 def get_preprocessings(
-        **preprocessing_spec: Mapping[str, Mapping[str, Any]]
+        **preprocessing_spec: Dict[str, Dict[str, Any]]
 ) -> List[Preprocessing]:
     """
     Args:
-        **preprocessing_spec: Variable length dictionary of preprocessing specs.
-            Each preprocessing spec is keyed by a class name,
-            which should be a derived class of Preprocessing.
-            Each preprocessing spec's key maps to a value, which is a dictionary
-            of arguments passed to the constructor of that class.
+        **preprocessing_spec (Dict[str, Dict[str, Any]]): Variable-length
+            dictionary of items. Each item is keyed by a class name, which
+            should be a derived class of Preprocessing. Each value, is a
+            dictionary of arguments passed to the constructor of that class.
 
     Returns:
-        List of instantiated Preprocessing subclasses.
+        List[`Preprocessing`]: List of instantiated preprocessing subclasses.
     """
     preprocessing_stack = list()
     for cls_name, cls_args in preprocessing_spec.items():
@@ -173,10 +175,11 @@ def get_architecture_cls(
 ) -> Union[Type[StatelessArchitecture], Type[StatefulArchitecture]]:
     """
     Args:
-        cls_name: Class name.
+        cls_name (str): Class name.
 
     Returns:
-        Class object.
+        Union[Type[StatelessArchitecture], Type[StatefulArchitecture]]:
+        Architecture class object.
     """
     module = importlib.import_module('drl.agents.architectures')
     cls = getattr(module, cls_name)
@@ -191,13 +194,16 @@ def get_architecture(
 ) -> Architecture:
     """
     Args:
-        cls_name: Name of a derived class of Architecture.
-        cls_args: Arguments in the signature of the class constructor.
-        w_init_spec: Tuple containing weight initializer name and args.
-        b_init_spec: Tuple containing bias initializer name and args.
+        cls_name (str): Name of a derived class of Architecture.
+        cls_args (Dict[str, Any]): Arguments in the signature of the class
+            constructor.
+        w_init_spec (Tuple[str, Dict[str, Any]]): Tuple containing weight
+            initializer name and args.
+        b_init_spec (Tuple[str, Dict[str, Any]]): Tuple containing bias
+            initializer name and args.
 
     Returns:
-        Instantiated class.
+        Architecture: Instantiated architecture subclass.
     """
     cls = get_architecture_cls(cls_name)
     args = {
@@ -218,18 +224,21 @@ def get_predictor(
 ) -> Head:
     """
     Args:
-        cls_name: Head class name.
-        cls_args: Head class constructor arguments.
+        cls_name (str): Head class name.
+        cls_args (Dict[str, Any]): Head class constructor arguments.
             Should contain at least 'num_features'
             and either 'num_actions' or 'action_dim'.
-        head_architecture_cls_name: Class name for head architecture.
+        head_architecture_cls_name (str): Class name for head architecture.
             Should correspond to a derived class of HeadEligibleArchitecture.
-        head_architecture_cls_args: Class arguments for head architecture.
-        w_init_spec: Tuple containing weight initializer name and args.
-        b_init_spec: Tuple containing bias initializer name and args.
+        head_architecture_cls_args (Dict[str, Any]): Class arguments for head
+            architecture.
+        w_init_spec (Tuple[str, Dict[str, Any]]): Tuple containing weight
+            initializer name and args.
+        b_init_spec (Tuple[str, Dict[str, Any]]): Tuple containing bias
+            initializer name and args.
 
     Returns:
-        Instantiated Head subclass.
+        `Head`: instantiated Head subclass.
     """
     assert 'num_features' in cls_args
     module = importlib.import_module('drl.agents.heads')
