@@ -32,7 +32,7 @@ from drl.utils.checkpointing import maybe_load_checkpoints
 from drl.utils.types import Optimizer, Scheduler
 
 
-def get_process_seed(rank, config) -> int:
+def get_process_seed(rank: int, config: ConfigParser) -> int:
     """
     Computes a process-specific RNG seed to ensure experiential diversity
     and per-machine experimental reproducibility.
@@ -329,7 +329,10 @@ def get_sched(
     return scheduler
 
 
-def make_learning_system(rank, config):
+def make_learning_system(
+        rank: int,
+        config: ConfigParser
+) -> Dict[str, Union[int, Union[gym.core.Env, Wrapper], Optional[Union[DDP, Agent]], Optional[Optimizer], Optional[Scheduler]]]:
     """
     Provides a simple, flexible, and reproducible launch framework
         for the drl library.
