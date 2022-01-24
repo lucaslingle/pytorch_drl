@@ -29,11 +29,11 @@ def get_credit_assignment_op(
     Creates a credit assignment op from class name and args.
 
     Args:
-        cls_name: Class name for a derived class of CreditAssignmentOp.
+        cls_name: Class name for a derived class of `CreditAssignmentOp`.
         cls_args: Arguments for class constructor.
 
     Returns:
-        Instantiation of specified CreditAssignmentOp.
+        Instantiation of specified `CreditAssignmentOp`.
     """
     module = importlib.import_module('drl.algos.common.credit_assignment')
     cls = getattr(module, cls_name)
@@ -55,12 +55,12 @@ def get_credit_assignment_ops(
         credit_assignment_spec: Mapping of reward names to a dictionary
             with keys 'cls_name' and 'cls_args'.
             - The former should map to the name of a derived class of
-                CreditAssignmentOp.
+                `CreditAssignmentOp`.
             - The latter should map to constructor's reward-varying arguments
                 (i.e., the arguments besides seg_len and extra_steps).
 
     Returns:
-        Dictionary of credit assignment ops, keyed by reward name.
+        Dictionary of `CreditAssignmentOp`s, keyed by reward name.
     """
     ops = dict()
     for reward_name in credit_assignment_spec:
