@@ -3,7 +3,7 @@ Optional launch utility -
     for use with provided script and specified config file format.
 """
 
-from typing import Dict, List, Any, Mapping, Union, Type, Tuple, Optional
+from typing import List, Any, Mapping, Union, Type, Tuple, Optional
 import random
 import importlib
 
@@ -65,14 +65,14 @@ def set_seed(process_seed: int) -> None:
 def get_wrapper(
         env: Union[gym.core.Env, Wrapper],
         cls_name: str,
-        cls_args: Dict[str, Any]
+        cls_args: Mapping[str, Any]
 ) -> Wrapper:
     """
     Args:
         env (Union[gym.core.Env, `Wrapper`]): OpenAI gym environment or
             existing `Wrapper' to be further wrapped.
         cls_name (str): Wrapper class name.
-        cls_args (Dict[str, Any]): Dictionary of wrapper constructor args.
+        cls_args (Mapping[str, Any]): Dictionary of wrapper constructor args.
 
     Returns:
         Wrapper: Wrapped environment.
@@ -84,12 +84,12 @@ def get_wrapper(
 
 def get_wrappers(
         env: Union[gym.core.Env, Wrapper],
-        **wrappers_spec: Dict[str, Dict[str, Any]]
+        **wrappers_spec: Mapping[str, Mapping[str, Any]]
 ) -> Wrapper:
     """
     Args:
         env (Union[gym.core.Env, `Wrapper`]): OpenAI gym environment or `Wrapper` thereof.
-        **wrappers_spec (Dict[str, Dict[str, Any]]): Dictionary of all wrappers to apply.
+        **wrappers_spec (Mapping[str, Mapping[str, Any]]): Dictionary of all wrappers to apply.
             Python dictionaries are not inherently ordered, but here the
             ordering is assumed to be correct, since in our script pyyaml
             builds it by parsing the file sequentially.
@@ -103,11 +103,11 @@ def get_wrappers(
 
 
 def get_env(
-        env_config: Dict[str, Any], process_seed: int, mode: str
+        env_config: Mapping[str, Any], process_seed: int, mode: str
 ) -> Union[gym.core.Env, Wrapper]:
     """
     Args:
-        env_config (Dict[str, Any]): Mapping containing keys 'id' and 'wrappers'.
+        env_config (Mapping[str, Any]): Mapping containing keys 'id' and 'wrappers'.
             The 'id' key should map to a string corresponding
             to the name of an OpenAI gym environment.
             The 'wrappers' key should map to a dictionary with two keys,
@@ -133,12 +133,12 @@ def get_env(
 
 
 def get_preprocessing(
-        cls_name: str, cls_args: Dict[str, Any]
+        cls_name: str, cls_args: Mapping[str, Any]
 ) -> Preprocessing:
     """
     Args:
         cls_name (str): Name of a derived class of Preprocessing.
-        cls_args (Dict[str, Any]): Arguments in the signature of the class
+        cls_args (Mapping[str, Any]): Arguments in the signature of the class
             constructor.
 
     Returns:
@@ -150,11 +150,11 @@ def get_preprocessing(
 
 
 def get_preprocessings(
-        **preprocessing_spec: Dict[str, Dict[str, Any]]
+        **preprocessing_spec: Mapping[str, Mapping[str, Any]]
 ) -> List[Preprocessing]:
     """
     Args:
-        **preprocessing_spec (Dict[str, Dict[str, Any]]): Variable-length
+        **preprocessing_spec (Mapping[str, Mapping[str, Any]]): Variable-length
             dictionary of items. Each item is keyed by a class name, which
             should be a derived class of Preprocessing. Each value, is a
             dictionary of arguments passed to the constructor of that class.
@@ -188,18 +188,18 @@ def get_architecture_cls(
 
 def get_architecture(
         cls_name: str,
-        cls_args: Dict[str, Any],
-        w_init_spec: Tuple[str, Dict[str, Any]],
-        b_init_spec: Tuple[str, Dict[str, Any]]
+        cls_args: Mapping[str, Any],
+        w_init_spec: Tuple[str, Mapping[str, Any]],
+        b_init_spec: Tuple[str, Mapping[str, Any]]
 ) -> Architecture:
     """
     Args:
         cls_name (str): Name of a derived class of Architecture.
-        cls_args (Dict[str, Any]): Arguments in the signature of the class
+        cls_args (Mapping[str, Any]): Arguments in the signature of the class
             constructor.
-        w_init_spec (Tuple[str, Dict[str, Any]]): Tuple containing weight
+        w_init_spec (Tuple[str, Mapping[str, Any]]): Tuple containing weight
             initializer name and args.
-        b_init_spec (Tuple[str, Dict[str, Any]]): Tuple containing bias
+        b_init_spec (Tuple[str, Mapping[str, Any]]): Tuple containing bias
             initializer name and args.
 
     Returns:
@@ -216,25 +216,25 @@ def get_architecture(
 
 def get_predictor(
         cls_name: str,
-        cls_args: Dict[str, Any],
+        cls_args: Mapping[str, Any],
         head_architecture_cls_name: str,
-        head_architecture_cls_args: Dict[str, Any],
-        w_init_spec: Tuple[str, Dict[str, Any]],
-        b_init_spec: Tuple[str, Dict[str, Any]]
+        head_architecture_cls_args: Mapping[str, Any],
+        w_init_spec: Tuple[str, Mapping[str, Any]],
+        b_init_spec: Tuple[str, Mapping[str, Any]]
 ) -> Head:
     """
     Args:
         cls_name (str): Head class name.
-        cls_args (Dict[str, Any]): Head class constructor arguments.
+        cls_args (Mapping[str, Any]): Head class constructor arguments.
             Should contain at least 'num_features'
             and either 'num_actions' or 'action_dim'.
         head_architecture_cls_name (str): Class name for head architecture.
             Should correspond to a derived class of HeadEligibleArchitecture.
-        head_architecture_cls_args (Dict[str, Any]): Class arguments for head
+        head_architecture_cls_args (Mapping[str, Any]): Class arguments for head
             architecture.
-        w_init_spec (Tuple[str, Dict[str, Any]]): Tuple containing weight
+        w_init_spec (Tuple[str, Mapping[str, Any]]): Tuple containing weight
             initializer name and args.
-        b_init_spec (Tuple[str, Dict[str, Any]]): Tuple containing bias
+        b_init_spec (Tuple[str, Mapping[str, Any]]): Tuple containing bias
             initializer name and args.
 
     Returns:
@@ -261,12 +261,12 @@ def get_predictor(
 
 def get_predictors(
         env: Union[gym.core.Env, Wrapper],
-        **predictors_spec: Mapping[str, Dict[str, Any]]) -> Dict[str, Head]:
+        **predictors_spec: Mapping[str, Mapping[str, Any]]) -> Mapping[str, Head]:
     """
     Args:
         env (Union[gym.core.Env, Wrapper]): OpenAI gym environment instance or
             wrapped environment.
-        **predictors_spec (Mapping[str, Dict[str, Any]]): Variable-length
+        **predictors_spec (Mapping[str, Mapping[str, Any]]): Variable-length
             dictionary of predictor keys and specs. Each spec is a dictionary,
             with keys 'cls_name' and 'cls_args'. The 'cls_name' key maps to a
             value that is the name of a derived class of `Head`.
@@ -274,7 +274,7 @@ def get_predictors(
             that class' constructor.
 
     Returns:
-        Dict[str, Head]: Dictionary of predictors keyed by name.
+        Mapping[str, Head]: Dictionary of predictors keyed by name.
     """
     predictors = dict()
     for key, spec in predictors_spec.items():
@@ -304,9 +304,9 @@ def get_net(
 ) -> DDP:
     """
     Args:
-        net_config (Dict[str, Any]): Dictionary with three keys: 'preprocessing',
+        net_config (Mapping[str, Any]): Dictionary with three keys: 'preprocessing',
             'architecture', and 'predictors'. Each key maps to a dictionary
-            conforming to the specifcations in `get_preprocessings`,
+            conforming to the specifications in `get_preprocessings`,
             `get_architecture` and `get_predictors`.
         env (Union[gym.core.Env, Wrapper]): OpenAI gym environment or wrapper thereof.
 
@@ -341,7 +341,7 @@ def get_sched(
 def make_learning_system(
         rank: int,
         config: ConfigParser
-) -> Dict[str, Union[int, Union[gym.core.Env, Wrapper], Optional[Union[DDP, Agent]], Optional[Optimizer], Optional[Scheduler]]]:
+) -> Mapping[str, Union[int, Union[gym.core.Env, Wrapper], Optional[Union[DDP, Agent]], Optional[Optimizer], Optional[Scheduler]]]:
     """
     Provides a simple, flexible, and reproducible launch framework
         for the drl library.
@@ -353,7 +353,7 @@ def make_learning_system(
         config (`ConfigParser`): Configuration object.
 
     Returns:
-        Dict[str, Union[int, Union[gym.core.Env, Wrapper], Optional[Agent], Optional[Optimizer], Optional[Scheduler]]:
+        Mapping[str, Union[int, Union[gym.core.Env, Wrapper], Optional[Agent], Optional[Optimizer], Optional[Scheduler]]:
             Dictionary with environment, networks, optimizers, schedulers,
             and global step of the learning process thus far.
     """
