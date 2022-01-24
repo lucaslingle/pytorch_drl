@@ -13,15 +13,22 @@ def norm(vector: np.ndarray) -> float:
 
 @tc.no_grad()
 def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
+    """
+    Reads the currently stored gradient in the network parameters grad
+    attributes, and returns it as a vector.
+
+    Args:
+        network: Agent instance.
+        normalize: Whether to normalize the gradient extracted.
+
+    Returns:
+        Gradient as a vector.
+    """
     gradient_subvecs = []
     for p in network.parameters():
         if p.grad is not None:
             subvec = p.grad.reshape(-1).detach().numpy()
             gradient_subvecs.append(subvec)
-        #else:
-        #    numel = np.prod(p.shape)
-        #    subvec = np.zeros((numel,), dtype=tc.float32)
-        #    gradient_subvecs.append(subvec)
     gradient = np.concatenate(gradient_subvecs, axis=0)
     if normalize:
         gradient /= norm(gradient)
@@ -30,6 +37,16 @@ def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
 
 @tc.no_grad()
 def write_gradient(network: Agent, gradient: np.ndarray) -> None:
+    """
+    Writes a gradient vector into a network's parameters' grad attributes.
+
+    Args:
+        network: Agent instance.
+        gradient: Gradient as a numpy ndarray.
+
+    Returns:
+        None.
+    """
     dims_so_far = 0
     for p in network.parameters():
         if p.grad is not None:
@@ -45,6 +62,22 @@ def pcgrad_gradient_surgery(
         task_losses: Dict[str, tc.Tensor],
         normalize: bool = True
 ) -> np.ndarray:
+    """
+    Implements the PCGrad gradient surgery algorithm.
+
+    Reference:
+        T. Yu et al., 2020 -
+            'Gradient Surgery for Multi-Task Learning'
+
+    Args:
+        network: Agent instance.
+        optimizer: Torch Optimizer instance.
+        task_losses: Dictionary of losses to perform PCGrad on, keyed by name.
+        normalize: Normalize the task gradients before performing PCGrad?
+
+    Returns:
+        PCGrad gradient as a vector.
+    """
     task_gradients = dict()
     for k in task_losses:
         optimizer.zero_grad()
@@ -75,6 +108,23 @@ def apply_pcgrad(
         task_losses: Dict[str, tc.Tensor],
         normalize: bool = True
 ) -> None:
+    """
+    Implements the PCGrad gradient surgery algorithm, and writes the result
+    into the network parameters' grad attributes.
+
+    Reference:
+        T. Yu et al., 2020 -
+            'Gradient Surgery for Multi-Task Learning'
+
+    Args:
+        network: Agent instance.
+        optimizer: Torch Optimizer instance.
+        task_losses: Dictionary of losses to perform PCGrad on, keyed by name.
+        normalize: Normalize the task gradients before performing PCGrad?
+
+    Returns:
+        None.
+    """
     pcgrad_output = pcgrad_gradient_surgery(
         network, optimizer, task_losses, normalize)
     write_gradient(network, pcgrad_output)

@@ -1,24 +1,67 @@
+from typing import Mapping, Any, Dict, Union
 import abc
 import importlib
 
 import torch as tc
 
 
-def extract_reward_name(predictor_name):
+def extract_reward_name(prediction_key: str) -> str:
+    """
+    Extracts reward name from a prediction key.
+
+    Args:
+        prediction_key: Prediction key.
+            Must start with 'value_' or 'action_value_'.
+
+    Returns:
+        Reward name.
+    """
     prefixes = ['value_', 'action_value_']
     for prefix in prefixes:
-        if predictor_name.startswith(prefix):
-            return predictor_name[len(prefix):]
+        if prediction_key.startswith(prefix):
+            return prediction_key[len(prefix):]
     raise ValueError("Unrecognized predictor name.")
 
 
-def get_credit_assignment_op(cls_name, cls_args):
+def get_credit_assignment_op(
+        cls_name: str, cls_args: Mapping[str, Any]) -> 'CreditAssignmentOp':
+    """
+    Creates a credit assignment op from class name and args.
+
+    Args:
+        cls_name: Class name for a derived class of CreditAssignmentOp.
+        cls_args: Arguments for class constructor.
+
+    Returns:
+        Instantiation of specified CreditAssignmentOp.
+    """
     module = importlib.import_module('drl.algos.common.credit_assignment')
     cls = getattr(module, cls_name)
     return cls(**cls_args)
 
 
-def get_credit_assignment_ops(seg_len, extra_steps, credit_assignment_spec):
+def get_credit_assignment_ops(
+        seg_len: int,
+        extra_steps: int,
+        credit_assignment_spec: Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]]
+) -> Dict[str, 'CreditAssignmentOp']:
+    """
+    Creates a dictionary of credit assignment ops from class names and args.
+
+    Args:
+        seg_len: Trajectory segment length for credit assignment.
+        extra_steps: Extra steps for n-step return-based credit assignment.
+            Should equal n-1 when n steps are used.
+        credit_assignment_spec: Mapping of reward names to a dictionary
+            with keys 'cls_name' and 'cls_args'.
+            - The former should map to the name of a derived class of
+                CreditAssignmentOp.
+            - The latter should map to constructor's reward-varying arguments
+                (i.e., the arguments besides seg_len and extra_steps).
+
+    Returns:
+        Dictionary of credit assignment ops, keyed by reward name.
+    """
     ops = dict()
     for reward_name in credit_assignment_spec:
         op_spec = credit_assignment_spec[reward_name]
@@ -38,7 +81,13 @@ class CreditAssignmentOp(metaclass=abc.ABCMeta):
     """
     Abstract class for credit assignment operations.
     """
-    def __init__(self, seg_len, extra_steps, gamma, use_dones=True):
+    def __init__(
+            self,
+            seg_len: int,
+            extra_steps: int,
+            gamma: float,
+            use_dones: bool
+    ):
         """
         Args:
             seg_len: Trajectory segment length for credit assignment.
@@ -95,7 +144,11 @@ class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
 
 class GAE(AdvantageEstimator):
     """
-    Generalized Advantage Estimation (Schulman et al., 2016).
+    Generalized Advantage Estimation.
+
+    Reference:
+        Schulman et al., 2016 -
+            'High Dimensional Continuous Control with Generalized Advantage Estimation'
     """
     def __init__(self, seg_len, extra_steps, gamma, use_dones, lambda_):
         super().__init__(seg_len, extra_steps, gamma, use_dones)
@@ -117,7 +170,11 @@ class GAE(AdvantageEstimator):
 
 class NStepAdvantageEstimator(AdvantageEstimator):
     """
-    N-step advantage estimation (Mnih et al., 2016).
+    N-step advantage estimator.
+
+    Reference:
+        V. Mnih et al., 2016 -
+            'Asynchronous Methods for Deep Reinforcement Learning'.
     """
     def __init__(self, seg_len, extra_steps, gamma, use_dones):
         super().__init__(seg_len, extra_steps, gamma, use_dones)
@@ -139,11 +196,28 @@ class NStepAdvantageEstimator(AdvantageEstimator):
         return advantages
 
 
-class BellmanOptimalityOperator(BellmanOperator):
+class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
     """
-    Bellman optimality operator.
+    Simple (non-distributional) discrete-action Bellman optimality operator.
+
+    References:
+        V. Mnih et al., 2015 -
+            'Human Level Control through Deep Reinforcement Learning'
+        H. van Hasselt et al., 2015 -
+            'Deep Reinforcement Learning with Double Q-learning'
     """
     def __init__(self, seg_len, extra_steps, gamma, use_dones, double_q):
+        """
+        Args:
+            seg_len: Trajectory segment length for credit assignment.
+            extra_steps: Extra steps for n-step return-based credit assignment.
+                Should equal n-1 when n steps are used.
+            gamma: Discount factor in [0, 1).
+            use_dones: Whether or not to block credit assignment across episodes.
+                Intended for use with intrinsic rewards or algorithms like RL^2
+                (Duan et al., 2016).
+            double_q: Use double-Q learning?
+        """
         super().__init__(seg_len, extra_steps, gamma, use_dones)
         self._double_q = double_q
 
