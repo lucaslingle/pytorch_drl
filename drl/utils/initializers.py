@@ -27,20 +27,23 @@ def get_initializer(
 
 
 def normc_(weight_tensor: tc.Tensor, gain: float = 1.0) -> None:
-    """Reference:
+    """
+    Initializes each output neuron's weights with a sample from a
+    uniform distribution over the unit hypersphere, as in
     https://github.com/openai/baselines/blob/master/baselines/common/tf_util.py#L97
 
-    Note that in tensorflow the weight tensor in a linear layer is stored with the
-    input dim first and the output dim second. See
-    https://github.com/tensorflow/tensorflow/blob/v2.5.0/tensorflow/python/keras/layers/core.py#L1193
+    Args:
+        weight_tensor (tc.Tensor): Weight tensor to initialize.
+        gain: Gain parameter to scale the samples by.
 
-    In contrast, in pytorch the output dim is first. See
-    https://pytorch.org/docs/stable/_modules/torch/nn/modules/linear.html#Linear
-
-    This means if we want a normc init in pytorch,
-    we have to change which dim(s) we normalize on.
-    In addition, for convolutions in pytorch, the height and width are last.
+    Returns:
+        None
     """
+    # note that compared to the baselines reference,
+    # which uses tensorflow's input-first tensor format,
+    # pytorch uses an output-first format,
+    # and also stores convolution kernels differently!
+    # code below accounts for this.
     num_dims = len(list(weight_tensor.shape))
     normalize_dims = list(range(num_dims))
     normalize_dims.remove(0)
