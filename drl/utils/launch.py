@@ -14,7 +14,7 @@ import gym
 
 from drl.utils.configuration import ConfigParser
 from drl.envs.wrappers import Wrapper
-from drl.agents.preprocessing import Preprocessing
+from drl.agents.preprocessing.abstract import Preprocessing
 from drl.agents.architectures import Architecture
 from drl.agents.architectures.stateless.abstract import StatelessArchitecture
 from drl.agents.architectures.stateful.abstract import StatefulArchitecture
@@ -370,20 +370,19 @@ def make_learning_system(
     for prefix in learners_config:
         learner_config = learners_config.get(prefix)
         for suffix in learner_config:
-            name = f'{prefix}_{suffix}'
             if suffix == 'net':
                 net_config = learner_config.get(suffix)
                 net = get_net(net_config, env)
-                learning_system[name] = net
+                learning_system[f'{prefix}_net'] = net
             elif suffix == 'optimizer':
                 opt_config = learner_config.get(suffix)
                 opt = get_opt(opt_config, learning_system[f'{prefix}_net'])
-                learning_system[name] = opt
+                learning_system[f'{prefix}_optimizer'] = opt
             elif suffix == 'scheduler':
                 sched_config = learner_config.get(suffix)
                 sched = get_sched(
                     sched_config, learning_system[f'{prefix}_optimizer'])
-                learning_system[name] = sched
+                learning_system[f'{prefix}_scheduler'] = sched
             elif suffix == 'use_shared_architecture':
                 learning_system[f'{prefix}_net'] = None
                 learning_system[f'{prefix}_optimizer'] = None
