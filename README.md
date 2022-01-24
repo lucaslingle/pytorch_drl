@@ -76,7 +76,7 @@ In this section, we describe the algorithms whose published results we've replic
 | Enduro         |           350.2  |                 758.3 |        749.4 |
 | Pong           |            13.7  |                  20.7 |         19.8 |
 | Qbert          |          7012.1  |               14293.3 |      16600.8 |
-| Seaquest       |          1218.9  |                1204.5 |        938.0 seed 0 |
+| Seaquest       |          1218.9  |                1204.5 |        938.00 seed 0 948.20 seed 1 |
 | Space Invaders |           557.3  |                 942.5 |       1151.9 |
 
 - For computational efficiency, we tested only the seven Atari games first examined by [Mnih et al., 2013](https://arxiv.org/pdf/1312.5602.pdf).
