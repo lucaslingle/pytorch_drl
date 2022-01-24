@@ -21,14 +21,6 @@ drl.agents.architectures.abstract module
    :undoc-members:
    :show-inheritance:
 
-drl.agents.architectures.initializers module
---------------------------------------------
-
-.. automodule:: drl.agents.architectures.initializers
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

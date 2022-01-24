@@ -20,6 +20,14 @@ drl.utils.configuration module
    :undoc-members:
    :show-inheritance:
 
+drl.utils.initializers module
+-----------------------------
+
+.. automodule:: drl.utils.initializers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 drl.utils.launch module
 -----------------------
 

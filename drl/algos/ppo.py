@@ -90,7 +90,7 @@ class PPO(Algo):
                 Only allowed if policy and value architecture is shared.
             stats_memory_len: Window size for moving average of episode metadata.
             checkpoint_frequency: Checkpoint frequency, measured in global steps.
-            non_learning_steps: Number of global steps to skip agent learning.
+            non_learning_steps: Number of global steps to skip integration learning.
                 Useful in conjunction with wrappers that maintain rolling statistics.
             max_steps: Maximum number of global steps.
             global_step: Global step of learning so far.

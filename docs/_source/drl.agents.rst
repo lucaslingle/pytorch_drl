@@ -9,19 +9,9 @@ Subpackages
 
    drl.agents.architectures
    drl.agents.heads
+   drl.agents.integration
    drl.agents.preprocessing
    drl.agents.schedules
-
-Submodules
-----------
-
-drl.agents.integration module
------------------------------
-
-.. automodule:: drl.agents.integration
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 Module contents
 ---------------
