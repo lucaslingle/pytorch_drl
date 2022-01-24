@@ -1,6 +1,6 @@
 """
 Optional launch utility -
-    for use with provided script and specified config format.
+    for use with provided script and specified config file format.
 """
 
 from typing import Dict, List, Any, Mapping, Union, Type, Tuple, Optional
@@ -75,7 +75,7 @@ def get_wrapper(
         cls_args (Dict[str, Any]): Dictionary of wrapper constructor args.
 
     Returns:
-        `Wrapper`: Wrapped environment.
+        Wrapper: Wrapped environment.
     """
     module = importlib.import_module('drl.envs.wrappers')
     cls = getattr(module, cls_name)
@@ -95,7 +95,7 @@ def get_wrappers(
             builds it by parsing the file sequentially.
 
     Returns:
-        Union[gym.core.Env, `Wrapper`]: Wrapped environment.
+        Union[gym.core.Env, Wrapper]: Wrapped environment.
     """
     for cls_name, cls_args in wrappers_spec.items():
         env = get_wrapper(env, cls_name, cls_args)
@@ -119,7 +119,7 @@ def get_env(
             If not 'train', the 'evaluate' wrapper specification is used.
 
     Returns:
-        Union[gym.core.Env, `Wrapper`]: OpenAI gym or wrapped environment.
+        Union[gym.core.Env, Wrapper]: OpenAI gym or wrapped environment.
     """
     env = gym.make(env_config.get('id'))
     env.seed(process_seed)
@@ -160,7 +160,7 @@ def get_preprocessings(
             dictionary of arguments passed to the constructor of that class.
 
     Returns:
-        List[`Preprocessing`]: List of instantiated preprocessing subclasses.
+        List[Preprocessing]: List of instantiated preprocessing subclasses.
     """
     preprocessing_stack = list()
     for cls_name, cls_args in preprocessing_spec.items():
@@ -238,7 +238,7 @@ def get_predictor(
             initializer name and args.
 
     Returns:
-        `Head`: instantiated Head subclass.
+        Head: instantiated Head subclass.
     """
     assert 'num_features' in cls_args
     module = importlib.import_module('drl.agents.heads')
@@ -274,7 +274,7 @@ def get_predictors(
             that class' constructor.
 
     Returns:
-        Dict[str, `Head`]: Dictionary of predictors keyed by name.
+        Dict[str, Head]: Dictionary of predictors keyed by name.
     """
     predictors = dict()
     for key, spec in predictors_spec.items():
@@ -353,7 +353,7 @@ def make_learning_system(
         config (`ConfigParser`): Configuration object.
 
     Returns:
-        Dict[str, Union[int, Union[gym.core.Env, `Wrapper`], Optional[`Agent`], Optional[`Optimizer`], Optional[`Scheduler`]]:
+        Dict[str, Union[int, Union[gym.core.Env, Wrapper], Optional[Agent], Optional[Optimizer], Optional[Scheduler]]:
             Dictionary with environment, networks, optimizers, schedulers,
             and global step of the learning process thus far.
     """

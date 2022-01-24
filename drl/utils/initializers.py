@@ -33,8 +33,8 @@ def normc_(weight_tensor: tc.Tensor, gain: float = 1.0) -> None:
     https://github.com/openai/baselines/blob/master/baselines/common/tf_util.py#L97
 
     Args:
-        weight_tensor (tc.Tensor): Weight tensor to initialize.
-        gain: Gain parameter to scale the samples by.
+        weight_tensor (torch.Tensor): Weight tensor to initialize.
+        gain (float): Gain parameter to scale the samples by.
 
     Returns:
         None
