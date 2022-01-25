@@ -311,7 +311,7 @@ def get_net(
         env (Union[gym.core.Env, Wrapper]): OpenAI gym environment or wrapper thereof.
 
     Returns:
-        torch.nn.parallel.DistributedDataParallel: A DDP-wrapped `Agent` instance.
+        torch.nn.parallel.DistributedDataParallel: A DDP-wrapped Agent instance.
     """
     preprocessing = get_preprocessings(**net_config.get('preprocessing'))
     architecture = get_architecture(**net_config.get('architecture'))
