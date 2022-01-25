@@ -10,11 +10,11 @@ def extract_reward_name(prediction_key: str) -> str:
     Extracts reward name from a prediction key.
 
     Args:
-        prediction_key: Prediction key.
+        prediction_key (str): Prediction key.
             Must start with 'value_' or 'action_value_'.
 
     Returns:
-        Reward name.
+        str: Reward name.
     """
     prefixes = ['value_', 'action_value_']
     for prefix in prefixes:
@@ -24,16 +24,18 @@ def extract_reward_name(prediction_key: str) -> str:
 
 
 def get_credit_assignment_op(
-        cls_name: str, cls_args: Mapping[str, Any]) -> 'CreditAssignmentOp':
+        cls_name: str,
+        cls_args: Mapping[str, Any]
+) -> 'CreditAssignmentOp':
     """
     Creates a credit assignment op from class name and args.
 
     Args:
-        cls_name: Class name for a derived class of `CreditAssignmentOp`.
-        cls_args: Arguments for class constructor.
+        cls_name (str): Class name for a derived class of `CreditAssignmentOp`.
+        cls_args (Mapping[str, Any]): Arguments for class constructor.
 
     Returns:
-        Instantiation of specified `CreditAssignmentOp`.
+        CreditAssignmentOp: Instantiated credit assignment op.
     """
     module = importlib.import_module('drl.algos.common.credit_assignment')
     cls = getattr(module, cls_name)
@@ -49,18 +51,19 @@ def get_credit_assignment_ops(
     Creates a dictionary of credit assignment ops from class names and args.
 
     Args:
-        seg_len: Trajectory segment length for credit assignment.
-        extra_steps: Extra steps for n-step return-based credit assignment.
+        seg_len (int): Trajectory segment length for credit assignment.
+        extra_steps (int): Extra steps for n-step return-based credit assignment.
             Should equal n-1 when n steps are used.
-        credit_assignment_spec: Mapping of reward names to a dictionary
-            with keys 'cls_name' and 'cls_args'.
-            - The former should map to the name of a derived class of
-                `CreditAssignmentOp`.
-            - The latter should map to constructor's reward-varying arguments
-                (i.e., the arguments besides seg_len and extra_steps).
+        credit_assignment_spec (Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]]):
+            Mapping of reward names to a dictionary with keys 'cls_name' and
+            'cls_args'. The 'cls_name' key should map to the name of a derived
+            class of `CreditAssignmentOp`. The 'cls_args' key should map to
+            constructor's reward-varying arguments (i.e., the arguments besides
+            seg_len and extra_steps).
 
     Returns:
-        Dictionary of `CreditAssignmentOp`s, keyed by reward name.
+        Dict[str, CreditAssignmentOp]: Dictionary of credit assignment ops,
+            keyed by reward name.
     """
     ops = dict()
     for reward_name in credit_assignment_spec:
@@ -90,13 +93,15 @@ class CreditAssignmentOp(metaclass=abc.ABCMeta):
     ):
         """
         Args:
-            seg_len: Trajectory segment length for credit assignment.
-            extra_steps: Extra steps for n-step return-based credit assignment.
-                Should equal n-1 when n steps are used.
-            gamma: Discount factor in [0, 1).
-            use_dones: Whether or not to block credit assignment across episodes.
-                Intended for use with intrinsic rewards or algorithms like RL^2
-                (Duan et al., 2016).
+            seg_len (int): Trajectory segment length for credit assignment.
+            extra_steps (int): Extra steps for n-step return-based credit
+                assignment. Should equal n-1 when n steps are used.
+            gamma (float): Discount factor in [0, 1).
+            use_dones (bool): Whether or not to block credit assignment across
+                episodes. Should be True for conventional RL settings.
+                Intended to be False for use with certain intrinsic rewards
+                like RND (Burda et al., 2018), or with certain meta-RL
+                algorithms like RL^2 (Duan et al., 2016).
         """
         self._seg_len = seg_len
         self._extra_steps = extra_steps
@@ -111,15 +116,16 @@ class AdvantageEstimator(CreditAssignmentOp, metaclass=abc.ABCMeta):
         Estimate advantages.
 
         Args:
-            rewards: Torch tensor of rewards at each timestep,
+            rewards (torch.Tensor): Torch tensor of rewards at each timestep,
                 with shape [seg_len + extra_steps].
-            vpreds: Torch tensor of value predictions at each timestep,
-                with shape [seg_len + extra_steps + 1].
-            dones: Torch tensor of done signals at each timestep,
+            vpreds (torch.Tensor): Torch tensor of value predictions at each
+                timestep, with shape [seg_len + extra_steps + 1].
+            dones (torch.Tensor): Torch tensor of done signals at each timestep,
                 with shape [seg_len + extra_steps].
 
         Returns:
-            Torch tensor of advantage estimates with shape [seg_len].
+            torch.Tensor: Torch tensor of advantage estimates with shape
+                [seg_len].
         """
 
 
@@ -130,15 +136,16 @@ class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
         Estimate action values.
 
         Args:
-            rewards: Torch tensor of rewards at each timestep,
+            rewards (torch.Tensor): Torch tensor of rewards at each timestep,
                 with shape [seg_len + extra_steps].
-            qpreds: Torch tensor of action-value predictions at each timestep,
-                with shape [seg_len + extra_steps + 1].
-            dones: Torch tensor of done signals at each timestep,
+            qpreds (torch.Tensor): Torch tensor of action-value predictions
+                at each timestep, with shape [seg_len + extra_steps + 1].
+            dones (torch.Tensor): Torch tensor of done signals at each timestep,
                 with shape [seg_len + extra_steps].
 
         Returns:
-            Torch tensor of action-value estimates with shape [seg_len].
+            torch.Tensor: Torch tensor of action-value estimates with shape
+                [seg_len].
         """
 
 
@@ -200,7 +207,7 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
     """
     Simple (non-distributional) discrete-action Bellman optimality operator.
 
-    References:
+    Reference:
         V. Mnih et al., 2015 -
             'Human Level Control through Deep Reinforcement Learning'
         H. van Hasselt et al., 2015 -
