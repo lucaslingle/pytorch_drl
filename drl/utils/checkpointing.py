@@ -100,7 +100,7 @@ def maybe_load_checkpoints(
     for kind_name in checkpointables:
         checkpointable = checkpointables.get(kind_name)
         if checkpointable is not None:
-            step_ = maybe_load_checkpoint(
+            step_ = _maybe_load_checkpoint(
                 checkpoint_dir=checkpoint_dir,
                 kind_name=kind_name,
                 checkpointable=checkpointable,
@@ -128,7 +128,7 @@ def save_checkpoints(
     for kind_name in checkpointables:
         checkpointable = checkpointables.get(kind_name)
         if checkpointable is not None:
-            save_checkpoint(
+            _save_checkpoint(
                 checkpoint_dir=checkpoint_dir,
                 kind_name=kind_name,
                 checkpointable=checkpointable,
