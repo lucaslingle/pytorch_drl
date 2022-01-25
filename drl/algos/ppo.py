@@ -47,10 +47,10 @@ class PPO(Algo):
             max_steps: int,
             global_step: int,
             env: Union[gym.core.Env, Wrapper],
-            policy_net: Union[Agent, DDP],
+            policy_net: DDP,
             policy_optimizer: tc.optim.Optimizer,
             policy_scheduler: Optional[tc.optim.lr_scheduler._LRScheduler],
-            value_net: Optional[Union[Agent, DDP]],
+            value_net: Optional[DDP],
             value_optimizer: Optional[tc.optim.Optimizer],
             value_scheduler: Optional[tc.optim.lr_scheduler._LRScheduler],
             log_dir: str,
@@ -60,61 +60,69 @@ class PPO(Algo):
     ):
         """
         Args:
-            rank: Process rank.
-            world_size: Total number of processes.
-            seg_len: Trajectory segment length.
-            opt_epochs: Optimization epochs per policy improvement phase in PPO.
-            learner_batch_size: Batch size per learner process.
-            clip_param_init: Initial PPO clip parameter.
-            clip_param_final: Final PPO clip parameter, to which clip_param_init
-                will be linearly annealed.
-            ent_coef_init: Initial entropy bonus coefficient.
-            ent_coef_final: Final entropy bonus coefficient, to which
+            rank (int): Process rank.
+            world_size (int): Total number of processes.
+            seg_len (int): Trajectory segment length.
+            opt_epochs (int): Optimization epochs per policy improvement phase
+                in PPO.
+            learner_batch_size (int): Batch size per learner process.
+            clip_param_init (float): Initial PPO clip parameter.
+            clip_param_final (float): Final PPO clip parameter, to which
+                clip_param_init will be linearly annealed.
+            ent_coef_init (float): Initial entropy bonus coefficient.
+            ent_coef_final (float): Final entropy bonus coefficient, to which
                 ent_coef_init will be linearly annealed.
-            vf_loss_cls: Value function loss class name. Name must match
+            vf_loss_cls (str): Value function loss class name. Name must match
                 a derived class of _Loss in torch.nn.modules.loss.
                 The most useful classes are MSELoss and SmoothL1Loss.
-            vf_loss_coef: Value function loss coefficient.
+            vf_loss_coef (float): Value function loss coefficient.
                 Ignored if value network is separate from policy network.
-            vf_loss_clipping: If true, use pessimistic value function loss.
-            vf_simple_weighting: If true, use equal weighting of all value
-                function losses. Ignored if env.reward_spec.keys() does not
-                contain any intrinsic rewards.
-            credit_assignment_spec: Mapping from reward names to
-                advantage estimator classes and their arguments.
-            extra_steps: Extra steps required for credit assignment.
+            vf_loss_clipping (bool): If true, use pessimistic value function
+                loss.
+            vf_simple_weighting (bool): If true, use equal weighting of all
+                value function losses. Ignored if env.reward_spec.keys() does
+                not contain any intrinsic rewards.
+            credit_assignment_spec (Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]]):
+                Mapping from reward names to credit assignment conforming to
+                the format detailed in the `get_credit_assignment_ops` docstring.
+            extra_steps (int): Extra steps required for credit assignment.
                 Should be set to n-1 if using n-step return-based advantage
                 estimation.
-            standardize_adv: Standardize advantages per trajectory segment?
-            use_pcgrad: Use the PCGrad algorithm from Yu et al., 2020?
+            standardize_adv (bool): Standardize advantages per trajectory
+                segment?
+            use_pcgrad (bool): Use the PCGrad algorithm from Yu et al., 2020?
                 Only allowed if policy and value architecture is shared.
-            stats_memory_len: Window size for moving average of episode metadata.
-            checkpoint_frequency: Checkpoint frequency, measured in global steps.
-            non_learning_steps: Number of global steps to skip integration learning.
-                Useful in conjunction with wrappers that maintain rolling statistics.
-            max_steps: Maximum number of global steps.
-            global_step: Global step of learning so far.
-            env: Environment instance or wrapped environment.
-            policy_net: Agent instance or DDP-wrapped Agent instance.
-                Must have 'policy' as a prediction key.
-            policy_optimizer: Optimizer for policy_net.
-            policy_scheduler: Optional learning rate scheduler for
-                policy_optimizer.
-            value_net: Optional Agent instance, DDP-wrapped Agent instance.
-                If not None, must have a 'value_{reward_name}' prediction key
-                for each reward_name in env.reward_spec.keys()
-                other than 'extrinsic_raw'.
-            value_optimizer: Optional Optimizer for value_net.
-                Required if value_net is not None.
-            value_scheduler: Optional learning rate scheduler for
-                value_optimizer.
-            checkpoint_dir: Checkpoint directory.
-            log_dir: Tensorboard logs directory.
-            media_dir: Media directory.
-            reward_weights: Optional reward weights mapping,
-                keyed by reward name. Ignored if env.reward_spec.keys()
-                does not contain any intrinsic rewards. Required if it does.
-                Default value is None.
+            stats_memory_len (int): Window size for moving average of episode
+                 metadata.
+            checkpoint_frequency (int): Checkpoint frequency, measured in
+                global steps.
+            non_learning_steps (int): Number of global steps to skip integration
+                learning. Useful in conjunction with wrappers that maintain
+                rolling statistics.
+            max_steps (int): Maximum number of global steps.
+            global_step (int): Global step of learning so far.
+            env (Union[gym.core.Env, Wrapper]): Environment instance or wrapped
+                environment.
+            policy_net (torch.nn.parallel.DistributedDataParallel): DDP-wrapped
+                `Agent` instance. Must have 'policy' as a prediction key.
+            policy_optimizer (torch.optim.Optimizer): Optimizer for policy_net.
+            policy_scheduler (Optional[torch.optim.lr_scheduler._LRScheduler]):
+                Optional learning rate scheduler for policy_optimizer.
+            value_net (Optional[torch.nn.parallel.DistributedDataParallel]):
+                Optional DDP-wrapped `Agent` instance. If not None, must have a
+                'value_{reward_name}' prediction key for each reward_name in
+                env.reward_spec.keys() other than 'extrinsic_raw'.
+            value_optimizer (Optional[torch.optim.Optimizer]): Optional
+                optimizer for value_net. Required if value_net is not None.
+            value_scheduler (Optional[torch.optim.lr_scheduler._LRScheduler]):
+                Optional learning rate scheduler for value_optimizer.
+            checkpoint_dir (str): Checkpoint directory.
+            log_dir (str): Tensorboard logs directory.
+            media_dir (str): Media directory.
+            reward_weights (Optional[Mapping[str, float]): Optional reward
+                weights mapping, keyed by reward name. Ignored if
+                env.reward_spec.keys() does not contain any intrinsic rewards.
+                Required if it does. Default: None.
         """
         super().__init__(rank)
         self._world_size = world_size
