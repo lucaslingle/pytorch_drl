@@ -63,7 +63,7 @@ def get_credit_assignment_ops(
 
     Returns:
         Dict[str, CreditAssignmentOp]: Dictionary of credit assignment ops,
-            keyed by reward name.
+        keyed by reward name.
     """
     ops = dict()
     for reward_name in credit_assignment_spec:
@@ -124,8 +124,7 @@ class AdvantageEstimator(CreditAssignmentOp, metaclass=abc.ABCMeta):
                 with shape [seg_len + extra_steps].
 
         Returns:
-            torch.Tensor: Torch tensor of advantage estimates with shape
-                [seg_len].
+            torch.Tensor: Torch tensor of advantage estimates with shape [seg_len].
         """
 
 
@@ -144,8 +143,7 @@ class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
                 with shape [seg_len + extra_steps].
 
         Returns:
-            torch.Tensor: Torch tensor of action-value estimates with shape
-                [seg_len].
+            torch.Tensor: Torch tensor of action-value estimates with shape [seg_len].
         """
 
 
@@ -216,14 +214,16 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
     def __init__(self, seg_len, extra_steps, gamma, use_dones, double_q):
         """
         Args:
-            seg_len: Trajectory segment length for credit assignment.
-            extra_steps: Extra steps for n-step return-based credit assignment.
+            seg_len (int): Trajectory segment length for credit assignment.
+            extra_steps (int): Extra steps for n-step return-based credit assignment.
                 Should equal n-1 when n steps are used.
-            gamma: Discount factor in [0, 1).
-            use_dones: Whether or not to block credit assignment across episodes.
-                Intended for use with intrinsic rewards or algorithms like RL^2
-                (Duan et al., 2016).
-            double_q: Use double-Q learning?
+            gamma (float): Discount factor in [0, 1).
+            use_dones (bool): Whether or not to block credit assignment across
+                episodes. Should be True for conventional RL settings.
+                Intended to be False for use with certain intrinsic rewards
+                like RND (Burda et al., 2018), or with certain meta-RL
+                algorithms like RL^2 (Duan et al., 2016).
+            double_q (bool): Use double-Q learning?
         """
         super().__init__(seg_len, extra_steps, gamma, use_dones)
         self._double_q = double_q
