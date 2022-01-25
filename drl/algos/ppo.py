@@ -1,4 +1,4 @@
-from typing import Mapping, Tuple, Any, Union, Optional
+from typing import Mapping, Any, Union, Optional
 from contextlib import ExitStack
 
 import torch as tc
@@ -37,7 +37,7 @@ class PPO(Algo):
             vf_loss_coef: float,
             vf_loss_clipping: bool,
             vf_simple_weighting: bool,
-            credit_assignment_spec: Mapping[str, Tuple[str, Mapping[str, Any]]],
+            credit_assignment_spec: Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]],
             extra_steps: int,
             standardize_adv: bool,
             use_pcgrad: bool,
@@ -108,9 +108,9 @@ class PPO(Algo):
                 Required if value_net is not None.
             value_scheduler: Optional learning rate scheduler for
                 value_optimizer.
-            checkpoint_dir: Directory for checkpoints.
-            log_dir: Directory for tensorboard logs.
-            media_dir: Directory for video.
+            checkpoint_dir: Checkpoint directory.
+            log_dir: Tensorboard logs directory.
+            media_dir: Media directory.
             reward_weights: Optional reward weights mapping,
                 keyed by reward name. Ignored if env.reward_spec.keys()
                 does not contain any intrinsic rewards. Required if it does.
