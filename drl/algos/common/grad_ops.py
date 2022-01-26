@@ -1,7 +1,8 @@
-from typing import Dict
+from typing import Mapping
 
 import numpy as np
 import torch as tc
+from  torch.nn.parallel import DistributedDataParallel as DDP
 
 from drl.agents.integration import Agent
 from drl.utils.types import Optimizer
@@ -12,17 +13,17 @@ def norm(vector: np.ndarray) -> float:
 
 
 @tc.no_grad()
-def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
+def read_gradient(network: DDP, normalize: bool) -> np.ndarray:
     """
     Reads the currently stored gradient in the network parameters' grad
     attributes, and returns it as a vector.
 
     Args:
-        network: Agent instance.
-        normalize: Whether to normalize the gradient extracted.
+        network (DDP): DDP-wrapped `Agent` instance.
+        normalize (bool): Whether to normalize the gradient extracted.
 
     Returns:
-        Gradient as a vector.
+        numpy.ndarray: Gradient as a vector.
     """
     gradient_subvecs = []
     for p in network.parameters():
@@ -36,13 +37,13 @@ def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
 
 
 @tc.no_grad()
-def write_gradient(network: Agent, gradient: np.ndarray) -> None:
+def write_gradient(network: DDP, gradient: np.ndarray) -> None:
     """
     Writes a gradient vector into a network's parameters' grad attributes.
 
     Args:
-        network: Agent instance.
-        gradient: Gradient as a numpy ndarray.
+        network (DDP): Agent instance.
+        gradient (numpy,ndarray): Gradient as a numpy ndarray.
 
     Returns:
         None.
@@ -57,9 +58,9 @@ def write_gradient(network: Agent, gradient: np.ndarray) -> None:
 
 
 def pcgrad_gradient_surgery(
-        network: Agent,
+        network: DDP,
         optimizer: Optimizer,
-        task_losses: Dict[str, tc.Tensor],
+        task_losses: Mapping[str, tc.Tensor],
         normalize: bool = True
 ) -> np.ndarray:
     """
@@ -70,13 +71,15 @@ def pcgrad_gradient_surgery(
             'Gradient Surgery for Multi-Task Learning'
 
     Args:
-        network: Agent instance.
-        optimizer: Torch Optimizer instance.
-        task_losses: Dictionary of losses to perform PCGrad on, keyed by name.
-        normalize: Normalize the task gradients before performing PCGrad?
+        network (DDP): DDP-wrapped `Agent` instance.
+        optimizer (torch.optim.Optimizer): Torch Optimizer instance.
+        task_losses (Mapping[str, torch.Tensor]): Dictionary of losses to
+            perform PCGrad on, keyed by name.
+        normalize (bool): Normalize the task gradients before performing PCGrad?
+            Default: True.
 
     Returns:
-        PCGrad gradient as a vector.
+        numpy.ndarray: PCGrad gradient as a vector.
     """
     task_gradients = dict()
     for k in task_losses:
@@ -103,9 +106,9 @@ def pcgrad_gradient_surgery(
 
 
 def apply_pcgrad(
-        network: Agent,
+        network: DDP,
         optimizer: Optimizer,
-        task_losses: Dict[str, tc.Tensor],
+        task_losses: Mapping[str, tc.Tensor],
         normalize: bool = True
 ) -> None:
     """
@@ -117,10 +120,12 @@ def apply_pcgrad(
             'Gradient Surgery for Multi-Task Learning'
 
     Args:
-        network: Agent instance.
-        optimizer: Torch Optimizer instance.
-        task_losses: Dictionary of losses to perform PCGrad on, keyed by name.
-        normalize: Normalize the task gradients before performing PCGrad?
+        network (DDP): DDP-wrapped `Agent` instance.
+        optimizer (torch.optim.Optimizer): Torch Optimizer instance.
+        task_losses (Mapping[str, torch.Tensor]): Dictionary of losses to
+            perform PCGrad on, keyed by name.
+        normalize (bool): Normalize the task gradients before performing PCGrad?
+            Default: True.
 
     Returns:
         None.

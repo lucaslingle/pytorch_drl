@@ -11,7 +11,6 @@ Subpackages
    drl.agents.heads
    drl.agents.integration
    drl.agents.preprocessing
-   drl.agents.schedules
 
 Module contents
 ---------------

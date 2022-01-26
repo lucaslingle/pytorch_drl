@@ -11,12 +11,13 @@ def get_initializer(
 ) -> Callable[[tc.Tensor], None]:
     """
     Args:
-        init_spec: Tuple containing initializer name, which should be either
-            'normc_' or an initializer from torch.nn.init, and initializer args,
-            which should be a dictionary of arguments for the initializer.
+        init_spec (Tuple[str, Mapping[str, Any]]): Tuple containing initializer
+            name, which should be either be 'normc_' or an initializer from
+            torch.nn.init, and initializer args, which should be a dictionary of
+            arguments for the initializer.
 
     Returns:
-        Initializer as a partial function.
+         Callable[[torch.Tensor], None]: Initializer as a partial function.
     """
     name, args = init_spec
     if name == 'normc_':
@@ -34,7 +35,7 @@ def normc_(weight_tensor: tc.Tensor, gain: float = 1.0) -> None:
 
     Args:
         weight_tensor (torch.Tensor): Weight tensor to initialize.
-        gain (float): Gain parameter to scale the samples by.
+        gain (float): Gain parameter to scale the samples by. Default: 1.0.
 
     Returns:
         None

@@ -36,6 +36,14 @@ drl.algos.common.metrics module
    :undoc-members:
    :show-inheritance:
 
+drl.algos.common.schedules module
+---------------------------------
+
+.. automodule:: drl.algos.common.schedules
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 drl.algos.common.trajectory module
 ----------------------------------
 

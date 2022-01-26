@@ -1,25 +1,38 @@
-from typing import Dict
+from typing import Mapping, Any, List, Union
 import importlib
 import copy
 
 import torch as tc
+from torch.nn.parallel import DistributedDataParallel as DDP
+import numpy as np
+import gym
 
 from drl.envs.wrappers import Wrapper
 
 
-def torch_dtype(np_dtype):
+def torch_dtype(np_dtype: np.dtype) -> tc.dtype:
+    """
+    Converts a numpy dtype to a torch dtype.
+
+    Args:
+        np_dtype (np.dtype): A numpy dtype.
+
+    Returns:
+        torch.dtype: The corresponding torch dtype.
+    """
     module = importlib.import_module('torch')
     dtype = getattr(module, str(np_dtype))
     return dtype
 
 
 class MetadataManager:
-    def __init__(self, present_defaults):
+    def __init__(self, present_defaults: Mapping[str, Any]):
         """
         Maintains running statistics on a stream of experience.
 
         Args:
-            present_defaults: A dictionary of fields and default values.
+            present_defaults (Mapping[str, Any]): A dictionary of field names
+                and their default values.
         """
         self._fields = present_defaults.keys()
         self._present_defaults = present_defaults
@@ -36,45 +49,70 @@ class MetadataManager:
     @property
     def past_meta(self):
         """
-        A dictionary of lists of tracked statistics, keyed by field name.
-        Each stat in a field's list was computed by aggregating
-            over a field-dependent timespan, such as a life or an episode.
+        Returns:
+            Mapping[str, List[Any]]: A dictionary of lists of tracked statistics,
+                keyed by field name. Each stat in a field's list was computed by
+                aggregating over a field-dependent timespan, such as a life or an episode.
         """
         return self._past_meta
 
-    def update_present(self, deltas):
+    def update_present(self, deltas: Mapping[str, Any]) -> None:
         """
         Update present_meta by incrementing each field by delta[field].
+
+        Args:
+            deltas (Mapping[str, Any]): Deltas for some of the provided fields.
+                The keys must be a subset of self._fields.
+
+        Returns:
+            None.
         """
+        assert set(deltas.keys()) <= set(self._fields)
         for key in deltas:
             self._present_meta[key] += deltas[key]
 
-    def present_done(self, fields):
+    def present_done(self, fields: List[str]) -> None:
         """
         Update past_meta for listed fields by appending present_meta[field].
+
+        Args:
+            fields (List[str]): Fields whose present is done.
+
+        Returns:
+            None.
         """
         for key in fields:
             self._past_meta[key].append(self._present_meta[key])
             self._present_meta[key] = copy.deepcopy(self._present_defaults[key])
 
-    def past_done(self):
+    def past_done(self) -> None:
         """
         Update past_meta by resetting to empty. To ensure correct aggregation
         of statistics is not interrupted by trajectory segment boundaries,
         present_meta is kept intact.
+
+        Returns:
+            None.
         """
         self._past_meta = {key: list() for key in self._fields}
 
 
 class Trajectory:
-    def __init__(self, obs_space, ac_space, rew_keys, seg_len, extra_steps):
+    def __init__(
+            self,
+            obs_space: gym.spaces.Space,
+            ac_space: gym.spaces.Space,
+            rew_keys: List[str],
+            seg_len: int,
+            extra_steps: int
+    ):
         """
         Args:
-            obs_space: Observation space.
-            ac_space: Action space.
-            rew_keys: Reward keys.
-            seg_len: Segment length.
-            extra_steps: Extra steps for n-step reward based credit assignment.
+            obs_space (gym.spaces.Space): Observation space.
+            ac_space (gym.spaces.Space): Action space.
+            rew_keys (List[str]): Reward keys.
+            seg_len (int): Segment length.
+            extra_steps (int): Extra steps for n-step reward based credit assignment.
         """
         self._obs_space = obs_space
         self._ac_space = ac_space
@@ -88,7 +126,7 @@ class Trajectory:
         self._dones = None
         self._erase()
 
-    def _erase(self):
+    def _erase(self) -> None:
         obs_shape, ac_shape = self._obs_space.shape, self._ac_space.shape
         ac_dtype = torch_dtype(self._ac_space.dtype)
         self._observations = tc.zeros((self._timesteps+1, *obs_shape), dtype=tc.float32)
@@ -98,14 +136,24 @@ class Trajectory:
         }
         self._dones = tc.zeros(self._timesteps, dtype=tc.float32)
 
-    def record(self, t, o_t, a_t, r_t, d_t):
+    def record(
+            self,
+            t: int,
+            o_t: np.ndarray,
+            a_t: Union[int, np.ndarray],
+            r_t: Mapping[str, float],
+            d_t: bool
+    ) -> None:
         """
+        Records a timestep of experience to internal experience buffers.
+
         Args:
-            t: Integer index for the step to be stored.
-            o_t: Observation.
-            a_t: Action.
-            r_t: Reward dict.
-            d_t: Done signal.
+            t (int): Integer index for the step to be stored.
+            o_t (numpy.ndarray): Observation.
+            a_t (Union[int, numpy.ndarray]): Action.
+            r_t (Mapping[str, float]): Reward dict.
+            d_t (bool): Done signal.
+
         Returns:
             None.
         """
@@ -116,7 +164,22 @@ class Trajectory:
             self._rewards[key][i] = tc.tensor(r_t[key]).float()
         self._dones[i] = tc.tensor(d_t).float()
 
-    def record_nexts(self, o_Tp1, a_Tp1):
+    def record_nexts(
+            self,
+            o_Tp1: np.ndarray,
+            a_Tp1: Union[int, np.ndarray]
+    ) -> None:
+        """
+        Records the next observation and next action to rightmost slot of
+        internal experience buffers.
+        
+        Args:
+            o_Tp1 (numpy.ndarray): Next observation.
+            a_Tp1 (Union[int, numpy.ndarray]): Next action.
+
+        Returns:
+            None.
+        """
         self._observations[-1] = tc.tensor(o_Tp1).float()
         self._actions[-1] = tc.tensor(a_Tp1).long()
 
@@ -128,7 +191,7 @@ class Trajectory:
             of the old trajectory to the front of the the blank trajectory.
 
         Returns:
-            Dict[str, tc.Tensor]: Trajectory data.
+            Mapping[str, tc.Tensor]: Trajectory data.
         """
         results = {
             'observations': self._observations,
@@ -149,13 +212,19 @@ class Trajectory:
 
 
 class TrajectoryManager:
-    def __init__(self, env, policy_net, seg_len, extra_steps):
+    def __init__(
+            self,
+            env: Union[gym.core.Env, Wrapper],
+            policy_net: DDP,
+            seg_len: int,
+            extra_steps: int
+    ):
         """
         Args:
-            env: OpenAI gym environment or Wrapper instance.
-            policy_net: Network with a 'policy' predictor attached.
-            seg_len: Segment length.
-            extra_steps: Extra steps for n-step reward based credit assignment.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym environment or Wrapper instance.
+            policy_net (DDP): DDP-wrapped `Agent` instance. policy_net.keys() must contain 'policy'.
+            seg_len (int): Trajectory segment length.
+            extra_steps (int): Extra steps for n-step reward based credit assignment.
         """
         self._env = env
         self._policy_net = policy_net
@@ -211,7 +280,7 @@ class TrajectoryManager:
         Generates a trajectory by stepping the environment.
 
         Args:
-            initial: If true, steps the environment for self._extra_steps
+            initial (bool): If true, steps the environment for self._extra_steps
                and saves the results without returning anything. Otherwise,
                the full trajectory is returned.
 

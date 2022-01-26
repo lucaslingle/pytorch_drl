@@ -14,7 +14,7 @@ from drl.algos.common import global_mean
 from drl.utils.optimization import get_optimizer
 
 
-class RNDNetwork(tc.nn.Module):
+class _RNDNetwork(tc.nn.Module):
     def __init__(self, data_shape, widening):
         super().__init__()
         self._input_channels = data_shape[-1]
@@ -41,12 +41,12 @@ class RNDNetwork(tc.nn.Module):
         return self._network(x)
 
 
-class TeacherNetwork(tc.nn.Module):
+class _TeacherNetwork(tc.nn.Module):
     def __init__(self, data_shape):
         super().__init__()
         self._data_shape = data_shape
         self._network = tc.nn.Sequential(
-            RNDNetwork(data_shape=data_shape, widening=1),
+            _RNDNetwork(data_shape=data_shape, widening=1),
             tc.nn.Linear(1152, 512)
         )
         self._init_weights()
@@ -61,11 +61,11 @@ class TeacherNetwork(tc.nn.Module):
         return self._network(x)
 
 
-class StudentNetwork(tc.nn.Module):
+class _StudentNetwork(tc.nn.Module):
     def __init__(self, data_shape, widening=1):
         super().__init__()
         self._network = tc.nn.Sequential(
-            RNDNetwork(data_shape, widening=widening),
+            _RNDNetwork(data_shape, widening=widening),
             tc.nn.Linear(1152 * widening, 256 * widening),
             tc.nn.ReLU(),
             tc.nn.Linear(256 * widening, 256 * widening),
@@ -94,13 +94,30 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             widening: int,
             non_learning_steps: int
     ):
+        """
+        Implements Random Network Distillation intrinsic reward.
+
+        Reference:
+            Burda et al., 2018 -
+                'Exploration by Random Network Distillation'.
+
+        Args:
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env, or Wrapper instance.
+            rnd_optimizer_cls_name (str): Class name of RND prediction net optimizer.
+                Must correspond to a derived class of torch.optim.Optimizer.
+            rnd_optimizer_args: Arguments to pass to the constructor of the optimizer.
+            world_size: Number of processes.
+            widening: Widening factor for prediction network.
+            non_learning_steps: Number of steps to update observation normalization
+                statistics without training predictor network.
+        """
         super().__init__(env)
         self._data_shape = (84, 84, 1)
         self._world_size = world_size
         self._synced_normalizer = Normalizer(self._data_shape, -5, 5)
         self._unsynced_normalizer = Normalizer(self._data_shape, -5, 5)
-        self._teacher_net = DDP(TeacherNetwork(self._data_shape))
-        self._student_net = DDP(StudentNetwork(self._data_shape, widening))
+        self._teacher_net = DDP(_TeacherNetwork(self._data_shape))
+        self._student_net = DDP(_StudentNetwork(self._data_shape, widening))
         self._optimizer = get_optimizer(
             model=self._student_net,
             cls_name=rnd_optimizer_cls_name,

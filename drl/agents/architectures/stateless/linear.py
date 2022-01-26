@@ -11,17 +11,17 @@ class Linear(HeadEligibleArchitecture):
     """
     def __init__(
             self,
-            input_dim,
-            output_dim,
+            input_dim: int,
+            output_dim: int,
             w_init: Callable[[tc.Tensor], None],
             b_init: Callable[[tc.Tensor], None],
     ):
         """
         Args:
-            input_dim: Input dimensionality.
-            output_dim: Output dimensionality.
-            w_init: Weight initializer.
-            b_init: Bias initializer.
+            input_dim (int): Input dimensionality.
+            output_dim (int): Output dimensionality.
+            w_init (Callable[[torch.Tensor], None]): Weight initializer.
+            b_init (Callable[[torch.Tensor], None]): Bias initializer.
         """
         super().__init__(input_dim, output_dim, w_init, b_init)
         self._network = tc.nn.Sequential(tc.nn.Linear(input_dim, output_dim))

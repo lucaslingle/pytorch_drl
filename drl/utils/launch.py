@@ -324,8 +324,21 @@ def get_net(
 
 def get_opt(
         opt_config: Mapping[str, Any],
-        agent: Union[DDP, Agent]
+        agent: Union[DDP]
 ) -> Optimizer:
+    """
+    Args:
+        opt_config (Mapping[str, Any]): Dictionary with keys 'cls_name' and
+            'cls_args'. The key 'cls_name' should map to a string corresponding
+            to the name of a derived class of torch.optim.Optimizer. The key
+            'cls_args' should map to a dictionary of arguments for the corresponding
+            class constructor.
+        agent (torch.nn.parallel.DistributedDataParallel): DDP-wrapped `Agent` instance.
+
+    Returns:
+        torch.optim.Optimizer: An instantiated optimizer wrapping the parameters
+            of the DDP-wrapped agent.
+    """
     optimizer = get_optimizer(model=agent, **opt_config)
     return optimizer
 
@@ -334,6 +347,19 @@ def get_sched(
         sched_config: Mapping[str, Any],
         optimizer: Optimizer
 ) -> Optional[Scheduler]:
+    """
+    Args:
+        sched_config (Mapping[str, Any]): Dictionary with keys 'cls_name' and
+            'cls_args'. The key 'cls_name' should map to a string corresponding
+            to the name of a derived class of torch.optim.lr_scheduler._LRScheduler.
+            The key 'cls_args' should map to a dictionary of arguments for
+            the corresponding class constructor.
+        optimizer (torch.optim.Optimizer): DDP-wrapped `Agent` instance.
+
+    Returns:
+        Optional[torch.optim.lr_scheduler._LRScheduler]: An instantiated scheduler
+            wrapping the parameters of the DDP-wrapped agent.
+    """
     scheduler = get_scheduler(optimizer=optimizer, **sched_config)
     return scheduler
 
@@ -350,7 +376,7 @@ def make_learning_system(
 
     Args:
         rank (int): Process rank.
-        config (`ConfigParser`): Configuration object.
+        config (ConfigParser): Configuration object.
 
     Returns:
         Mapping[str, Union[int, Union[gym.core.Env, Wrapper], Optional[Agent], Optional[Optimizer], Optional[Scheduler]]:

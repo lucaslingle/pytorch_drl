@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Mapping, Any, Union
 
 import torch as tc
 
@@ -14,20 +14,21 @@ class Agent(tc.nn.Module):
             self,
             preprocessing: List[Preprocessing],
             architecture: StatelessArchitecture,
-            predictors: Dict[str, Head],
+            predictors: Mapping[str, Head],
             detach_input: bool = True
     ):
         """
         Args:
-            preprocessing: List of `Preprocessing` instances.
-            architecture: `StatelessArchitecture` instance.
-            predictors: Dictionary of prediction `Head`s, keyed by predictor name.
-                There should be only one `PolicyHead` predictor and its name
-                should be 'policy'. There can be multiple `ValueHead`/`ActionValueHead`
-                predictors. Their names should start with 'value_' or 'action_value_,
-                and end with the appropriate reward name.
-            detach_input: Detach input or not? Default: True.
-                This is a no-op if used with external observation tensors,
+            preprocessing (List[Preprocessing]): List of `Preprocessing` instances.
+            architecture (StatelessArchitecture): `StatelessArchitecture` instance.
+            predictors (Mapping[str, Head]): Dictionary of prediction `Head`s,
+                keyed by predictor name. There should be only one `PolicyHead`
+                predictor and its name should be 'policy'. There can be multiple
+                `ValueHead`/`ActionValueHead` predictors. Their names should
+                start with 'value_' or 'action_value_', and end with the
+                appropriate reward name.
+            detach_input (bool): Detach input or not? Default: True.
+                This is a no-op when used with emulator-generated observation tensors,
                 since these are outside the model.parameters() passed to the
                 optimizer and moreover default to have requires_grad=False.
         """
@@ -52,14 +53,20 @@ class Agent(tc.nn.Module):
     def keys(self):
         return self._predictors.keys()
 
-    def forward(self, observations, predict, **kwargs):
+    def forward(
+            self,
+            observations: tc.Tensor,
+            predict: List[str],
+            **kwargs: Mapping[str, Any]
+    ) -> Mapping[str, Union[tc.Tensor, tc.distributions.Distribution]]:
         """
         Args:
-            observations: Batch of observations
-            predict: Names of predictors to apply.
-            kwargs: Keyword arguments.
+            observations (torch.Tensor): Batch of observations
+            predict (List[str]): Names of predictors to apply.
+            kwargs (Mapping[str, Any]): Keyword arguments.
         Returns:
-            Dictionary of predictions.
+            Mapping[str, Union[tc.Tensor, tc.distributions.Distribution]]:
+                Dictionary of predictions.
         """
         if self._detach_input:
             observations = observations.detach()

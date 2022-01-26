@@ -1,4 +1,4 @@
-from typing import Mapping, Any, Type, Callable, Dict
+from typing import Mapping, Any, Type, Callable
 import abc
 
 import torch as tc
@@ -13,7 +13,6 @@ class ValueHead(Head, metaclass=abc.ABCMeta):
     """
 
 
-# default for ppo was architecture_cls_name=Linear, w_init=('normc', {'gain': 1.0}), b_init=('zeros_', {})
 class SimpleValueHead(ValueHead):
     """
     Simple value prediction head.
@@ -22,20 +21,22 @@ class SimpleValueHead(ValueHead):
             self,
             num_features: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
-            head_architecture_cls_args: Dict[str, Any],
+            head_architecture_cls_args: Mapping[str, Any],
             w_init: Callable[[tc.Tensor], None],
             b_init: Callable[[tc.Tensor], None],
             **kwargs: Mapping[str, Any]
     ):
         """
         Args:
-            num_features: Number of input features.
-            head_architecture_cls: Class object for policy head architecture.
-                Must be a derived class of HeadEligibleArchitecture.
-            head_architecture_cls_args: Keyword arguments for head architecture.
-            w_init: Weight initializer.
-            b_init: Bias initializer.
-            **kwargs: Keyword arguments.
+            num_features (int): Number of input features.
+            head_architecture_cls (Type[HeadEligibleArchitecture]): Class object
+                for policy head architecture. Must be a derived class of
+                HeadEligibleArchitecture.
+            head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
+                for head architecture.
+            w_init (Callable[[torch.Tensor], None]): Weight initializer.
+            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         super().__init__()
         self._value_head = head_architecture_cls(
@@ -45,6 +46,19 @@ class SimpleValueHead(ValueHead):
             b_init=b_init,
             **head_architecture_cls_args)
 
-    def forward(self, features, **kwargs):
+    def forward(
+            self,
+            features: tc.Tensor,
+            **kwargs: Mapping[str, Any]
+    ) -> tc.Tensor:
+        """
+        Args:
+            features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
+            **kwargs (Mapping[str, Any]): Keyword arguments.
+
+        Returns:
+            torch.Tensor: Torch tensor of shape [batch_size], containing the
+                estimated state-conditional values.
+        """
         vpred = self._value_head(features).squeeze(-1)
         return vpred

@@ -1,3 +1,5 @@
+from typing import Callable
+
 import torch as tc
 
 from drl.agents.architectures.stateless.abstract import HeadEligibleArchitecture
@@ -10,16 +12,23 @@ class DuelingArchitecture(HeadEligibleArchitecture):
         Z. Wang et al., 2016 -
             'Dueling Network Architectures for Deep Reinforcement Learning'
     """
-    def __init__(self, input_dim, output_dim, widening, w_init, b_init):
+    def __init__(
+            self,
+            input_dim: int,
+            output_dim: int,
+            widening: int,
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None]
+    ):
         """
         Args:
-            input_dim: Input dimensionality.
-            output_dim: Output dimensionality (number of actions).
-            widening: Widening factor for multiplying the number of
+            input_dim (int): Input dimensionality.
+            output_dim (int): Output dimensionality (number of actions).
+            widening (int): Widening factor for multiplying the number of
                 internal features present in the original architecture
                 of Wang et al., 2016.
-            w_init: Weight initializer.
-            b_init: Bias initializer.
+            w_init (Callable[[torch.Tensor], None]): Weight initializer.
+            b_init (Callable[[torch.Tensor], None]): Bias initializer.
         """
         super().__init__(input_dim, output_dim, w_init, b_init)
         self._proj = tc.nn.Sequential(

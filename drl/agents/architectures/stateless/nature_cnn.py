@@ -12,15 +12,15 @@ class NatureCNN(StatelessArchitecture):
     """
     def __init__(
             self,
-            img_channels,
+            img_channels: int,
             w_init: Callable[[tc.Tensor], None],
             b_init: Callable[[tc.Tensor], None],
     ):
         """
         Args:
-            img_channels: Image channels.
-            w_init: Weight initializer.
-            b_init: Bias initializer.
+            img_channels (int): Image channels.
+            w_init (Callable[[torch.Tensor], None]): Weight initializer.
+            b_init (Callable[[torch.Tensor], None]): Bias initializer.
         """
         super().__init__(w_init, b_init)
         self._img_channels = img_channels

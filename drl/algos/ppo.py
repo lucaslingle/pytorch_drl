@@ -9,7 +9,7 @@ import gym
 
 from drl.algos.abstract import Algo
 from drl.algos.common import (
-    TrajectoryManager, MultiDeque, extract_reward_name,
+    TrajectoryManager, MultiQueue, extract_reward_name,
     get_credit_assignment_ops, get_loss, global_means, global_gathers,
     update_trainable_wrappers, apply_pcgrad, pretty_print, LinearSchedule
 )
@@ -171,7 +171,7 @@ class PPO(Algo):
         self._trajectory_mgr = TrajectoryManager(
             env=env, policy_net=policy_net, seg_len=seg_len,
             extra_steps=extra_steps)
-        self._metadata_acc = MultiDeque(memory_len=stats_memory_len)
+        self._metadata_acc = MultiQueue(memory_len=stats_memory_len)
         if self._rank == 0:
             self._writer = SummaryWriter(log_dir)
 

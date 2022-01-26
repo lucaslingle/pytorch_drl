@@ -18,9 +18,9 @@ class StatelessArchitecture(Architecture, metaclass=abc.ABCMeta):
     ):
         """
         Args:
-            w_init: Weight initializer.
-            b_init: Bias initializer.
-            **kwargs: Keyword arguments.
+            w_init (Callable[[torch.Tensor], None]): Weight initializer.
+            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         super().__init__()
         self._w_init = w_init
@@ -47,6 +47,12 @@ class StatelessArchitecture(Architecture, metaclass=abc.ABCMeta):
         """
         Returns:
             Dimensionality of output features.
+        """
+
+    @abc.abstractmethod
+    def forward(self, x, **kwargs):
+        """
+        Forward method.
         """
 
 
