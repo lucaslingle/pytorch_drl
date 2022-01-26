@@ -108,8 +108,8 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             rnd_optimizer_args: Arguments to pass to the constructor of the optimizer.
             world_size: Number of processes.
             widening: Widening factor for prediction network.
-            non_learning_steps: Number of steps to update observation normalization
-                statistics without training predictor network.
+            non_learning_steps: Number of local environment steps to not train predictor network.
+                Used to update observation normalization statistics before training.
         """
         super().__init__(env)
         self._data_shape = (84, 84, 1)
