@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'asimov'
+project = 'pytorch_drl'
 copyright = '2022, Lucas D. Lingle'
 author = 'Lucas D. Lingle'
 

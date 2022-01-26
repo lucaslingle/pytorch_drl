@@ -14,11 +14,16 @@ from drl.algos.common import (
     update_trainable_wrappers, apply_pcgrad, pretty_print
 )
 from drl.envs.wrappers import Wrapper
-from drl.agents.integration import Agent
 from drl.utils.checkpointing import save_checkpoints
 
 
 class PPO(Algo):
+    """
+    Proximal Policy Optimization (clip variant).
+
+    Reference:
+        J. Schulman et al., 2017 - 'Proximal Policy Optimization Algorithms'.
+    """
     # PPO speed todos:
     #    after reproducability done, add support for vectorized environment.
     #    test speed of vectorized vs non-vectorized environments.
