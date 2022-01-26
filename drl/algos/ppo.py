@@ -11,7 +11,7 @@ from drl.algos.abstract import Algo
 from drl.algos.common import (
     TrajectoryManager, MultiDeque, extract_reward_name,
     get_credit_assignment_ops, get_loss, global_means, global_gathers,
-    update_trainable_wrappers, apply_pcgrad, pretty_print
+    update_trainable_wrappers, apply_pcgrad, pretty_print, LinearSchedule
 )
 from drl.envs.wrappers import Wrapper
 from drl.utils.checkpointing import save_checkpoints
@@ -134,9 +134,9 @@ class PPO(Algo):
         self._seg_len = seg_len
         self._opt_epochs = opt_epochs
         self._learner_batch_size = learner_batch_size
-        self._clip_param = Annealer(
+        self._clip_param = LinearSchedule(
             clip_param_init, clip_param_final, max_steps)
-        self._ent_coef = Annealer(
+        self._ent_coef = LinearSchedule(
             ent_coef_init, ent_coef_final, max_steps)
         self._vf_loss_criterion = get_loss(vf_loss_cls)
         self._vf_loss_coef = vf_loss_coef
@@ -495,15 +495,3 @@ class PPO(Algo):
                 r_tot += r_t['extrinsic_raw']
                 o_t = o_tp1
             print(r_tot)
-
-
-class Annealer:
-    def __init__(self, initial_value, final_value, max_steps):
-        self._initial_value = initial_value
-        self._final_value = final_value
-        self._max_steps = max_steps
-
-    def value(self, global_step):
-        frac_done = global_step / self._max_steps
-        s = min(max(0., frac_done), 1.)
-        return self._initial_value * (1. - s) + self._final_value * s
