@@ -1,4 +1,4 @@
-from typing import Dict, Any, Union
+from typing import Mapping, Any, Union
 import copy
 
 import gym
@@ -89,7 +89,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             self,
             env: Union[gym.core.Env, Wrapper],
             rnd_optimizer_cls_name: str,
-            rnd_optimizer_args: Dict[str, Any],
+            rnd_optimizer_args: Mapping[str, Any],
             world_size: int,
             widening: int,
             non_learning_steps: int
@@ -105,11 +105,13 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             env (Union[gym.core.Env, Wrapper]): OpenAI gym env, or Wrapper instance.
             rnd_optimizer_cls_name (str): Class name of RND prediction net optimizer.
                 Must correspond to a derived class of torch.optim.Optimizer.
-            rnd_optimizer_args: Arguments to pass to the constructor of the optimizer.
-            world_size: Number of processes.
-            widening: Widening factor for prediction network.
-            non_learning_steps: Number of local environment steps to not train predictor network.
-                Used to update observation normalization statistics before training.
+            rnd_optimizer_args (Mapping[str, Any]): Arguments to pass to the
+                constructor of the optimizer.
+            world_size (int): Number of processes.
+            widening (int): Widening factor for prediction network.
+            non_learning_steps (int): Number of local environment steps to not
+                train predictor network. Used to update observation normalization
+                statistics before training.
         """
         super().__init__(env)
         self._data_shape = (84, 84, 1)
