@@ -49,10 +49,9 @@ class MetadataManager:
     @property
     def past_meta(self):
         """
-        Returns:
-            Mapping[str, List[Any]]: A dictionary of lists of tracked statistics,
-                keyed by field name. Each stat in a field's list was computed by
-                aggregating over a field-dependent timespan, such as a life or an episode.
+        A dictionary of lists of tracked statistics, keyed by field name.
+        Each stat in a field's list was computed by aggregating over a
+        field-dependent timespan, such as a life or an episode.
         """
         return self._past_meta
 
@@ -113,6 +112,7 @@ class Trajectory:
             rew_keys (List[str]): Reward keys.
             seg_len (int): Segment length.
             extra_steps (int): Extra steps for n-step reward based credit assignment.
+                Should equal n-1 when n steps are used.
         """
         self._obs_space = obs_space
         self._ac_space = ac_space
@@ -223,7 +223,7 @@ class TrajectoryManager:
         Args:
             env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper instance.
             policy_net (torch.nn.parallel.DistributedDataParallel): DDP-wrapped
-                `Agent` instance. policy_net.keys() must contain 'policy'.
+                `Agent` instance. Must have 'policy' as a prediction key.
             seg_len (int): Trajectory segment length.
             extra_steps (int): Extra steps for n-step reward based credit assignment.
                 Should equal n-1 when n steps are used.
