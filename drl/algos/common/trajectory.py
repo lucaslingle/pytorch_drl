@@ -221,10 +221,13 @@ class TrajectoryManager:
     ):
         """
         Args:
-            env (Union[gym.core.Env, Wrapper]): OpenAI gym environment or Wrapper instance.
-            policy_net (DDP): DDP-wrapped `Agent` instance. policy_net.keys() must contain 'policy'.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym environment or
+                Wrapper instance.
+            policy_net (DDP): DDP-wrapped `Agent` instance.
+                policy_net.keys() must contain 'policy'.
             seg_len (int): Trajectory segment length.
-            extra_steps (int): Extra steps for n-step reward based credit assignment.
+            extra_steps (int): Extra steps for n-step reward based credit
+                assignment. Should be n-1 for n steps of rewards.
         """
         self._env = env
         self._policy_net = policy_net
