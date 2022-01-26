@@ -22,7 +22,8 @@ class PPO(Algo):
     Proximal Policy Optimization (clip variant).
 
     Reference:
-        J. Schulman et al., 2017 - 'Proximal Policy Optimization Algorithms'.
+        J. Schulman et al., 2017 -
+            'Proximal Policy Optimization Algorithms'.
     """
     # PPO speed todos:
     #    after reproducability done, add support for vectorized environment.

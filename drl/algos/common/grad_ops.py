@@ -14,7 +14,7 @@ def norm(vector: np.ndarray) -> float:
 @tc.no_grad()
 def read_gradient(network: Agent, normalize: bool) -> np.ndarray:
     """
-    Reads the currently stored gradient in the network parameters grad
+    Reads the currently stored gradient in the network parameters' grad
     attributes, and returns it as a vector.
 
     Args:
