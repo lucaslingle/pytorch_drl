@@ -2,7 +2,7 @@
 Abstract wrapper definitions.
 """
 
-from typing import Optional, Union
+from typing import Union
 import abc
 
 import gym
@@ -72,8 +72,6 @@ class Wrapper(metaclass=abc.ABCMeta):
         return self.env.step(action)
 
     def reset(self, **kwargs):
-        if 'seed' in kwargs:
-            _ = kwargs.pop('seed')  # maintain backwards compatibility with gym
         return self.env.reset(**kwargs)
 
     def render(self, mode="human", **kwargs):
@@ -112,8 +110,8 @@ class ObservationWrapper(Wrapper, metaclass=abc.ABCMeta):
     def observation(self, observation):
         raise NotImplementedError
 
-    def reset(self, seed: Optional[int] = None, **kwargs):
-        return self.observation(self.env.reset(seed=seed, **kwargs))
+    def reset(self, **kwargs):
+        return self.observation(self.env.reset(**kwargs))
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
