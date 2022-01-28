@@ -1,12 +1,10 @@
-from typing import Dict, List, Mapping, Any, Union
+from typing import List, Mapping, Any, Union
 
 import torch as tc
 
 from drl.agents.preprocessing import Preprocessing
 from drl.agents.architectures.stateless.abstract import StatelessArchitecture
-from drl.agents.heads import (
-    Head
-)
+from drl.agents.heads import Head
 
 
 class Agent(tc.nn.Module):
