@@ -367,7 +367,7 @@ def get_sched(
 def make_learning_system(
         rank: int,
         config: ConfigParser
-) -> Mapping[str, Union[int, Union[gym.core.Env, Wrapper], Optional[Union[DDP, Agent]], Optional[Optimizer], Optional[Scheduler]]]:
+) -> Mapping[str, Union[int, Union[gym.core.Env, Wrapper], Optional[DDP], Optional[Optimizer], Optional[Scheduler]]]:
     """
     Provides a simple, flexible, and reproducible launch framework
         for the drl library.
@@ -379,7 +379,7 @@ def make_learning_system(
         config (ConfigParser): Configuration object.
 
     Returns:
-        Mapping[str, Union[int, Union[gym.core.Env, Wrapper], Optional[Agent], Optional[Optimizer], Optional[Scheduler]]:
+        Mapping[str, Union[int, Union[gym.core.Env, Wrapper], Optional[DDP], Optional[Optimizer], Optional[Scheduler]]:
             Dictionary with environment, networks, optimizers, schedulers,
             and global step of the learning process thus far.
     """
