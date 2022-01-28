@@ -353,12 +353,12 @@ def get_sched(
             'cls_args'. The key 'cls_name' should map to a string corresponding
             to the name of a derived class of torch.optim.lr_scheduler._LRScheduler.
             The key 'cls_args' should map to a dictionary of arguments for
-            the corresponding class constructor.
-        optimizer (torch.optim.Optimizer): DDP-wrapped `Agent` instance.
+            the corresponding class constructor. If 'cls_name' is None, no scheduler is returned.
+        optimizer (torch.optim.Optimizer): Optimizer instance.
 
     Returns:
-        Optional[torch.optim.lr_scheduler._LRScheduler]: An instantiated scheduler
-            wrapping the parameters of the DDP-wrapped agent.
+        Optional[torch.optim.lr_scheduler._LRScheduler]: An instantiated scheduler,
+            or None.
     """
     scheduler = get_scheduler(optimizer=optimizer, **sched_config)
     return scheduler
