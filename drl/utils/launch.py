@@ -307,7 +307,7 @@ def get_net(
         net_config (Mapping[str, Any]): Dictionary with three keys: 'preprocessing',
             'architecture', and 'predictors'. Each key maps to a dictionary
             conforming to the specifications in `get_preprocessings`,
-            `get_architecture` and `get_predictors`.
+            `get_architecture`, and `get_predictors`.
         env (Union[gym.core.Env, Wrapper]): OpenAI gym environment or wrapper thereof.
 
     Returns:
@@ -317,7 +317,7 @@ def get_net(
     architecture = get_architecture(**net_config.get('architecture'))
     predictors = get_predictors(env, **net_config.get('predictors'))
     if not isinstance(architecture, StatelessArchitecture):
-        msg = "Stateful architectures not yet supported."
+        msg = "architecture must be instance of StatelessArchitecture."
         raise TypeError(msg)
     return DDP(Agent(preprocessing, architecture, predictors))
 
