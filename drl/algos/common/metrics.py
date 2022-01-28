@@ -84,7 +84,7 @@ def global_gathers(
     })
 
 
-def pretty_print(metrics: Mapping[str, Any]) -> None:
+def pretty_print(metrics: Union[Mapping[str, Any], 'MultiQueue']) -> None:
     """
     Pretty prints the provided metrics to stdout.
 
