@@ -198,7 +198,22 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         idxs = np.random.permutation(obs_batch.shape[0])
         return obs_batch[idxs][0:keepnum]
 
-    def learn(self, observations, apply_dropping=True, **kwargs):
+    def learn(
+            self,
+            mb: Mapping[str, tc.Tensor],
+            apply_dropping: bool = True,
+            **kwargs: Mapping[str, Any]
+    ) -> None:
+        """
+        Args:
+            mb (Mapping[str, torch.Tensor]): Minibatch of experience to learn from.
+            apply_dropping (bool): Apply the observation-dropping technique from Burda et al., 2018?
+            **kwargs (Mapping[str, Any]): Keyword arguments.
+
+        Returns:
+            None.
+        """
+        observations = mb['observations']
         if self._synced_normalizer.steps >= self._non_learning_steps:
             self._optimizer.zero_grad()
             if apply_dropping:

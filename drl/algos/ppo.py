@@ -468,7 +468,7 @@ class PPO(Algo):
                             'value_net': self._value_net,
                             'value_optimizer': self._value_optimizer,
                             'value_scheduler': self._value_scheduler,
-                            **self._env.get_checkpointables()
+                            **self._env.checkpointables
                         },
                         steps=self._global_step)
 
