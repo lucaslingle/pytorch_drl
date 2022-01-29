@@ -86,21 +86,21 @@ networks:
                     cls_args: {num_features: 512}
                     head_architecture_cls_name: Linear
                     head_architecture_cls_args: {}
-                    w_init_spec: ['orthogonal_', {gain: 1.4142}]  # sqrt 2
+                    w_init_spec: ['orthogonal_', {gain: 0.01}]  # sqrt 2
                     b_init_spec: ['zeros_', {}]
                 value_extrinsic:
                     cls_name: SimpleValueHead
                     cls_args: {num_features: 512}
                     head_architecture_cls_name: Linear
                     head_architecture_cls_args: {}
-                    w_init_spec: ['orthogonal_', {gain: 1.4142}]  # sqrt 2
+                    w_init_spec: ['orthogonal_', {gain: 0.01}]  # sqrt 2
                     b_init_spec: ['zeros_', {}]
                 value_intrinsic_rnd:
                     cls_name: SimpleValueHead
                     cls_args: {num_features: 512}
                     head_architecture_cls_name: Linear
                     head_architecture_cls_args: {}
-                    w_init_spec: ['orthogonal_', {gain: 1.4142}]  # sqrt 2
+                    w_init_spec: ['orthogonal_', {gain: 0.01}]  # sqrt 2
                     b_init_spec: ['zeros_', {}]
         optimizer:
             cls_name: Adam
