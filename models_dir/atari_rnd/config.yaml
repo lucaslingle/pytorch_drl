@@ -81,26 +81,29 @@ networks:
                 w_init_spec: ['orthogonal_', {gain: 1.4142}]  # sqrt 2
                 b_init_spec: ['zeros_', {}]
             predictors:
+                # nota bene: burda uses an extra linear layer with size 448 and then relu.
+                # then each prediction head uses a two-layer 'residual' MLP with the first hidden layer
+                # added to this size-448 layer. we aren't doing that here.
                 policy:
                     cls_name: CategoricalPolicyHead
                     cls_args: {num_features: 512}
                     head_architecture_cls_name: Linear
                     head_architecture_cls_args: {}
-                    w_init_spec: ['orthogonal_', {gain: 0.01}]  # sqrt 2
+                    w_init_spec: ['orthogonal_', {gain: 0.01}]
                     b_init_spec: ['zeros_', {}]
                 value_extrinsic:
                     cls_name: SimpleValueHead
                     cls_args: {num_features: 512}
                     head_architecture_cls_name: Linear
                     head_architecture_cls_args: {}
-                    w_init_spec: ['orthogonal_', {gain: 0.01}]  # sqrt 2
+                    w_init_spec: ['orthogonal_', {gain: 0.01}]
                     b_init_spec: ['zeros_', {}]
                 value_intrinsic_rnd:
                     cls_name: SimpleValueHead
                     cls_args: {num_features: 512}
                     head_architecture_cls_name: Linear
                     head_architecture_cls_args: {}
-                    w_init_spec: ['orthogonal_', {gain: 0.01}]  # sqrt 2
+                    w_init_spec: ['orthogonal_', {gain: 0.01}]
                     b_init_spec: ['zeros_', {}]
         optimizer:
             cls_name: Adam
