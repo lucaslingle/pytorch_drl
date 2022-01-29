@@ -137,6 +137,6 @@ class NormalizeRewardWrapper(TrainableWrapper):
             rew = {'extrinsic_raw': reward, 'extrinsic': normalized}
         return obs, rew, done, info
 
-    def learn(self, **kwargs):
+    def learn(self, mb, **kwargs):
         self._sync_normalizers_global()
         self._sync_normalizers_local()

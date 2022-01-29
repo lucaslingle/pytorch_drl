@@ -23,5 +23,5 @@ def update_trainable_wrappers(
     maybe_wrapper = env
     while isinstance(maybe_wrapper, Wrapper):
         if hasattr(maybe_wrapper, 'learn'):
-            maybe_wrapper.learn(**mb)
+            maybe_wrapper.learn(mb)
         maybe_wrapper = maybe_wrapper.env

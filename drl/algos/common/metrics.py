@@ -144,6 +144,8 @@ class MultiQueue:
         Returns:
             float: mean value in the field's queue.
         """
+        if len(self._queues[field]) == 0:
+            return np.nan
         return sum(self._queues[field]) / len(self._queues[field])
 
     def keys(self):
