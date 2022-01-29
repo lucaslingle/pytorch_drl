@@ -70,6 +70,8 @@ class ReturnAcc(tc.nn.Module):
             self._normalizer.moment2 = moment2
 
     def forward(self, r_t, shift=False, scale=True):
+        if self.steps == 0:
+            return tc.zeros_like(r_t)
         return self._normalizer(r_t, shift=shift, scale=scale)
 
 
