@@ -166,17 +166,16 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         self._unsynced_normalizer.moment1 = self._synced_normalizer.moment1
         self._unsynced_normalizer.moment2 = self._synced_normalizer.moment2
 
-    def get_checkpointables(self):
-        checkpointables = dict()
-        if isinstance(self.env, Wrapper):
-            checkpointables.update(self.env.get_checkpointables())
-        checkpointables.update({
+    @property
+    def checkpointables(self):
+        checkpoint_dict = self.env.checkpointables
+        checkpoint_dict.update({
             'rnd_observation_normalizer': self._synced_normalizer,
             'rnd_teacher_net': self._teacher_net,
             'rnd_student_net': self._student_net,
             'rnd_optimizer': self._optimizer
         })
-        return checkpointables
+        return checkpoint_dict
 
     def step(self, ac):
         if self._unsynced_normalizer.steps < self._synced_normalizer.steps:
