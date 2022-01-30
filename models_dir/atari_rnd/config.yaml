@@ -60,6 +60,7 @@ env:
             NormalizeRewardWrapper:
                 gamma: 0.99
                 world_size: 32
+                use_dones: False
                 key: intrinsic_rnd
         evaluate:
             AtariWrapper:
