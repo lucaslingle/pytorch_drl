@@ -486,7 +486,7 @@ class PPO(Algo):
             done_t = False
             while not done_t:
                 predictions_t = self._policy_net(
-                    x=tc.tensor(o_t).float().unsqueeze(0),
+                    observations=tc.tensor(o_t).float().unsqueeze(0),
                     predict=['policy'])
                 pi_dist_t = predictions_t['policy']
                 a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
