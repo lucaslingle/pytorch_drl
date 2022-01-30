@@ -1,88 +1,182 @@
+from typing import Mapping, Any, Union, Optional
 from contextlib import ExitStack
 
 import torch as tc
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
+import gym
 
 from drl.algos.abstract import Algo
 from drl.algos.common import (
-    TrajectoryManager, MultiDeque, extract_reward_name, gae_advantages,
-    get_loss, global_means, global_gathers,
-    update_trainable_wrappers, apply_pcgrad, pretty_print
+    TrajectoryManager, MultiQueue, extract_reward_name,
+    get_credit_assignment_ops, get_loss, global_means, global_gathers,
+    update_trainable_wrappers, apply_pcgrad, pretty_print, LinearSchedule
 )
+from drl.envs.wrappers import Wrapper
+from drl.utils.checkpointing import save_checkpoints
 
 
 class PPO(Algo):
+    """
+    Proximal Policy Optimization (clip variant).
+
+    Reference:
+        J. Schulman et al., 2017 -
+            'Proximal Policy Optimization Algorithms'.
+    """
     # PPO speed todos:
     #    after reproducability done, add support for vectorized environment.
     #    test speed of vectorized vs non-vectorized environments.
-    def __init__(self, rank, config):
-        super().__init__(rank, config)
-        self._learning_system = self._get_learning_system()
+    def __init__(
+            self,
+            rank: int,
+            world_size: int,
+            seg_len: int,
+            opt_epochs: int,
+            learner_batch_size: int,
+            clip_param_init: float,
+            clip_param_final: float,
+            ent_coef_init: float,
+            ent_coef_final: float,
+            vf_loss_cls: str,
+            vf_loss_coef: float,
+            vf_loss_clipping: bool,
+            vf_simple_weighting: bool,
+            credit_assignment_spec: Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]],
+            extra_steps: int,
+            standardize_adv: bool,
+            use_pcgrad: bool,
+            stats_memory_len: int,
+            checkpoint_frequency: int,
+            non_learning_steps: int,
+            max_steps: int,
+            global_step: int,
+            env: Union[gym.core.Env, Wrapper],
+            policy_net: DDP,
+            policy_optimizer: tc.optim.Optimizer,
+            policy_scheduler: Optional[tc.optim.lr_scheduler._LRScheduler],
+            value_net: Optional[DDP],
+            value_optimizer: Optional[tc.optim.Optimizer],
+            value_scheduler: Optional[tc.optim.lr_scheduler._LRScheduler],
+            log_dir: str,
+            checkpoint_dir: str,
+            media_dir: str,
+            reward_weights: Optional[Mapping[str, float]] = None
+    ):
+        """
+        Args:
+            rank (int): Process rank.
+            world_size (int): Total number of processes.
+            seg_len (int): Trajectory segment length.
+            opt_epochs (int): Optimization epochs per policy improvement phase
+                in PPO.
+            learner_batch_size (int): Batch size per learner process.
+            clip_param_init (float): Initial PPO clip parameter.
+            clip_param_final (float): Final PPO clip parameter, to which
+                clip_param_init will be linearly annealed.
+            ent_coef_init (float): Initial entropy bonus coefficient.
+            ent_coef_final (float): Final entropy bonus coefficient, to which
+                ent_coef_init will be linearly annealed.
+            vf_loss_cls (str): Value function loss class name. Name must match
+                a derived class of _Loss in torch.nn.modules.loss.
+                The most useful classes are MSELoss and SmoothL1Loss.
+            vf_loss_coef (float): Value function loss coefficient.
+                Ignored if value network is separate from policy network.
+            vf_loss_clipping (bool): If true, use pessimistic value function
+                loss.
+            vf_simple_weighting (bool): If true, use equal weighting of all
+                value function losses. Ignored if env.reward_spec.keys() does
+                not contain any intrinsic rewards.
+            credit_assignment_spec (Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]]):
+                Mapping from reward names to credit assignment conforming to
+                the format detailed in the `get_credit_assignment_ops` docstring.
+            extra_steps (int): Extra steps required for credit assignment.
+                Should be set to n-1 if using n-step return-based advantage
+                estimation.
+            standardize_adv (bool): Standardize advantages per trajectory
+                segment?
+            use_pcgrad (bool): Use the PCGrad algorithm from Yu et al., 2020?
+                Only allowed if policy and value architecture is shared.
+            stats_memory_len (int): Window size for moving average of episode
+                 metadata.
+            checkpoint_frequency (int): Checkpoint frequency, measured in
+                global steps.
+            non_learning_steps (int): Number of global steps to skip integration
+                learning. Useful in conjunction with wrappers that maintain
+                rolling statistics.
+            max_steps (int): Maximum number of global steps.
+            global_step (int): Global step of learning so far.
+            env (Union[gym.core.Env, Wrapper]): Environment instance or wrapped
+                environment.
+            policy_net (torch.nn.parallel.DistributedDataParallel): DDP-wrapped
+                `Agent` instance. Must have 'policy' as a prediction key.
+            policy_optimizer (torch.optim.Optimizer): Optimizer for policy_net.
+            policy_scheduler (Optional[torch.optim.lr_scheduler._LRScheduler]):
+                Optional learning rate scheduler for policy_optimizer.
+            value_net (Optional[torch.nn.parallel.DistributedDataParallel]):
+                Optional DDP-wrapped `Agent` instance. If not None, must have a
+                'value_{reward_name}' prediction key for each reward_name in
+                env.reward_spec.keys() other than 'extrinsic_raw'.
+            value_optimizer (Optional[torch.optim.Optimizer]): Optional
+                optimizer for value_net. Required if value_net is not None.
+            value_scheduler (Optional[torch.optim.lr_scheduler._LRScheduler]):
+                Optional learning rate scheduler for value_optimizer.
+            checkpoint_dir (str): Checkpoint directory.
+            log_dir (str): Tensorboard logs directory.
+            media_dir (str): Media directory.
+            reward_weights (Optional[Mapping[str, float]): Optional reward
+                weights mapping, keyed by reward name. Ignored if
+                env.reward_spec.keys() does not contain any intrinsic rewards.
+                Required if it does. Default: None.
+        """
+        super().__init__(rank)
+        self._world_size = world_size
+        self._seg_len = seg_len
+        self._opt_epochs = opt_epochs
+        self._learner_batch_size = learner_batch_size
+        self._clip_param = LinearSchedule(
+            clip_param_init, clip_param_final, max_steps)
+        self._ent_coef = LinearSchedule(
+            ent_coef_init, ent_coef_final, max_steps)
+        self._vf_loss_criterion = get_loss(vf_loss_cls)
+        self._vf_loss_coef = vf_loss_coef
+        self._vf_loss_clipping = vf_loss_clipping
+        self._vf_simple_weighting = vf_simple_weighting
+        self._credit_assignment_ops = get_credit_assignment_ops(
+            seg_len, extra_steps, credit_assignment_spec)
+        self._extra_steps = extra_steps
+        self._standardize_adv = standardize_adv
+        self._use_pcgrad = use_pcgrad
+        self._reward_weights = reward_weights
+
+        self._stats_memory_len = stats_memory_len
+        self._checkpoint_frequency = checkpoint_frequency
+        self._non_learning_steps = non_learning_steps
+        self._max_steps = max_steps
+
+        self._global_step = global_step
+        self._env = env
+        self._policy_net = policy_net
+        self._policy_optimizer = policy_optimizer
+        self._policy_scheduler = policy_scheduler
+        self._value_net = value_net
+        self._value_optimizer = value_optimizer
+        self._value_scheduler = value_scheduler
+
+        self._checkpoint_dir = checkpoint_dir
+        self._log_dir = log_dir
+        self._media_dir = media_dir
+
         self._trajectory_mgr = TrajectoryManager(
-            env=self._learning_system['env'],
-            policy_net=self._learning_system['policy_net'],
-            seg_len=self._config['algo']['seg_len'],
-            extra_steps=self._config['algo']['gae_extra_steps'])
-        self._metadata_acc = MultiDeque(
-            memory_len=self._config['algo']['stats_memory_len'])
+            env=env, policy_net=policy_net, seg_len=seg_len,
+            extra_steps=extra_steps)
+        self._metadata_acc = MultiQueue(memory_len=stats_memory_len)
         if self._rank == 0:
-            self._writer = SummaryWriter(self._config.get('log_dir'))
-
-    def _get_learning_system(self):
-        env_config = self._config.get('env')
-        env = self._get_env(
-            env_config, self.worker_seed, self._config.get('mode'))
-        rank = self._rank
-
-        policy_config = self._config['networks']['policy_net']
-        policy_net = self._get_net(policy_config, env, rank)
-        policy_optimizer_config = policy_config.get('optimizer')
-        policy_optimizer = self._get_opt(policy_optimizer_config, policy_net)
-        policy_scheduler_config = policy_config.get('scheduler')
-        policy_scheduler = self._get_sched(
-            policy_scheduler_config, policy_optimizer)
-
-        value_config = self._config['networks']['value_net']
-        value_net, value_optimizer, value_scheduler = None, None, None
-        if not value_config.get('use_shared_architecture'):
-            value_net = self._get_net(value_config, env, rank)
-            value_optimizer_config = value_config.get('optimizer')
-            value_optimizer = self._get_opt(value_optimizer_config, value_net)
-            value_scheduler_config = value_config.get('scheduler')
-            value_scheduler = self._get_sched(
-                value_scheduler_config, value_optimizer)
-
-        algo_config = self._config.get('algo')
-        max_steps = algo_config.get('max_steps')
-        seg_len = algo_config.get('seg_len')
-        num_policy_improvements = max_steps // seg_len
-        clip_param_annealer = Annealer(
-            initial_value=algo_config.get('clip_param_init'),
-            final_value=algo_config.get('clip_param_final'),
-            num_policy_improvements=num_policy_improvements)
-        ent_coef_annealer = Annealer(
-            initial_value=algo_config.get('ent_coef_init'),
-            final_value=algo_config.get('ent_coef_final'),
-            num_policy_improvements=num_policy_improvements)
-
-        checkpointables = {
-            'policy_net': policy_net,
-            'policy_optimizer': policy_optimizer,
-            'policy_scheduler': policy_scheduler,
-            'value_net': value_net,
-            'value_optimizer': value_optimizer,
-            'value_scheduler': value_scheduler,
-            'clip_param_annealer': clip_param_annealer,
-            'ent_coef_annealer': ent_coef_annealer
-        }
-        checkpointables_ = {k: v for k,v in checkpointables.items()}
-        checkpointables_.update(env.get_checkpointables())
-        global_step = self._maybe_load_checkpoints(checkpointables_, step=None)
-        return {'global_step': global_step, 'env': env, **checkpointables}
+            self._writer = SummaryWriter(log_dir)
 
     def _get_reward_keys(self, omit_raw=True):
-        reward_spec = self._learning_system['env'].reward_spec
+        reward_spec = self._env.reward_spec
         reward_keys = reward_spec.keys
         if omit_raw:
             reward_keys = [k for k in reward_keys if not k.endswith('_raw')]
@@ -135,7 +229,7 @@ class PPO(Algo):
                 'entropies': pi.entropy()
             }
             trajectory_new = self._slice_minibatch(
-                trajectory_new, slice(0, self._config['algo']['seg_len']))
+                trajectory_new, slice(0, self._seg_len))
             trajectory_new.update({
                 'rewards': trajectory['rewards'],
                 'dones': trajectory['dones'],
@@ -147,28 +241,23 @@ class PPO(Algo):
     def _credit_assignment(self, trajectory):
         advantages, td_lambda_returns = dict(), dict()
         for k in self._get_reward_keys():
-            advantages[k] = gae_advantages(
-                seg_len=self._config['algo']['seg_len'],
-                extra_steps=self._config['algo']['gae_extra_steps'],
-                gamma=self._config['algo']['discount_gamma'][k],
-                lam=self._config['algo']['gae_lambda'][k],
+            advantages[k] = self._credit_assignment_ops[k].estimate_advantages(
                 rewards=trajectory['rewards'][k],
                 vpreds=trajectory['vpreds'][k],
-                dones=trajectory['dones'],
-                use_dones=self._config['algo']['use_dones'][k])
+                dones=trajectory['dones'])
             td_lambda_returns[k] = advantages[k] + trajectory['vpreds'][k]
         trajectory.update({
             'advantages': advantages,
             'td_lambda_returns': td_lambda_returns
         })
         trajectory = self._slice_minibatch(
-            trajectory, slice(0, self._config['algo']['seg_len']))
+            trajectory, slice(0, self._seg_len))
         trajectory = self._maybe_standardize_advantages(trajectory)
         return trajectory
 
     @tc.no_grad()
     def _maybe_standardize_advantages(self, trajectory):
-        if self._config['algo']['standardize_adv']:
+        if self._standardize_adv:
             for k in self._get_reward_keys():
                 trajectory['advantages'][k] = self._standardize(
                     trajectory['advantages'][k])
@@ -176,8 +265,8 @@ class PPO(Algo):
 
     def _get_reward_weightings(self):
         reward_weightings = {'extrinsic': 1.0}
-        if 'reward_weights' in self._config['algo']:
-            reward_weightings.update(self._config['algo']['reward_weights'])
+        if self._reward_weights is not None:
+            reward_weightings.update(self._reward_weights)
         assert set(reward_weightings.keys()) == set(self._get_reward_keys())
         return reward_weightings
 
@@ -211,27 +300,26 @@ class PPO(Algo):
     def _ppo_vf_loss(self, mb_new, mb, clip_param, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
             vf_loss = tc.tensor(0.0)
-            vf_loss_criterion = get_loss(self._config['algo']['vf_loss_cls'])
-            vf_loss_clipping = self._config['algo']['vf_loss_clipping']
-            vf_simple_weighting = self._config['algo']['vf_simple_weighting']
             reward_weightings = self._get_reward_weightings()
             for key in self._get_reward_keys():
                 tdlam_rets = mb['td_lambda_returns'][key]
                 vpreds = mb['vpreds'][key]
                 vpreds_new = mb_new['vpreds'][key]
-                if vf_loss_clipping:
+                if self._vf_loss_clipping:
                     vpreds_new_clipped = tc.clip(
                         vpreds_new, vpreds-clip_param, vpreds+clip_param)
-                    vsurr1 = vf_loss_criterion(
+                    vsurr1 = self._vf_loss_criterion(
                         input=vpreds_new, target=tdlam_rets)
-                    vsurr2 = vf_loss_criterion(
+                    vsurr2 = self._vf_loss_criterion(
                         input=vpreds_new_clipped, target=tdlam_rets)
                     vf_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
                 else:
-                    vf_loss_for_rew = tc.mean(vf_loss_criterion(
+                    vf_loss_for_rew = tc.mean(self._vf_loss_criterion(
                         input=vpreds_new, target=tdlam_rets))
-                weight = 1. if vf_simple_weighting else reward_weightings[key]
-                vf_loss += (weight ** 2) * vf_loss_for_rew
+                if self._vf_simple_weighting:
+                    vf_loss += vf_loss_for_rew
+                else:
+                    vf_loss += (reward_weightings[key] ** 2) * vf_loss_for_rew
             return {
                 'vf_loss': vf_loss
             }
@@ -250,7 +338,7 @@ class PPO(Algo):
             policy_loss = -policy_objective
             value_loss = value_quantities['vf_loss']
             separate_value_net = value_net is not None
-            vf_loss_coef = self._config['algo']['vf_loss_coef']
+            vf_loss_coef = self._vf_loss_coef
             vf_weight = 1. if separate_value_net else vf_loss_coef
             composite_loss = policy_loss + vf_weight * value_loss
             return {
@@ -262,10 +350,10 @@ class PPO(Algo):
             }
 
     def _pcgrad_checks(self):
-        if len(self._config['networks']['policy_net']['predictors']) <= 1:
+        if len(self._policy_net.keys) <= 1:
             msg = "Required multiple predictions for pcgrad"
             raise ValueError(msg)
-        if self._learning_system['value_net'] is not None:
+        if self._value_net is not None:
             msg = "Currently only support pcgrad when no val net"
             raise ValueError(msg)
 
@@ -283,6 +371,7 @@ class PPO(Algo):
             if not use_pcgrad:
                 if k == 'composite_loss':
                     policy_losses[k] = losses[k]
+                    value_losses[k] = losses[k]
         return policy_losses, value_losses
 
     def _optimize_losses(self, net, optimizer, losses, retain_graph, use_pcgrad):
@@ -298,73 +387,52 @@ class PPO(Algo):
         optimizer.step()
 
     def training_loop(self):
-        world_size = self._config['distributed']['world_size']
-
-        env = self._learning_system.get('env')
-        policy_net = self._learning_system.get('policy_net')
-        policy_optimizer = self._learning_system.get('policy_optimizer')
-        policy_scheduler = self._learning_system.get('policy_scheduler')
-        value_net = self._learning_system.get('value_net')
-        value_optimizer = self._learning_system.get('value_optimizer')
-        value_scheduler = self._learning_system.get('value_scheduler')
-        clip_param_annealer = self._learning_system.get('clip_param_annealer')
-        ent_coef_annealer = self._learning_system.get('ent_coef_annealer')
-        global_step = self._learning_system.get('global_step')
-
-        algo_config = self._config.get('algo')
-        max_steps = algo_config.get('max_steps')
-        seg_len = algo_config.get('seg_len')
-        opt_epochs = algo_config.get('opt_epochs')
-        batch_size = algo_config.get('learner_batch_size')
-        checkpoint_frequency = algo_config.get('checkpoint_frequency')
-        use_pcgrad = algo_config.get('use_pcgrad')
-        non_learning_steps = algo_config.get('non_learning_steps')
-        if use_pcgrad:
+        if self._use_pcgrad:
             self._pcgrad_checks()
-        separate_value_net = value_net is not None
+        separate_value_net = self._value_net is not None
 
-        while global_step < max_steps:
+        while self._global_step < self._max_steps:
             # generate trajectory.
             trajectory = self._trajectory_mgr.generate()
             metadata = trajectory.pop('metadata')
             trajectory = self._annotate(
-                trajectory, policy_net, value_net, no_grad=True)
+                trajectory, self._policy_net, self._value_net, no_grad=True)
             trajectory = self._credit_assignment(trajectory)
-            global_step += seg_len * world_size
+            self._global_step += self._seg_len * self._world_size
 
             # update policy.
-            for opt_epoch in range(opt_epochs):
-                indices = np.random.permutation(seg_len)
-                for i in range(0, seg_len, batch_size):
-                    mb_indices = indices[i:i+batch_size]
+            for opt_epoch in range(self._opt_epochs):
+                indices = np.random.permutation(self._seg_len)
+                for i in range(0, self._seg_len, self._learner_batch_size):
+                    mb_indices = indices[i:i+self._learner_batch_size]
                     mb = self._slice_minibatch(trajectory, mb_indices)
-                    update_trainable_wrappers(env, mb)
-                    if global_step <= non_learning_steps:
+                    update_trainable_wrappers(self._env, mb)
+                    if self._global_step <= self._non_learning_steps:
                         continue
                     losses = self._compute_losses(
-                        mb=mb, policy_net=policy_net, value_net=value_net,
-                        ent_coef=ent_coef_annealer.value,
-                        clip_param=clip_param_annealer.value,
+                        mb=mb, policy_net=self._policy_net, value_net=self._value_net,
+                        ent_coef=self._ent_coef.value(self._global_step),
+                        clip_param=self._clip_param.value(self._global_step),
                         no_grad=False)
                     policy_losses, value_losses = self._maybe_split_losses(
                         losses=losses, value_net=separate_value_net,
-                        use_pcgrad=use_pcgrad)
+                        use_pcgrad=self._use_pcgrad)
                     self._optimize_losses(
-                        net=policy_net, optimizer=policy_optimizer,
+                        net=self._policy_net, optimizer=self._policy_optimizer,
                         losses=policy_losses, retain_graph=separate_value_net,
-                        use_pcgrad=use_pcgrad)
+                        use_pcgrad=self._use_pcgrad)
                     if separate_value_net:
                         self._optimize_losses(
-                            net=value_net, optimizer=value_optimizer,
+                            net=self._value_net, optimizer=self._value_optimizer,
                             losses=value_losses, retain_graph=False,
-                            use_pcgrad=use_pcgrad)
+                            use_pcgrad=self._use_pcgrad)
 
                 metrics = self._compute_losses(
-                    mb=trajectory, policy_net=policy_net, value_net=value_net,
-                    ent_coef=ent_coef_annealer.value,
-                    clip_param=clip_param_annealer.value,
+                    mb=trajectory, policy_net=self._policy_net, value_net=self._value_net,
+                    ent_coef=self._ent_coef.value(self._global_step),
+                    clip_param=self._clip_param.value(self._global_step),
                     no_grad=True)
-                global_metrics = global_means(metrics, world_size, item=True)
+                global_metrics = global_means(metrics, self._world_size, item=True)
                 if self._rank == 0:
                     print(f"Opt epoch: {opt_epoch}")
                     pretty_print(global_metrics)
@@ -372,17 +440,15 @@ class PPO(Algo):
                         self._writer.add_scalar(
                             tag=f"epoch_{opt_epoch}/{name}",
                             scalar_value=global_metrics[name],
-                            global_step=global_step)
+                            global_step=self._global_step)
 
-            if policy_scheduler:
-                policy_scheduler.step()
-            if value_scheduler:
-                value_scheduler.step()
-            clip_param_annealer.step()
-            ent_coef_annealer.step()
+            if self._policy_scheduler:
+                self._policy_scheduler.step()
+            if self._value_scheduler:
+                self._value_scheduler.step()
 
             # save everything.
-            global_metadata = global_gathers(metadata, world_size)
+            global_metadata = global_gathers(metadata, self._world_size)
             self._metadata_acc.update(global_metadata)
             if self._rank == 0:
                 pretty_print(self._metadata_acc)
@@ -390,22 +456,21 @@ class PPO(Algo):
                     self._writer.add_scalar(
                         tag=f"metadata/{name}",
                         scalar_value=self._metadata_acc.mean(name),
-                        global_step=global_step)
+                        global_step=self._global_step)
 
-                if (global_step // seg_len) % checkpoint_frequency == 0:
-                    self._save_checkpoints(
+                if self._global_step % self._checkpoint_frequency == 0:
+                    save_checkpoints(
+                        checkpoint_dir=self._checkpoint_dir,
                         checkpointables={
-                            'policy_net': policy_net,
-                            'policy_optimizer': policy_optimizer,
-                            'policy_scheduler': policy_scheduler,
-                            'value_net': value_net,
-                            'value_optimizer': value_optimizer,
-                            'value_scheduler': value_scheduler,
-                            'clip_param_annealer': clip_param_annealer,
-                            'ent_coef_annealer': ent_coef_annealer,
-                            **env.get_checkpointables()
+                            'policy_net': self._policy_net,
+                            'policy_optimizer': self._policy_optimizer,
+                            'policy_scheduler': self._policy_scheduler,
+                            'value_net': self._value_net,
+                            'value_optimizer': self._value_optimizer,
+                            'value_scheduler': self._value_scheduler,
+                            **self._env.checkpointables
                         },
-                        step=global_step)
+                        steps=self._global_step)
 
     def evaluation_loop(self):
         raise NotImplementedError
@@ -415,45 +480,19 @@ class PPO(Algo):
         # todo: replace this with video-saving loop in Algo abstract class.
         #   or implement saving video via wrapper env.
         if self._rank == 0:
-            env = self._learning_system['env']
-            policy_net = self._learning_system['policy_net']
             t = 0
             r_tot = 0.
-            o_t = env.reset()
+            o_t = self._env.reset()
             done_t = False
             while not done_t:
-                predictions_t = policy_net(
-                    x=tc.tensor(o_t).float().unsqueeze(0),
+                predictions_t = self._policy_net(
+                    observations=tc.tensor(o_t).float().unsqueeze(0),
                     predict=['policy'])
                 pi_dist_t = predictions_t['policy']
                 a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
-                o_tp1, r_t, done_t, info_t = env.step(a_t)
-                _ = env.render(mode='human')
+                o_tp1, r_t, done_t, info_t = self._env.step(a_t)
+                _ = self._env.render(mode='human')
                 t += 1
                 r_tot += r_t['extrinsic_raw']
                 o_t = o_tp1
             print(r_tot)
-
-
-class Annealer(tc.nn.Module):
-    def __init__(
-            self, initial_value, final_value, num_policy_improvements
-    ):
-        super().__init__()
-        self._initial_value = initial_value
-        self._final_value = final_value
-        self._num_policy_improvements = num_policy_improvements
-        self.register_buffer('_num_steps', tc.tensor(0))
-
-    @property
-    def num_steps(self):
-        return self._num_steps.item()
-
-    @property
-    def value(self):
-        frac_done = self.num_steps / self._num_policy_improvements
-        s = min(max(0., frac_done), 1.)
-        return self._initial_value * (1. - s) + self._final_value * s
-
-    def step(self):
-        self.register_buffer('_num_steps', tc.tensor(self.num_steps+1))

@@ -47,7 +47,7 @@ def _clean(base_path, kind, n=5):
             os.remove(os.path.join(base_path, fname))
 
 
-def maybe_load_checkpoint(
+def _maybe_load_checkpoint(
         checkpoint_dir: str,
         kind_name: str,
         checkpointable: Checkpointable,
@@ -69,7 +69,7 @@ def maybe_load_checkpoint(
     return steps_
 
 
-def save_checkpoint(
+def _save_checkpoint(
         checkpoint_dir: str,
         kind_name: str,
         checkpointable: Checkpointable,
@@ -90,17 +90,23 @@ def maybe_load_checkpoints(
         steps: Optional[int]
 ) -> int:
     """
-    :param checkpoint_dir: Checkpoint dir.
-    :param checkpointables: Dictionary of checkpointables keyed by kind name.
-    :param map_location: Map location specifying how remap storage locations.
-    :param steps: Number of steps so far. If None, uses latest.
-    :return: Number of steps in latest checkpoint. If no checkpoints, returns 0.
+    Loads checkpoints from a provided checkpoint directory.
+
+    Args:
+        checkpoint_dir (str): Checkpoint directory.
+        checkpointables (Dict[str, Optional[Checkpointable]]): Dictionary of
+            checkpointables keyed by kind name.
+        map_location (str): Map location specifying how remap storage locations.
+        steps (Optional[int]): Number of steps so far. If None, uses latest.
+
+    Returns:
+        int: Number of steps in latest checkpoint. If no checkpoints, returns 0.
     """
     global_steps = list()
     for kind_name in checkpointables:
         checkpointable = checkpointables.get(kind_name)
         if checkpointable is not None:
-            step_ = maybe_load_checkpoint(
+            step_ = _maybe_load_checkpoint(
                 checkpoint_dir=checkpoint_dir,
                 kind_name=kind_name,
                 checkpointable=checkpointable,
@@ -110,7 +116,7 @@ def maybe_load_checkpoints(
     if len(set(global_steps)) != 1:
         msg = "Checkpoint steps not aligned."
         raise RuntimeError(msg)
-    return step_
+    return set(global_steps).pop()
 
 
 def save_checkpoints(
@@ -119,16 +125,20 @@ def save_checkpoints(
         steps: int
 ) -> None:
     """
-    :param checkpoint_dir: Checkpoint dir.
-    :param checkpointables: Dictionary of checkpointables keyed by kind name.
-    :param rank: Process rank.
-    :param steps: Number of steps so far.
-    :return: None
+    Saves checkpoints to a provided checkpoint directory.
+    Args:
+        checkpoint_dir (str): Checkpoint directory.
+        checkpointables (Dict[str, Optional[Checkpointable]]): Dictionary of
+            checkpointables keyed by kind name.
+        steps (int): Number of steps so far.
+
+    Returns:
+        None
     """
     for kind_name in checkpointables:
         checkpointable = checkpointables.get(kind_name)
         if checkpointable is not None:
-            save_checkpoint(
+            _save_checkpoint(
                 checkpoint_dir=checkpoint_dir,
                 kind_name=kind_name,
                 checkpointable=checkpointable,

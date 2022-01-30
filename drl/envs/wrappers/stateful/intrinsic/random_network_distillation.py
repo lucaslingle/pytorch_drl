@@ -1,4 +1,4 @@
-from typing import Dict, Any, Union
+from typing import Mapping, Any, Union
 import copy
 
 import gym
@@ -14,7 +14,7 @@ from drl.algos.common import global_mean
 from drl.utils.optimization import get_optimizer
 
 
-class RNDNetwork(tc.nn.Module):
+class _RNDNetwork(tc.nn.Module):
     def __init__(self, data_shape, widening):
         super().__init__()
         self._input_channels = data_shape[-1]
@@ -41,12 +41,12 @@ class RNDNetwork(tc.nn.Module):
         return self._network(x)
 
 
-class TeacherNetwork(tc.nn.Module):
+class _TeacherNetwork(tc.nn.Module):
     def __init__(self, data_shape):
         super().__init__()
         self._data_shape = data_shape
         self._network = tc.nn.Sequential(
-            RNDNetwork(data_shape=data_shape, widening=1),
+            _RNDNetwork(data_shape=data_shape, widening=1),
             tc.nn.Linear(1152, 512)
         )
         self._init_weights()
@@ -61,11 +61,11 @@ class TeacherNetwork(tc.nn.Module):
         return self._network(x)
 
 
-class StudentNetwork(tc.nn.Module):
+class _StudentNetwork(tc.nn.Module):
     def __init__(self, data_shape, widening=1):
         super().__init__()
         self._network = tc.nn.Sequential(
-            RNDNetwork(data_shape, widening=widening),
+            _RNDNetwork(data_shape, widening=widening),
             tc.nn.Linear(1152 * widening, 256 * widening),
             tc.nn.ReLU(),
             tc.nn.Linear(256 * widening, 256 * widening),
@@ -89,18 +89,37 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             self,
             env: Union[gym.core.Env, Wrapper],
             rnd_optimizer_cls_name: str,
-            rnd_optimizer_args: Dict[str, Any],
+            rnd_optimizer_args: Mapping[str, Any],
             world_size: int,
             widening: int,
             non_learning_steps: int
     ):
+        """
+        Implements Random Network Distillation intrinsic reward.
+
+        Reference:
+            Burda et al., 2018 -
+                'Exploration by Random Network Distillation'.
+
+        Args:
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env, or Wrapper instance.
+            rnd_optimizer_cls_name (str): Class name of RND prediction net optimizer.
+                Must correspond to a derived class of torch.optim.Optimizer.
+            rnd_optimizer_args (Mapping[str, Any]): Arguments to pass to the
+                constructor of the optimizer.
+            world_size (int): Number of processes.
+            widening (int): Widening factor for prediction network.
+            non_learning_steps (int): Number of local environment steps to not
+                train predictor network. Used to update observation normalization
+                statistics before training.
+        """
         super().__init__(env)
         self._data_shape = (84, 84, 1)
         self._world_size = world_size
         self._synced_normalizer = Normalizer(self._data_shape, -5, 5)
         self._unsynced_normalizer = Normalizer(self._data_shape, -5, 5)
-        self._teacher_net = DDP(TeacherNetwork(self._data_shape))
-        self._student_net = DDP(StudentNetwork(self._data_shape, widening))
+        self._teacher_net = DDP(_TeacherNetwork(self._data_shape))
+        self._student_net = DDP(_StudentNetwork(self._data_shape, widening))
         self._optimizer = get_optimizer(
             model=self._student_net,
             cls_name=rnd_optimizer_cls_name,
@@ -147,17 +166,16 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         self._unsynced_normalizer.moment1 = self._synced_normalizer.moment1
         self._unsynced_normalizer.moment2 = self._synced_normalizer.moment2
 
-    def get_checkpointables(self):
-        checkpointables = dict()
-        if isinstance(self.env, Wrapper):
-            checkpointables.update(self.env.get_checkpointables())
-        checkpointables.update({
+    @property
+    def checkpointables(self):
+        checkpoint_dict = self.env.checkpointables
+        checkpoint_dict.update({
             'rnd_observation_normalizer': self._synced_normalizer,
             'rnd_teacher_net': self._teacher_net,
             'rnd_student_net': self._student_net,
             'rnd_optimizer': self._optimizer
         })
-        return checkpointables
+        return checkpoint_dict
 
     def step(self, ac):
         if self._unsynced_normalizer.steps < self._synced_normalizer.steps:
@@ -180,7 +198,22 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         idxs = np.random.permutation(obs_batch.shape[0])
         return obs_batch[idxs][0:keepnum]
 
-    def learn(self, observations, apply_dropping=True, **kwargs):
+    def learn(
+            self,
+            mb: Mapping[str, tc.Tensor],
+            apply_dropping: bool = True,
+            **kwargs: Mapping[str, Any]
+    ) -> None:
+        """
+        Args:
+            mb (Mapping[str, torch.Tensor]): Minibatch of experience to learn from.
+            apply_dropping (bool): Apply the observation-dropping technique from Burda et al., 2018?
+            **kwargs (Mapping[str, Any]): Keyword arguments.
+
+        Returns:
+            None.
+        """
+        observations = mb['observations']
         if self._synced_normalizer.steps >= self._non_learning_steps:
             self._optimizer.zero_grad()
             if apply_dropping:

@@ -1,10 +1,22 @@
 from drl.agents.architectures.abstract import Architecture
-from drl.agents.architectures.nature_cnn import NatureCNN
-from drl.agents.architectures.async_cnn import AsyncCNN
+from drl.agents.architectures.stateless import (
+    StatelessArchitecture,
+    HeadEligibleArchitecture,
+    AsyncCNN,
+    DuelingArchitecture,
+    Linear,
+    MLP,
+    NatureCNN
+)
 
 
 __all__ = [
     "Architecture",
-    "NatureCNN",
-    "AsyncCNN"
+    "StatelessArchitecture",
+    "HeadEligibleArchitecture",
+    "AsyncCNN",
+    "DuelingArchitecture",
+    "Linear",
+    "MLP",
+    "NatureCNN"
 ]

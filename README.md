@@ -71,12 +71,12 @@ In this section, we describe the algorithms whose published results we've replic
 
 | Game           | OpenAI Baselines | Schulman et al., 2017 | Ours         |
 | :------------- | ---------------: | --------------------: | -----------: |
-| Beamrider      |          1299.3  |                1590.0 |      2822.66 seed 0, 3504.54 seed 1 |
+| Beamrider      |          1299.3  |                1590.0 |       3406.5 |
 | Breakout       |           114.3  |                 274.8 |        424.4 |
-| Enduro         |           350.2  |                 758.3 |              |
+| Enduro         |           350.2  |                 758.3 |        749.4 |
 | Pong           |            13.7  |                  20.7 |         19.8 |
 | Qbert          |          7012.1  |               14293.3 |      16600.8 |
-| Seaquest       |          1218.9  |                1204.5 |              |
+| Seaquest       |          1218.9  |                1204.5 |        947.3 |
 | Space Invaders |           557.3  |                 942.5 |       1151.9 |
 
 - For computational efficiency, we tested only the seven Atari games first examined by [Mnih et al., 2013](https://arxiv.org/pdf/1312.5602.pdf).

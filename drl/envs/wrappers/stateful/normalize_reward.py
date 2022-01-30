@@ -1,4 +1,7 @@
+from typing import Union, Optional
+
 import torch as tc
+import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper, RewardSpec
 from drl.envs.wrappers.stateful.abstract import TrainableWrapper
@@ -6,10 +9,11 @@ from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.algos.common import global_mean
 
 
-class ReturnAcc(tc.nn.Module):
-    def __init__(self, gamma, clip_low, clip_high):
+class _ReturnAcc(tc.nn.Module):
+    def __init__(self, gamma, clip_low, clip_high, use_dones):
         super().__init__()
         self._gamma = gamma
+        self._use_dones = use_dones
         self._current_ep_rewards = []
         self._normalizer = Normalizer([], clip_low, clip_high)
 
@@ -37,9 +41,16 @@ class ReturnAcc(tc.nn.Module):
     def moment2(self, tensor):
         self._normalizer.moment2 = tensor
 
+    def _truncation_condition(self, done):
+        cond0 = self._use_dones
+        cond1 = done
+        cond2 = not self._use_dones
+        cond3 = len(self._current_ep_rewards) > int(5 / (1 - self._gamma))
+        return (cond0 and cond1) or (cond2 and cond3)
+
     def update(self, r_t, d_t):
         self._current_ep_rewards.append(r_t)
-        if d_t:
+        if self._truncation_condition(d_t):
             returns = list()
             while len(self._current_ep_rewards) > 0:
                 r_t = self._current_ep_rewards.pop()
@@ -70,14 +81,34 @@ class ReturnAcc(tc.nn.Module):
             self._normalizer.moment2 = moment2
 
     def forward(self, r_t, shift=False, scale=True):
+        if self.steps == 0:
+            return tc.zeros_like(r_t)
         return self._normalizer(r_t, shift=shift, scale=scale)
 
 
 class NormalizeRewardWrapper(TrainableWrapper):
-    def __init__(self, env, gamma, world_size, key=None):
+    """
+    Reward normalization wrapper.
+    """
+    def __init__(
+            self,
+            env: Union[gym.core.Env, Wrapper],
+            gamma: float,
+            world_size: int,
+            use_dones: bool,
+            key: Optional[str] = None
+    ):
+        """
+        Args:
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or wrapper thereof.
+            gamma (float): Discount factor.
+            world_size (int): Number of processes.
+            use_dones (bool): Truncate returns at episode boundaries?
+            key (Optional[str]): Optional reward key.
+        """
         super().__init__(env)
-        self._synced_normalizer = ReturnAcc(gamma, -10, 10)
-        self._unsynced_normalizer = ReturnAcc(gamma, -10, 10)
+        self._synced_normalizer = _ReturnAcc(gamma, -10, 10, use_dones)
+        self._unsynced_normalizer = _ReturnAcc(gamma, -10, 10, use_dones)
         self._key = key
         self._world_size = world_size
         self._set_reward_spec()
@@ -104,12 +135,11 @@ class NormalizeRewardWrapper(TrainableWrapper):
         self._unsynced_normalizer.moment1 = self._synced_normalizer.moment1
         self._unsynced_normalizer.moment2 = self._synced_normalizer.moment2
 
-    def get_checkpointables(self):
-        checkpointables = dict()
-        if isinstance(self.env, Wrapper):
-            checkpointables.update(self.env.get_checkpointables())
-        checkpointables.update({'reward_normalizer': self._synced_normalizer})
-        return checkpointables
+    @property
+    def checkpointables(self):
+        checkpoint_dict = self.env.checkpointables
+        checkpoint_dict.update({'reward_normalizer': self._synced_normalizer})
+        return checkpoint_dict
 
     def step(self, ac):
         if self._unsynced_normalizer.steps < self._synced_normalizer.steps:
@@ -138,6 +168,6 @@ class NormalizeRewardWrapper(TrainableWrapper):
             rew = {'extrinsic_raw': reward, 'extrinsic': normalized}
         return obs, rew, done, info
 
-    def learn(self, **kwargs):
+    def learn(self, mb, **kwargs):
         self._sync_normalizers_global()
         self._sync_normalizers_local()

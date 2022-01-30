@@ -1,28 +1,64 @@
+from typing import Mapping, Any, Type, Callable
 import abc
 
 import torch as tc
 
 from drl.agents.heads.abstract import Head
-from drl.agents.architectures.common import normc_init_
+from drl.agents.architectures.stateless.abstract import HeadEligibleArchitecture
 
 
 class ValueHead(Head, metaclass=abc.ABCMeta):
-    def forward(self, features, **kwargs):
+    """
+    Value head abstract class.
+    """
+
+
+class SimpleValueHead(ValueHead):
+    """
+    Simple value prediction head.
+    """
+    def __init__(
+            self,
+            num_features: int,
+            head_architecture_cls: Type[HeadEligibleArchitecture],
+            head_architecture_cls_args: Mapping[str, Any],
+            w_init: Callable[[tc.Tensor], None],
+            b_init: Callable[[tc.Tensor], None],
+            **kwargs: Mapping[str, Any]
+    ):
+        """
+        Args:
+            num_features (int): Number of input features.
+            head_architecture_cls (Type[HeadEligibleArchitecture]): Class object
+                for policy head architecture. Must be a derived class of
+                HeadEligibleArchitecture.
+            head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
+                for head architecture.
+            w_init (Callable[[torch.Tensor], None]): Weight initializer.
+            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            **kwargs (Mapping[str, Any]): Keyword arguments.
+        """
+        super().__init__()
+        self._value_head = head_architecture_cls(
+            input_dim=num_features,
+            output_dim=1,
+            w_init=w_init,
+            b_init=b_init,
+            **head_architecture_cls_args)
+
+    def forward(
+            self,
+            features: tc.Tensor,
+            **kwargs: Mapping[str, Any]
+    ) -> tc.Tensor:
+        """
+        Args:
+            features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
+            **kwargs (Mapping[str, Any]): Keyword arguments.
+
+        Returns:
+            torch.Tensor: Torch tensor of shape [batch_size], containing the
+                estimated state-conditional values.
+        """
         vpred = self._value_head(features).squeeze(-1)
         return vpred
-
-
-class LinearValueHead(ValueHead):
-    def __init__(self, num_features, ortho_init, ortho_gain=0.01, **kwargs):
-        super().__init__()
-        self._value_head = tc.nn.Linear(num_features, 1)
-        self._ortho_init = ortho_init
-        self._ortho_gain = ortho_gain
-        self._init_weights()
-
-    def _init_weights(self):
-        if self._ortho_init:
-            tc.nn.init.orthogonal_(self._value_head.weight, gain=self._ortho_gain)
-        else:
-            normc_init_(self._value_head.weight, gain=1.0)
-        tc.nn.init.zeros_(self._value_head.bias)

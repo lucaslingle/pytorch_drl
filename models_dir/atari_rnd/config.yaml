@@ -5,36 +5,35 @@ distributed:
     master_port: '12345'
 algo:
     cls_name: PPO
-    seg_len: 128
-    opt_epochs: 4
-    learner_batch_size: 32
-    clip_param_init: 0.1
-    clip_param_final: 0.1
-    ent_coef_init: 0.001
-    ent_coef_final: 0.001
-    vf_loss_coef: 0.5
-    vf_loss_cls: MSELoss
-    vf_loss_clipping: False
-    vf_simple_weighting: True  # Burda 2018 src code weights all vf losses same
-    gae_lambda:
-        extrinsic: 0.95
-        intrinsic_rnd: 0.95
-    gae_extra_steps: 0
-    discount_gamma:
-        extrinsic: 0.999
-        intrinsic_rnd: 0.99
-    use_dones:
-        extrinsic: True
-        intrinsic_rnd: False
-    standardize_adv: False
-    reward_weights:
-        extrinsic: 2.0
-        intrinsic_rnd: 1.0
-    use_pcgrad: False
-    stats_memory_len: 100
-    checkpoint_frequency: 100
-    non_learning_steps: 409600  # RNDWrapper nonlearning steps * world_size
-    max_steps: 500000000        # 0.5B
+    cls_args:
+        seg_len: 128
+        opt_epochs: 4
+        learner_batch_size: 32
+        clip_param_init: 0.1
+        clip_param_final: 0.1
+        ent_coef_init: 0.001
+        ent_coef_final: 0.001
+        vf_loss_coef: 0.5
+        vf_loss_cls: MSELoss
+        vf_loss_clipping: False
+        vf_simple_weighting: True  # Burda 2018 src code weights all vf losses same
+        credit_assignment_spec:
+            extrinsic:
+                cls_name: GAE
+                cls_args: {gamma: 0.999, lambda_: 0.95, use_dones: True}
+            intrinsic_rnd:
+                cls_name: GAE
+                cls_args: {gamma: 0.99, lambda_: 0.95, use_dones: False}
+        extra_steps: 0
+        standardize_adv: False
+        reward_weights:
+            extrinsic: 2.0
+            intrinsic_rnd: 1.0
+        use_pcgrad: False
+        stats_memory_len: 100
+        checkpoint_frequency: 100
+        non_learning_steps: 409600  # RNDWrapper nonlearning steps * world_size
+        max_steps: 500000000        # 0.5B
 env:
     wrappers:
         train:
@@ -61,6 +60,7 @@ env:
             NormalizeRewardWrapper:
                 gamma: 0.99
                 world_size: 32
+                use_dones: False
                 key: intrinsic_rnd
         evaluate:
             AtariWrapper:
@@ -74,27 +74,45 @@ env:
                 frame_stack: True
                 lazy: False
 networks:
-    policy_net:
-        preprocessing:
-            ToChannelMajor: {}
-        architecture:
-            cls_name: NatureCNN
-            cls_args: {img_channels: 4, ortho_init: True}
-        predictors:
-            policy:
-                cls_name: LinearCategoricalPolicyHead
-                cls_args: {num_features: 512, ortho_init: True}
-            value_extrinsic:
-                cls_name: LinearValueHead
-                cls_args: {num_features: 512, ortho_init: True}
-            value_intrinsic_rnd:
-                cls_name: LinearValueHead
-                cls_args: {num_features: 512, ortho_init: True}
+    policy:
+        net:
+            preprocessing:
+                ToChannelMajor: {}
+            architecture:
+                cls_name: NatureCNN
+                cls_args: {img_channels: 4}
+                w_init_spec: ['orthogonal_', {gain: 1.4142}]  # sqrt 2
+                b_init_spec: ['zeros_', {}]
+            predictors:
+                # nota bene: burda uses an extra linear layer with size 448 and then relu.
+                # then each prediction head uses a two-layer 'residual' MLP with the first hidden layer
+                # added to this size-448 layer. we aren't doing that here.
+                policy:
+                    cls_name: CategoricalPolicyHead
+                    cls_args: {num_features: 512}
+                    head_architecture_cls_name: Linear
+                    head_architecture_cls_args: {}
+                    w_init_spec: ['orthogonal_', {gain: 0.01}]
+                    b_init_spec: ['zeros_', {}]
+                value_extrinsic:
+                    cls_name: SimpleValueHead
+                    cls_args: {num_features: 512}
+                    head_architecture_cls_name: Linear
+                    head_architecture_cls_args: {}
+                    w_init_spec: ['orthogonal_', {gain: 0.01}]
+                    b_init_spec: ['zeros_', {}]
+                value_intrinsic_rnd:
+                    cls_name: SimpleValueHead
+                    cls_args: {num_features: 512}
+                    head_architecture_cls_name: Linear
+                    head_architecture_cls_args: {}
+                    w_init_spec: ['orthogonal_', {gain: 0.01}]
+                    b_init_spec: ['zeros_', {}]
         optimizer:
             cls_name: Adam
             cls_args: {lr: 0.0001, eps: 0.00001}
         scheduler:
             cls_name: None
             cls_args: {}
-    value_net:
+    value:
         use_shared_architecture: True

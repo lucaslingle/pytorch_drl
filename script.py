@@ -7,6 +7,7 @@ import os
 import torch as tc
 
 from drl.utils.configuration import ConfigParser
+from drl.utils.launch import make_learning_system
 
 
 def create_argparser():
@@ -49,10 +50,10 @@ def get_config(args):
     return config
 
 
-def get_algo(rank, config):
+def get_algo_cls(cls_name):
     module = importlib.import_module('drl.algos')
-    algo = getattr(module, config.get('algo').get('cls_name'))
-    return algo(rank, config)
+    algo_cls = getattr(module, cls_name)
+    return algo_cls
 
 
 def setup(rank, config):
@@ -63,7 +64,18 @@ def setup(rank, config):
         backend=distributed_config.get('backend'),
         world_size=distributed_config.get('world_size'),
         rank=rank)
-    algo = get_algo(rank, config)
+
+    learning_system = make_learning_system(rank, config)
+    algo_config = config.get('algo')
+    algo_cls = get_algo_cls(algo_config.get('cls_name'))
+    algo = algo_cls(
+        rank=rank,
+        world_size=distributed_config.get('world_size'),
+        checkpoint_dir=config.get('checkpoint_dir'),
+        log_dir=config.get('log_dir'),
+        media_dir=config.get('media_dir'),
+        **algo_config.get('cls_args'),
+        **learning_system)
     return algo
 
 
