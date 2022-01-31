@@ -10,7 +10,7 @@ class TestToChannelMajor(unittest.TestCase):
         input_ = tc.tensor(tc.arange(16).reshape(2, 2, 2, 2))
         target = tc.tensor([[[[0, 2], [4, 6]], [[1, 3], [5, 7]]], [[[8, 10], [12, 14]], [[9, 11], [13, 15]]]])
         preprocessing = ToChannelMajor()
-        self.assertEquals(
+        self.assertEqual(
             (1 - tc.eq(preprocessing(input_), target).int()).sum().item(),
             0
         )

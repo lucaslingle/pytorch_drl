@@ -38,7 +38,7 @@ jobs:
             pipenv install
       - run:
           name: "Run unit tests"
-          command:
+          command: pipenv run python drl/test/agents/preprocessing/test_vision.py
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
