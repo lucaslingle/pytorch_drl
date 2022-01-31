@@ -4,7 +4,6 @@ import numpy as np
 import torch as tc
 from  torch.nn.parallel import DistributedDataParallel as DDP
 
-from drl.agents.integration import Agent
 from drl.utils.types import Optimizer
 
 
