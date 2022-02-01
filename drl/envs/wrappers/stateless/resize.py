@@ -1,3 +1,7 @@
+"""
+Observation resize wrapper.
+"""
+
 import numpy as np
 import gym
 import cv2

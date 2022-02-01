@@ -1,3 +1,7 @@
+"""
+Cast and scale observations wrapper.
+"""
+
 import numpy as np
 import gym
 

@@ -1,3 +1,7 @@
+"""
+Life-as-episode wrapper.
+"""
+
 from drl.envs.wrappers.stateless.abstract import Wrapper
 
 

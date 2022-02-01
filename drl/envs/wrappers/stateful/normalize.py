@@ -1,3 +1,7 @@
+"""
+Normalization utility.
+"""
+
 from typing import List, Optional
 
 import torch as tc

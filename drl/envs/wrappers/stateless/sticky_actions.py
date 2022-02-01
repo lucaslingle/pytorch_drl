@@ -1,3 +1,7 @@
+"""
+Sticky actions wrapper.
+"""
+
 from drl.envs.wrappers.stateless.abstract import ActionWrapper
 
 

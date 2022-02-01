@@ -1,3 +1,7 @@
+"""
+Frameskip and maxpool wrapper.
+"""
+
 from collections import deque
 
 import numpy as np

@@ -1,4 +1,6 @@
-from typing import Optional
+"""
+Time limit wrapper.
+"""
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
 

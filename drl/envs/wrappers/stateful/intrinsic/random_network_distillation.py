@@ -1,3 +1,7 @@
+"""
+Random network distillation wrapper.
+"""
+
 from typing import Mapping, Any, Union, Dict
 import copy
 

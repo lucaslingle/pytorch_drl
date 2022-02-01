@@ -1,3 +1,7 @@
+"""
+Reward normalization wrapper.
+"""
+
 from typing import Union, Optional
 
 import torch as tc
