@@ -24,9 +24,7 @@ def extract_reward_name(prediction_key: str) -> str:
 
 
 def get_credit_assignment_op(
-        cls_name: str,
-        cls_args: Mapping[str, Any]
-) -> 'CreditAssignmentOp':
+        cls_name: str, cls_args: Mapping[str, Any]) -> 'CreditAssignmentOp':
     """
     Creates a credit assignment op from class name and args.
 
@@ -43,9 +41,10 @@ def get_credit_assignment_op(
 
 
 def get_credit_assignment_ops(
-        seg_len: int,
-        extra_steps: int,
-        credit_assignment_spec: Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]]
+    seg_len: int,
+    extra_steps: int,
+    credit_assignment_spec: Mapping[str,
+                                    Mapping[str, Union[str, Mapping[str, Any]]]]
 ) -> Dict[str, 'CreditAssignmentOp']:
     """
     Creates a dictionary of credit assignment ops from class names and args.
@@ -74,8 +73,7 @@ def get_credit_assignment_ops(
                 'seg_len': seg_len,
                 'extra_steps': extra_steps,
                 **op_spec['cls_args']
-            }
-        )
+            })
         ops[reward_name] = op
     return ops
 
@@ -85,12 +83,8 @@ class CreditAssignmentOp(metaclass=abc.ABCMeta):
     Abstract class for credit assignment operations.
     """
     def __init__(
-            self,
-            seg_len: int,
-            extra_steps: int,
-            gamma: float,
-            use_dones: bool
-    ):
+            self, seg_len: int, extra_steps: int, gamma: float,
+            use_dones: bool):
         """
         Args:
             seg_len (int): Trajectory segment length for credit assignment.
@@ -163,8 +157,9 @@ class GAE(AdvantageEstimator):
         self._lambda = lambda_
 
     def estimate_advantages(self, rewards, vpreds, dones):
-        advantages = tc.zeros(self._seg_len+self._extra_steps+1, dtype=tc.float32)
-        for t in reversed(range(0, self._seg_len + self._extra_steps)):  # T+(n-1)-1, ..., 0
+        advantages = tc.zeros(
+            size=(self._seg_len+self._extra_steps+1,), dtype=tc.float32)
+        for t in reversed(range(0, self._seg_len+self._extra_steps)):  # T+(n-1)-1, ..., 0
             r_t = rewards[t]
             V_t = vpreds[t]
             V_tp1 = vpreds[t+1]
@@ -191,7 +186,7 @@ class NStepAdvantageEstimator(AdvantageEstimator):
         # r_t + gamma * r_tp1 + ... + gamma^nm1 * r_tpnm1 + gamma^n * V(s_tpn)
         # todo: think about this more and add a unit test.
         #  extra steps equals n-1 for n-step returns.
-        advantages = tc.zeros(self._seg_len, dtype=tc.float32)
+        advantages = tc.zeros(size=(self._seg_len,), dtype=tc.float32)
         for t in reversed(range(0, self._seg_len)):  # T-1, ..., 0
             V_tpn = vpreds[t+self._extra_steps+1]    # V[t+(n-1)+1] = V[t+n]
             R_t = V_tpn
@@ -235,8 +230,8 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
         # r_t + gamma * r_tp1 + ... + gamma^nm1 * r_tpnm1 + gamma^n * Q(s_tpn, a_tpn)
         # todo: think about this more and add a unit test.
         #  extra steps equals n-1 for n-step returns.
-        bellman_backups = tc.zeros(self._seg_len, dtype=tc.float32)
-        for t in reversed(range(0, self._seg_len)):  # T-1, ..., 0
+        bellman_backups = tc.zeros(size=(self._seg_len,), dtype=tc.float32)
+        for t in reversed(range(0, self._seg_len)):         # T-1, ..., 0
             Qs_tpn_tgt = tgt_qpreds[t+self._extra_steps+1]  # Q[t+(n-1)+1] = Q[t+n]
             if self._double_q:
                 Qs_tpn = qpreds[t+self._extra_steps+1]      # Q[t+(n-1)+1] = Q[t+n]
@@ -245,8 +240,7 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
                 greedy_a_tpn = tc.argmax(Qs_tpn_tgt, dim=-1)
             Q_tpn_tgt = tc.gather(
                 input=Qs_tpn_tgt, dim=-1,
-                index=greedy_a_tpn.unsqueeze(-1)
-            ).squeeze(-1)
+                index=greedy_a_tpn.unsqueeze(-1)).squeeze(-1)
             R_t = Q_tpn_tgt
             for s in reversed(range(0, self._extra_steps+1)):  # ((n-1)+1)-1 = n-1, ..., 0
                 r_tps = rewards[t+s]                           # r[t+n-1], ..., r[t+0].
