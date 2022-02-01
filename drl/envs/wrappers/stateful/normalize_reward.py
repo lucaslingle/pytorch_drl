@@ -30,16 +30,16 @@ class _ReturnAcc(tc.nn.Module):
         return self._normalizer.moment1
 
     @moment1.setter
-    def moment1(self, tensor):
-        self._normalizer.moment1 = tensor
+    def moment1(self, value):
+        self._normalizer.moment1 = value
 
     @property
     def moment2(self):
         return self._normalizer.moment2
 
     @moment2.setter
-    def moment2(self, tensor):
-        self._normalizer.moment2 = tensor
+    def moment2(self, value):
+        self._normalizer.moment2 = value
 
     def _truncation_condition(self, done):
         cond0 = self._use_dones
@@ -145,7 +145,6 @@ class NormalizeRewardWrapper(TrainableWrapper):
         if self._unsynced_normalizer.steps < self._synced_normalizer.steps:
             self._sync_normalizers_local()
         obs, rew, done, info = self.env.step(ac)
-
         if self._key:
             if self._key == 'extrinsic_raw':
                 msg = "The key 'extrinsic_raw' must be preserved for logging."
@@ -157,7 +156,6 @@ class NormalizeRewardWrapper(TrainableWrapper):
             if isinstance(rew, dict):
                 msg = "Can't use keyed reward w/ non-keyed normalization wrapper."
                 raise TypeError(msg)
-
         reward = rew if not isinstance(rew, dict) else rew[self._key]
         reward = tc.tensor(reward).float()
         normalized = self._synced_normalizer(reward.unsqueeze(0)).item()
