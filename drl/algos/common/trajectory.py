@@ -252,13 +252,11 @@ class TrajectoryManager:
         _ = self.generate(initial=True)
 
     def _get_reward_keys(self):
-        def spec_exists():
-            if isinstance(self._env, Wrapper):
-                return self._env.reward_spec is not None
-            return False
-        if spec_exists():
-            return self._env.reward_spec.keys
-        return {'extrinsic_raw', 'extrinsic'}
+        if self._env.reward_spec is None:
+            msg1 = "Reward spec cannot be None."
+            msg2 = "Wrap environment with RewardToDict wrapper to fix."
+            raise ValueError(f"{msg1}\n{msg2}")
+        return self._env.reward_spec.keys
 
     def _choose_action(self, o_t):
         # todo(lucaslingle): add support for stateful policies

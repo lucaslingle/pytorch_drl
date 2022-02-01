@@ -2,20 +2,31 @@
 Frame stack wrapper.
 """
 
+from typing import Union, Mapping, Any
 from collections import deque
 
 import numpy as np
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
+from drl.utils.typing import ObservationType, ActionType, EnvStepOutput
 
 
 class FrameStackWrapper(Wrapper):
-    def __init__(self, env, num_stack, lazy=True):
+    """
+    Frame stacking wrapper. Stacks frames from wrapped env together,
+    with the intention of achieving Markov property for the observations.
+    """
+    def __init__(
+            self,
+            env: Union[gym.core.Env, Wrapper],
+            num_stack: int,
+            lazy: bool = False):
         """
         Args:
-            env (Env): OpenAI gym environment instance.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
             num_stack (int): Number of frames to stack.
+            lazy (bool): Use lazy frames? Default: False.
         """
         super().__init__(env)
         self._num_frames = num_stack
@@ -30,19 +41,19 @@ class FrameStackWrapper(Wrapper):
         self.observation_space = gym.spaces.Box(
             low=0, high=255, shape=stacked_shape, dtype=dtype)
 
-    def _get_obs(self):
+    def _get_obs(self) -> Union[ObservationType, 'LazyFrames']:
         assert len(self._frames) == self._num_frames
         if not self._lazy:
             return np.concatenate(list(self._frames), axis=-1)
         return LazyFrames(list(self._frames))
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
         obs = self.env.reset()
         for _ in range(self._num_frames):
             self._frames.append(obs)
         return self._get_obs()
 
-    def step(self, action):
+    def step(self, action: ActionType) -> EnvStepOutput:
         obs, rew, done, info = self.env.step(action)
         self._frames.append(obs)
         return self._get_obs(), rew, done, info

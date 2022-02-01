@@ -16,8 +16,7 @@ class Normalizer(tc.nn.Module):
             self,
             data_shape: List[int],
             clip_low: Optional[float] = None,
-            clip_high: Optional[float] = None
-    ):
+            clip_high: Optional[float] = None):
         """
         Args:
             data_shape (List[int]): Input data shape.
@@ -132,8 +131,7 @@ class Normalizer(tc.nn.Module):
             item: tc.Tensor,
             shift: bool = True,
             scale: bool = True,
-            eps: float = 1e-4
-    ) -> tc.Tensor:
+            eps: float = 1e-4) -> tc.Tensor:
         """
         Applies normalizer to an item without updating internal statistics.
 

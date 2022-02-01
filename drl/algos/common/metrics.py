@@ -29,7 +29,7 @@ def global_mean(
 
 
 def global_means(
-        values: Mapping[str, tc.Tensor],
+        local_values: Mapping[str, tc.Tensor],
         world_size: int,
         item: bool
 ) -> Counter:
@@ -37,7 +37,8 @@ def global_means(
     Performs a global_mean on each tensor in a mapping of names to Torch tensors.
 
     Args:
-        values (Mapping[str, tc.Tensor]): Mapping of Torch tensors keyed by name.
+        local_values (Mapping[str, tc.Tensor]): Dict of Torch tensors,
+             keyed by name.
         world_size (int): Number of processes.
         item (bool): Whether to call the 'item' method on the global-mean tensor.
 
@@ -45,42 +46,46 @@ def global_means(
         collections.Counter: Counter instance storing Torch tensors or floats.
     """
     return Counter({
-        k: global_mean(v, world_size, item) for k,v in values.items()
+        k: global_mean(v, world_size, item) for k,v in local_values.items()
     })
 
 
-def global_gather(local_values: List[Any], world_size: int) -> List[Any]:
+def global_gather(
+        local_list: List[Any],
+        world_size: int
+) -> List[Any]:
     """
     Gathers all items into a list from across processes.
 
     Args:
-        local_values (List[Any]): List of values.
+        local_list (List[Any]): List of items.
         world_size (int): Number of processes.
 
     Returns:
         List[Any]: List of values gathered.
     """
     output = [None for _ in range(world_size)]
-    tc.distributed.all_gather_object(output, local_values)
+    tc.distributed.all_gather_object(output, local_list)
     output = [element for lst in output for element in lst]
     return output
 
 
 def global_gathers(
-        local_metadata: Mapping[str, List[Any]], world_size: int
+        local_lists: Mapping[str, List[Any]], world_size: int
 ) -> Mapping[str, List[Any]]:
     """
     Performs a global_gather on each item in a mapping from names to lists.
 
     Args:
-        local_metadata (Mapping[str, List[Any]]): Mapping from field names to list of items.
+        local_lists (Mapping[str, List[Any]]): Dict of list of items,
+            keyed by name.
         world_size (int): Number of processes.
 
     Returns:
-        collections.Counter: Counter object storing lists of Torch tensors or floats.
+        collections.Counter: Counter storing lists of Torch tensors or floats.
     """
     return Counter({
-        k: global_gather(v, world_size) for k,v in local_metadata.items()
+        k: global_gather(v, world_size) for k,v in local_lists.items()
     })
 
 

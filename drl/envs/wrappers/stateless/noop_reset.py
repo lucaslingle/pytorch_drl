@@ -2,17 +2,27 @@
 Random no-ops after reset wrapper.
 """
 
+from typing import Union, Mapping, Any
+
+import gym
+
 from drl.envs.wrappers.stateless.abstract import Wrapper
+from drl.utils.typing import ActionType, ObservationType
 
 
 class NoopResetWrapper(Wrapper):
     """
     Sample initial states by taking random number of no-ops on reset.
     """
-    def __init__(self, env, noop_action, noop_min, noop_max):
+    def __init__(
+            self,
+            env: Union[gym.core.Env, Wrapper],
+            noop_action: ActionType,
+            noop_min: int,
+            noop_max: int):
         """
         Args:
-            env (Env): OpenAI gym environment instance.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
             noop_action (int): No-op action.
             noop_min (int): Minimum number of no-op actions to take.
             noop_max (int): Maximum number of no-op actions to take.
@@ -30,18 +40,30 @@ class NoopResetWrapper(Wrapper):
             msg = "Chosen no-op action does not have meaning 'NOOP'."
             raise ValueError(msg)
 
-    def reset(self, **kwargs):
+    @property
+    def noop_action(self) -> ActionType:
+        return self._noop_action
+
+    @property
+    def noop_min(self) -> int:
+        return self._noop_min
+
+    @property
+    def noop_max(self) -> int:
+        return self._noop_max
+
+    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
         """
-        Takes a random number of no-op actions between
-        self._noop_min and self._noop_max.
+        Takes the no-op action `self.noop_action` a random number of times
+        between `self.noop_min` and `self.noop_max`, inclusive.
         """
         obs = self.env.reset(**kwargs)
-        low, high = self._noop_min, self._noop_max+1
+        low, high = self.noop_min, self.noop_max + 1
         noops = self.unwrapped.np_random.randint(low, high)
         if noops == 0:
             return obs
         for _ in range(noops):
-            obs, _, done, _ = self.env.step(self._noop_action)
+            obs, _, done, _ = self.env.step(self.noop_action)
             if done:
                 obs = self.env.reset(**kwargs)
         return obs

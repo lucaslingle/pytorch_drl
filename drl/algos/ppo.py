@@ -1,4 +1,4 @@
-from typing import Mapping, Any, Union, Optional
+from typing import Mapping, Union, Optional
 from contextlib import ExitStack
 
 import torch as tc
@@ -9,12 +9,20 @@ import gym
 
 from drl.algos.abstract import Algo
 from drl.algos.common import (
-    TrajectoryManager, MultiQueue, extract_reward_name,
-    get_credit_assignment_ops, get_loss, global_means, global_gathers,
-    update_trainable_wrappers, apply_pcgrad, pretty_print, LinearSchedule
-)
+    TrajectoryManager,
+    MultiQueue,
+    extract_reward_name,
+    get_credit_assignment_ops,
+    get_loss,
+    global_means,
+    global_gathers,
+    update_trainable_wrappers,
+    apply_pcgrad,
+    pretty_print,
+    LinearSchedule)
 from drl.envs.wrappers import Wrapper
 from drl.utils.checkpointing import save_checkpoints
+from drl.utils.typing import CreditAssignmentSpec, Optimizer, Scheduler
 
 
 class PPO(Algo):
@@ -25,9 +33,6 @@ class PPO(Algo):
         J. Schulman et al., 2017 -
             'Proximal Policy Optimization Algorithms'.
     """
-    # PPO speed todos:
-    #    after reproducability done, add support for vectorized environment.
-    #    test speed of vectorized vs non-vectorized environments.
     def __init__(
             self,
             rank: int,
@@ -43,7 +48,7 @@ class PPO(Algo):
             vf_loss_coef: float,
             vf_loss_clipping: bool,
             vf_simple_weighting: bool,
-            credit_assignment_spec: Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]],
+            credit_assignment_spec: CreditAssignmentSpec,
             extra_steps: int,
             standardize_adv: bool,
             use_pcgrad: bool,
@@ -54,16 +59,15 @@ class PPO(Algo):
             global_step: int,
             env: Union[gym.core.Env, Wrapper],
             policy_net: DDP,
-            policy_optimizer: tc.optim.Optimizer,
-            policy_scheduler: Optional[tc.optim.lr_scheduler._LRScheduler],
+            policy_optimizer: Optimizer,
+            policy_scheduler: Optional[Scheduler],
             value_net: Optional[DDP],
-            value_optimizer: Optional[tc.optim.Optimizer],
-            value_scheduler: Optional[tc.optim.lr_scheduler._LRScheduler],
+            value_optimizer: Optional[Optimizer],
+            value_scheduler: Optional[Scheduler],
             log_dir: str,
             checkpoint_dir: str,
             media_dir: str,
-            reward_weights: Optional[Mapping[str, float]] = None
-    ):
+            reward_weights: Optional[Mapping[str, float]] = None):
         """
         Args:
             rank (int): Process rank.
@@ -88,7 +92,7 @@ class PPO(Algo):
             vf_simple_weighting (bool): If true, use equal weighting of all
                 value function losses. Ignored if env.reward_spec.keys() does
                 not contain any intrinsic rewards.
-            credit_assignment_spec (Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]]):
+            credit_assignment_spec (CreditAssignmentSpec):
                 Mapping from reward names to credit assignment conforming to
                 the format detailed in the `get_credit_assignment_ops` docstring.
             extra_steps (int): Extra steps required for credit assignment.
@@ -169,7 +173,9 @@ class PPO(Algo):
         self._media_dir = media_dir
 
         self._trajectory_mgr = TrajectoryManager(
-            env=env, policy_net=policy_net, seg_len=seg_len,
+            env=env,
+            policy_net=policy_net,
+            seg_len=seg_len,
             extra_steps=extra_steps)
         self._metadata_acc = MultiQueue(memory_len=stats_memory_len)
         if self._rank == 0:
@@ -177,6 +183,7 @@ class PPO(Algo):
 
     def _get_reward_keys(self, omit_raw=True):
         reward_spec = self._env.reward_spec
+        assert reward_spec is not None
         reward_keys = reward_spec.keys
         if omit_raw:
             reward_keys = [k for k in reward_keys if not k.endswith('_raw')]
@@ -195,7 +202,7 @@ class PPO(Algo):
         results = dict()
         for field in trajectory:
             if isinstance(trajectory[field], dict):
-                slice = {k: v[indices] for k,v in trajectory[field].items()}
+                slice = {k: v[indices] for k, v in trajectory[field].items()}
             else:
                 slice = trajectory[field][indices]
             results[field] = slice
@@ -247,11 +254,9 @@ class PPO(Algo):
                 dones=trajectory['dones'])
             td_lambda_returns[k] = advantages[k] + trajectory['vpreds'][k]
         trajectory.update({
-            'advantages': advantages,
-            'td_lambda_returns': td_lambda_returns
+            'advantages': advantages, 'td_lambda_returns': td_lambda_returns
         })
-        trajectory = self._slice_minibatch(
-            trajectory, slice(0, self._seg_len))
+        trajectory = self._slice_minibatch(trajectory, slice(0, self._seg_len))
         trajectory = self._maybe_standardize_advantages(trajectory)
         return trajectory
 
@@ -282,7 +287,8 @@ class PPO(Algo):
     def _ppo_policy_surrogate_objective(self, mb_new, mb, clip_param, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
             policy_ratios = tc.exp(mb_new['logprobs'] - mb['logprobs'])
-            clipped_policy_ratios = tc.clip(policy_ratios, 1-clip_param, 1+clip_param)
+            clipped_policy_ratios = tc.clip(
+                policy_ratios, 1 - clip_param, 1 + clip_param)
             reward_weightings = self._get_reward_weightings()
             advantage_shape = mb['advantages']['extrinsic'].shape
             advantages = tc.zeros(advantage_shape, dtype=tc.float32)
@@ -307,24 +313,24 @@ class PPO(Algo):
                 vpreds_new = mb_new['vpreds'][key]
                 if self._vf_loss_clipping:
                     vpreds_new_clipped = tc.clip(
-                        vpreds_new, vpreds-clip_param, vpreds+clip_param)
+                        vpreds_new, vpreds - clip_param, vpreds + clip_param)
                     vsurr1 = self._vf_loss_criterion(
                         input=vpreds_new, target=tdlam_rets)
                     vsurr2 = self._vf_loss_criterion(
                         input=vpreds_new_clipped, target=tdlam_rets)
                     vf_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
                 else:
-                    vf_loss_for_rew = tc.mean(self._vf_loss_criterion(
-                        input=vpreds_new, target=tdlam_rets))
+                    vf_loss_for_rew = tc.mean(
+                        self._vf_loss_criterion(
+                            input=vpreds_new, target=tdlam_rets))
                 if self._vf_simple_weighting:
                     vf_loss += vf_loss_for_rew
                 else:
-                    vf_loss += (reward_weightings[key] ** 2) * vf_loss_for_rew
-            return {
-                'vf_loss': vf_loss
-            }
+                    vf_loss += (reward_weightings[key]**2) * vf_loss_for_rew
+            return {'vf_loss': vf_loss}
 
-    def _compute_losses(self, mb, policy_net, value_net, clip_param, ent_coef, no_grad):
+    def _compute_losses(
+            self, mb, policy_net, value_net, clip_param, ent_coef, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
             mb_new = self._annotate(mb, policy_net, value_net, no_grad=no_grad)
             entropy_quantities = self._ppo_policy_entropy_bonus(
@@ -374,7 +380,8 @@ class PPO(Algo):
                     value_losses[k] = losses[k]
         return policy_losses, value_losses
 
-    def _optimize_losses(self, net, optimizer, losses, retain_graph, use_pcgrad):
+    def _optimize_losses(
+            self, net, optimizer, losses, retain_graph, use_pcgrad):
         optimizer.zero_grad()
         if not use_pcgrad:
             losses['composite_loss'].backward(retain_graph=retain_graph)
@@ -396,7 +403,10 @@ class PPO(Algo):
             trajectory = self._trajectory_mgr.generate()
             metadata = trajectory.pop('metadata')
             trajectory = self._annotate(
-                trajectory, self._policy_net, self._value_net, no_grad=True)
+                trajectory=trajectory,
+                policy_net=self._policy_net,
+                value_net=self._value_net,
+                no_grad=True)
             trajectory = self._credit_assignment(trajectory)
             self._global_step += self._seg_len * self._world_size
 
@@ -404,13 +414,15 @@ class PPO(Algo):
             for opt_epoch in range(self._opt_epochs):
                 indices = np.random.permutation(self._seg_len)
                 for i in range(0, self._seg_len, self._learner_batch_size):
-                    mb_indices = indices[i:i+self._learner_batch_size]
+                    mb_indices = indices[i:i + self._learner_batch_size]
                     mb = self._slice_minibatch(trajectory, mb_indices)
                     update_trainable_wrappers(self._env, mb)
                     if self._global_step <= self._non_learning_steps:
                         continue
                     losses = self._compute_losses(
-                        mb=mb, policy_net=self._policy_net, value_net=self._value_net,
+                        mb=mb,
+                        policy_net=self._policy_net,
+                        value_net=self._value_net,
                         ent_coef=self._ent_coef.value(self._global_step),
                         clip_param=self._clip_param.value(self._global_step),
                         no_grad=False)
@@ -418,21 +430,30 @@ class PPO(Algo):
                         losses=losses, value_net=separate_value_net,
                         use_pcgrad=self._use_pcgrad)
                     self._optimize_losses(
-                        net=self._policy_net, optimizer=self._policy_optimizer,
-                        losses=policy_losses, retain_graph=separate_value_net,
+                        net=self._policy_net,
+                        optimizer=self._policy_optimizer,
+                        losses=policy_losses,
+                        retain_graph=separate_value_net,
                         use_pcgrad=self._use_pcgrad)
                     if separate_value_net:
                         self._optimize_losses(
-                            net=self._value_net, optimizer=self._value_optimizer,
-                            losses=value_losses, retain_graph=False,
+                            net=self._value_net,
+                            optimizer=self._value_optimizer,
+                            losses=value_losses,
+                            retain_graph=False,
                             use_pcgrad=self._use_pcgrad)
 
                 metrics = self._compute_losses(
-                    mb=trajectory, policy_net=self._policy_net, value_net=self._value_net,
+                    mb=trajectory,
+                    policy_net=self._policy_net,
+                    value_net=self._value_net,
                     ent_coef=self._ent_coef.value(self._global_step),
                     clip_param=self._clip_param.value(self._global_step),
                     no_grad=True)
-                global_metrics = global_means(metrics, self._world_size, item=True)
+                global_metrics = global_means(
+                    local_values=metrics,
+                    world_size=self._world_size,
+                    item=True)
                 if self._rank == 0:
                     print(f"Opt epoch: {opt_epoch}")
                     pretty_print(global_metrics)
@@ -448,7 +469,8 @@ class PPO(Algo):
                 self._value_scheduler.step()
 
             # save everything.
-            global_metadata = global_gathers(metadata, self._world_size)
+            global_metadata = global_gathers(
+                local_lists=metadata, world_size=self._world_size)
             self._metadata_acc.update(global_metadata)
             if self._rank == 0:
                 pretty_print(self._metadata_acc)

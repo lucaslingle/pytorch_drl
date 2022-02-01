@@ -2,21 +2,30 @@
 Observation resize wrapper.
 """
 
+from typing import Union
+
 import numpy as np
 import gym
 import cv2
 
-from drl.envs.wrappers.stateless.abstract import ObservationWrapper
+from drl.envs.wrappers.stateless.abstract import Wrapper, ObservationWrapper
+from drl.utils.typing import ObservationType
 
 
-class ResizeWrapper(ObservationWrapper):
+class ResizeObservationsWrapper(ObservationWrapper):
     """
-    Resize frames and optionally convert to grayscale.
+    Resize observations wrapper. Resizes frames and optionally converts
+    to grayscale.
     """
-    def __init__(self, env, width, height, grayscale):
+    def __init__(
+            self,
+            env: Union[gym.core.Env, Wrapper],
+            width: int,
+            height: int,
+            grayscale: bool):
         """
         Args:
-            env (Env): OpenAI gym environment instance.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
             width (int): Target image height.
             height (int): Target image height.
             grayscale (bool): Convert to grayscale?
@@ -44,15 +53,13 @@ class ResizeWrapper(ObservationWrapper):
         new_space = gym.spaces.Box(low=0, high=255, shape=shape, dtype=np.uint8)
         self.observation_space = new_space
 
-    def observation(self, obs):
+    def observation(self, obs: ObservationType) -> ObservationType:
         frame = obs
         target_shape = (self._width, self._height)
-
         if self._grayscale:
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         frame = cv2.resize(frame, target_shape, interpolation=cv2.INTER_AREA)
         if self._grayscale:
             frame = np.expand_dims(frame, -1)
-
         obs = frame
         return obs

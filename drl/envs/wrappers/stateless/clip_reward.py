@@ -2,16 +2,31 @@
 Reward clipping wrapper.
 """
 
-from drl.envs.wrappers.stateless.abstract import RewardWrapper, RewardSpec
+from typing import Union, Optional
+
+import gym
+
+from drl.envs.wrappers.stateless.abstract import (
+    Wrapper, RewardWrapper, RewardSpec)
+from drl.utils.typing import RewardType
 
 
 class ClipRewardWrapper(RewardWrapper):
-    def __init__(self, env, low, high, key=None):
+    """
+    Reward clipping wrapper.
+    """
+    def __init__(
+            self,
+            env: Union[gym.core.Env, Wrapper],
+            low: float,
+            high: float,
+            key: Optional[str] = None):
         """
         Args:
-            env (Env): OpenAI gym environment instance.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
             low (float): Minimum value for clipped reward.
             high (float): Maximum value for clipped reward.
+            key (Optional[str]): Reward key, for use with dictionary rewards.
         """
         super().__init__(env)
         self._low = low
@@ -34,7 +49,7 @@ class ClipRewardWrapper(RewardWrapper):
             reward_keys = parent_reward_spec.keys
         return RewardSpec(keys=reward_keys)
 
-    def reward(self, reward):
+    def reward(self, reward: RewardType) -> RewardType:
         if self._key:
             assert self._key != 'extrinsic_raw', 'Must be preserved for logging'
             if not isinstance(reward, dict):

@@ -2,21 +2,27 @@
 Time limit wrapper.
 """
 
+from typing import Union, Mapping, Any
+
+import gym
+
 from drl.envs.wrappers.stateless.abstract import Wrapper
+from drl.utils.typing import ActionType, EnvStepOutput, ObservationType
 
 
 class TimeLimitWrapper(Wrapper):
-    def __init__(self, env, max_episode_steps):
+    def __init__(
+            self, env: Union[gym.core.Env, Wrapper], max_episode_steps: int):
         """
         Args:
-            env (Env): OpenAI gym environment instance.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
             max_episode_steps (int): Maximum number of env steps.
         """
         super().__init__(env)
         self._max_episode_steps = max_episode_steps
         self._elapsed_steps = None
 
-    def step(self, action):
+    def step(self, action: ActionType) -> EnvStepOutput:
         if self._elapsed_steps is None:
             msg = "Cannot call env.step() before calling reset()"
             raise RuntimeError(msg)
@@ -27,6 +33,6 @@ class TimeLimitWrapper(Wrapper):
             done = True
         return observation, reward, done, info
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
         self._elapsed_steps = 0
         return self.env.reset(**kwargs)

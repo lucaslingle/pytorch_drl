@@ -25,11 +25,12 @@ class _RNDNetwork(tc.nn.Module):
         self._widening = widening
         self._network = tc.nn.Sequential(
             ToChannelMajor(),
-            tc.nn.Conv2d(self._in_channels, 16 * widening, (8,8), (4,4), (0,0)),
+            tc.nn.Conv2d(
+                self._in_channels, 16 * widening, (8, 8), (4, 4), (0, 0)),
             tc.nn.LeakyReLU(negative_slope=0.2),
-            tc.nn.Conv2d(16 * widening, 32 * widening, (4,4), (2,2), (0,0)),
+            tc.nn.Conv2d(16 * widening, 32 * widening, (4, 4), (2, 2), (0, 0)),
             tc.nn.LeakyReLU(negative_slope=0.2),
-            tc.nn.Conv2d(32 * widening, 32 * widening, (4,4), (1,1), (0,0)),
+            tc.nn.Conv2d(32 * widening, 32 * widening, (4, 4), (1, 1), (0, 0)),
             tc.nn.LeakyReLU(negative_slope=0.2),
             tc.nn.Flatten())
         self._init_weights()
@@ -100,11 +101,10 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             rnd_optimizer_args: Dict[str, Any],
             world_size: int,
             widening: int,
-            non_learning_steps: int,
-    ):
+            non_learning_steps: int):
         """
         Args:
-            env (Union[gym.core.Env, Wrapper]): OpenAI gym env, or Wrapper instance.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
             rnd_optimizer_cls_name (str): Class name of RND prediction net optimizer.
                 Must correspond to a derived class of torch.optim.Optimizer.
             rnd_optimizer_args (Dict[str, Any]): Arguments to pass to the
@@ -138,7 +138,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
     def _run_checks(self):
         space = self.env.observation_space
         cond1 = str(space.dtype) == "float32"
-        cond2 = space.shape[0:2] == self._data_shape[0:2]
+        cond2 = list(space.shape)[0:2] == self._data_shape[0:2]
         if not cond1:
             msg = f"Attempted to wrap env with non-float32 obs dtype {space.dtype}."
             raise TypeError(msg)
@@ -157,11 +157,14 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
 
     def _sync_normalizers_global(self):
         self._synced_normalizer.steps = global_mean(
-            self._unsynced_normalizer.steps, self._world_size)
+            local_value=self._unsynced_normalizer.steps,
+            world_size=self._world_size)
         self._synced_normalizer.moment1 = global_mean(
-            self._unsynced_normalizer.moment1, self._world_size)
+            local_value=self._unsynced_normalizer.moment1,
+            world_size=self._world_size)
         self._synced_normalizer.moment2 = global_mean(
-            self._unsynced_normalizer.moment2, self._world_size)
+            local_value=self._unsynced_normalizer.moment2,
+            world_size=self._world_size)
 
     def _sync_normalizers_local(self):
         self._unsynced_normalizer.steps = self._synced_normalizer.steps
@@ -187,7 +190,9 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         normalized = self._synced_normalizer(obs_.unsqueeze(0))
         self._unsynced_normalizer.update(obs_)
         y, yh = self._teacher_net(normalized), self._student_net(normalized)
-        rewards_dict = {self._reward_name: tc.square(y-yh).mean(dim=-1).item()}
+        rewards_dict = {
+            self._reward_name: tc.square(y - yh).mean(dim=-1).item()
+        }
         if isinstance(rew, dict):
             rewards_dict.update(rew)
         else:
@@ -204,8 +209,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             self,
             mb: Mapping[str, tc.Tensor],
             apply_dropping: bool = True,
-            **kwargs: Mapping[str, Any],
-    ) -> None:
+            **kwargs: Mapping[str, Any]) -> None:
         """
         Args:
             mb (Mapping[str, torch.Tensor]): Minibatch of experience.

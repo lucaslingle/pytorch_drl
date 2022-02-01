@@ -18,7 +18,7 @@ allow_multiline_lambdas=False
 allow_split_before_default_or_named_assigns=True
 
 # Allow splits before the dictionary value.
-allow_split_before_dict_value=True
+allow_split_before_dict_value=False
 
 #   Let spacing indicate operator precedence. For example:
 #
@@ -171,7 +171,7 @@ indent_closing_brackets=False
 #       'key2': value1 +
 #               value2,
 #   }
-indent_dictionary_value=False
+indent_dictionary_value=True
 
 # The number of columns to use for indentation.
 indent_width=4
@@ -287,7 +287,7 @@ split_all_comma_separated_values=False
 
 # Split before arguments, but do not split all subexpressions recursively
 # (unless needed).
-split_all_top_level_comma_separated_values=False
+split_all_top_level_comma_separated_values=True
 
 # Split before arguments if the argument list is terminated by a
 # comma.
@@ -312,7 +312,7 @@ split_before_closing_bracket=True
 #       variable: 'Hello world, have a nice day!'
 #       for variable in bar if variable != 42
 #   }
-split_before_dict_set_generator=True
+split_before_dict_set_generator=False
 
 # Split before the '.' if we need to split a longer expression:
 #
@@ -353,7 +353,7 @@ split_before_named_assigns=True
 #       a_long_var + 100
 #       for a_long_var in xrange(1000)
 #       if a_long_var % 10]
-split_complex_comprehension=False
+split_complex_comprehension=True
 
 # The penalty for splitting right after the opening bracket.
 split_penalty_after_opening_bracket=300

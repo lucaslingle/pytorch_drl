@@ -124,7 +124,8 @@ class AdvantageEstimator(CreditAssignmentOp, metaclass=abc.ABCMeta):
                 with shape [seg_len + extra_steps].
 
         Returns:
-            torch.Tensor: Torch tensor of advantage estimates with shape [seg_len].
+            torch.Tensor: Torch tensor of advantage estimates
+                with shape [seg_len].
         """
 
 
@@ -143,7 +144,8 @@ class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
                 with shape [seg_len + extra_steps].
 
         Returns:
-            torch.Tensor: Torch tensor of action-value estimates with shape [seg_len].
+            torch.Tensor: Torch tensor of action-value estimates
+                with shape [seg_len].
         """
 
 
@@ -153,7 +155,8 @@ class GAE(AdvantageEstimator):
 
     Reference:
         Schulman et al., 2016 -
-            'High Dimensional Continuous Control with Generalized Advantage Estimation'
+            'High Dimensional Continuous Control
+             with Generalized Advantage Estimation'
     """
     def __init__(self, seg_len, extra_steps, gamma, use_dones, lambda_):
         super().__init__(seg_len, extra_steps, gamma, use_dones)

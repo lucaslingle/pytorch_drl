@@ -2,17 +2,20 @@
 Cast and scale observations wrapper.
 """
 
+from typing import Union
+
 import numpy as np
 import gym
 
-from drl.envs.wrappers.stateless.abstract import ObservationWrapper
+from drl.envs.wrappers.stateless.abstract import Wrapper, ObservationWrapper
+from drl.utils.typing import ObservationType
 
 
 class ScaleObservationsWrapper(ObservationWrapper):
-    def __init__(self, env, scale_factor):
+    def __init__(self, env: Union[gym.core.Env, Wrapper], scale_factor: float):
         """
         Args:
-            env (Env): OpenAI gym environment instance.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
             scale_factor (float): Scale factor to multiply by.
         """
         super().__init__(env)
@@ -28,5 +31,5 @@ class ScaleObservationsWrapper(ObservationWrapper):
             low=low, high=high, shape=shape, dtype=np.float32)
         self.observation_space = new_space
 
-    def observation(self, obs):
+    def observation(self, obs: ObservationType) -> ObservationType:
         return self._scale_factor * obs.astype(np.float32)

@@ -7,8 +7,8 @@ import numpy as np
 
 
 def get_initializer(
-        init_spec: Tuple[str, Mapping[str, Any]]
-) -> Callable[[tc.Tensor], None]:
+        init_spec: Tuple[str, Mapping[str,
+                                      Any]]) -> Callable[[tc.Tensor], None]:
     """
     Args:
         init_spec (Tuple[str, Mapping[str, Any]]): Tuple containing initializer

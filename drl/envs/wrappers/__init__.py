@@ -10,10 +10,9 @@ from drl.envs.wrappers.stateless import (
     FrameStackWrapper,
     MaxAndSkipWrapper,
     NoopResetWrapper,
-    ResizeWrapper,
+    ResizeObservationsWrapper,
     ScaleObservationsWrapper,
     TimeLimitWrapper,
-    ToTensorWrapper,
     AtariWrapper,
     DeepmindWrapper
 )
@@ -37,10 +36,9 @@ __all__ = [
     "FrameStackWrapper",
     "MaxAndSkipWrapper",
     "NoopResetWrapper",
-    "ResizeWrapper",
+    "ResizeObservationsWrapper",
     "ScaleObservationsWrapper",
     "TimeLimitWrapper",
-    "ToTensorWrapper",
     "AtariWrapper",
     "DeepmindWrapper",
     "TrainableWrapper",

@@ -71,12 +71,12 @@ class _ReturnAcc(tc.nn.Module):
             returns = tc.tensor(returns)
 
             moment1 = self._normalizer.moment1
-            moment1 *= ((steps-ep_steps) / steps)
+            moment1 *= ((steps - ep_steps) / steps)
             ep_ret_mean = tc.mean(returns)
             moment1 += (ep_steps / steps) * ep_ret_mean
 
             moment2 = self._normalizer.moment2
-            moment2 *= ((steps-ep_steps) / steps)
+            moment2 *= ((steps - ep_steps) / steps)
             ep_ret_var = tc.mean(tc.square(returns))
             moment2 += (ep_steps / steps) * ep_ret_var
 
@@ -100,11 +100,10 @@ class NormalizeRewardWrapper(TrainableWrapper):
             gamma: float,
             world_size: int,
             use_dones: bool,
-            key: Optional[str] = None
-    ):
+            key: Optional[str] = None):
         """
         Args:
-            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or wrapper thereof.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
             gamma (float): Discount factor.
             world_size (int): Number of processes.
             use_dones (bool): Truncate returns at episode boundaries?
@@ -122,6 +121,7 @@ class NormalizeRewardWrapper(TrainableWrapper):
             if isinstance(self.env, Wrapper):
                 return self.env.reward_spec is not None
             return False
+
         if not spec_exists():
             keys = ['extrinsic_raw', 'extrinsic']
             self.reward_spec = RewardSpec(keys)

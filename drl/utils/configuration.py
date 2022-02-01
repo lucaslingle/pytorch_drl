@@ -33,7 +33,7 @@ class ConfigParser(dict):
         Returns:
             None.
         """
-        config = {k: v for k,v in self._defaults.items() if '.' not in k}
+        config = {k: v for k, v in self._defaults.items() if '.' not in k}
         nested_defaults = {k: v for k, v in self._defaults.items() if '.' in k}
 
         # read in a yaml file.

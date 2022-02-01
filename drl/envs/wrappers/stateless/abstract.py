@@ -5,10 +5,10 @@ Abstract wrapper definitions.
 from typing import Union, Mapping, Any, Tuple, Optional, Dict
 import abc
 
-import numpy as np
 import gym
 
-from drl.utils.types import Checkpointable
+from drl.utils.typing import (
+    Checkpointable, ActionType, ObservationType, RewardType, EnvStepOutput)
 
 
 class RewardSpec:
@@ -63,24 +63,24 @@ class Wrapper(metaclass=abc.ABCMeta):
         self._observation_space = space
 
     @property
-    def action_space(self):
+    def action_space(self) -> gym.spaces.Space:
         """
         Action space getter.
 
         Returns:
-            gym.core.Space: Action space.
+            gym.spaces.Space: Action space.
         """
         if self._action_space is None:
             return self.env.action_space
         return self._action_space
 
     @action_space.setter
-    def action_space(self, space):
+    def action_space(self, space: gym.spaces.Space) -> None:
         """
         Action space setter.
 
         Args:
-            space (gym.core.Space): Action space.
+            space (gym.spaces.Space): Action space.
 
         Returns:
             None.
@@ -88,7 +88,7 @@ class Wrapper(metaclass=abc.ABCMeta):
         self._action_space = space
 
     @property
-    def reward_spec(self):
+    def reward_spec(self) -> Optional[RewardSpec]:
         """
         Reward spec getter.
 
@@ -103,7 +103,7 @@ class Wrapper(metaclass=abc.ABCMeta):
         return self._reward_spec
 
     @reward_spec.setter
-    def reward_spec(self, spec):
+    def reward_spec(self, spec: RewardSpec) -> None:
         """
         Reward spec setter.
 
@@ -128,7 +128,7 @@ class Wrapper(metaclass=abc.ABCMeta):
         return self._metadata
 
     @metadata.setter
-    def metadata(self, value):
+    def metadata(self, value: Mapping[str, Any]):
         """
         Metadata setter.
 
@@ -140,64 +140,61 @@ class Wrapper(metaclass=abc.ABCMeta):
         """
         self._metadata = value
 
-    def step(
-            self,
-            action: Union[int, np.ndarray]
-    ) -> Tuple[np.ndarray, Union[float, Mapping[str, float]], bool, Mapping[str, Any]]:
+    def step(self, action: ActionType) -> EnvStepOutput:
         """
-        Step the wrapped version of the environment.
+        Steps the wrapped version of the environment.
 
         Args:
-            action (Union[int, numpy.ndarray]): Action.
+            action (ActionType): Action.
 
         Returns:
-            Tuple[numpy.ndarray, Union[float, Mapping[str, float]], bool, Mapping[str, Any]]:
+            EnvStepOutput:
                 Tuple containing next observation, current reward(s),
                 indicator if next state is terminal, and info dictionary.
         """
         return self.env.step(action)
 
-    def reset(self, **kwargs: Mapping[str, Any]) -> np.ndarray:
+    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
         """
-        Reset the wrapped version of the environment. The RNG state is not reset.
+        Resets the wrapped version of the environment. The RNG state is not reset.
 
         Args:
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
-            numpy.ndarray: Initial observation.
+            ObservationType: Initial observation.
         """
         return self.env.reset(**kwargs)
 
-    def render(
-            self,
-            mode: str = "human",
-            **kwargs: Mapping[str, Any]
-    ) -> Union[np.ndarray, bool]:
+    def render(self,
+               mode: str = "human",
+               **kwargs: Mapping[str, Any]) -> Union[ObservationType, bool]:
         """
-        Render the environment.
+        Renders the environment.
 
         Args:
             mode: str: Mode for rendering. Typically one of 'rgb_array', 'human'.
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
-            Union[np.ndarray, bool]: RGB array or bool indicating rendering success.
+            Union[ObservationType, bool]: RGB array or bool indicating
+                rendering success.
         """
         return self.env.render(mode, **kwargs)
 
     def close(self) -> None:
         """
-        Close the environment.
+        Closes the environment.
 
         Returns:
             None.
-
         """
         return self.env.close()
 
     def seed(self, seed: Optional[int] = None) -> Tuple[int, int]:
         """
+        Sets the seed of the random number generator in this environment.
+
         Args:
             seed (Optional[int]): Environment RNG seed.
 
@@ -241,44 +238,42 @@ class Wrapper(metaclass=abc.ABCMeta):
 
 class ObservationWrapper(Wrapper, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def observation(self, observation: np.ndarray) -> np.ndarray:
+    def observation(self, observation: ObservationType) -> ObservationType:
         """
         Abstract method for observation transformation function.
 
         Args:
-            observation (numpy.ndarray): Observation.
+            observation (ObservationType): Observation.
 
         Returns:
-            numpy.ndarray: Transformed observation.
+            ObservationType: Transformed observation.
         """
         raise NotImplementedError
 
-    def reset(self, **kwargs: Mapping[str, Any]) -> np.ndarray:
+    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
         """
-        Reset the wrapped version of the environment. The RNG state is not reset.
+        Resets the wrapped version of the environment.
+        The RNG state is not reset.
 
         Args:
-            **kwargs: Keyword arguments.
+            **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
-            np.ndarray: Transformed initial observation.
+            ObservationType: Transformed initial observation.
         """
         return self.observation(self.env.reset(**kwargs))
 
-    def step(
-            self,
-            action: Union[int, np.ndarray]
-    ) -> Tuple[np.ndarray, Union[float, Mapping[str, float]], bool, Mapping[str, Any]]:
+    def step(self, action: ActionType) -> EnvStepOutput:
         """
-        Step the wrapped version of the environment.
+        Steps the wrapped version of the environment.
 
         Args:
-            action (Union[int, numpy.ndarray]): Action.
+            action (ActionType): Action.
 
         Returns:
-            Tuple[numpy.ndarray, Union[float, Mapping[str, float]], bool, Mapping[str, Any]]:
-                Tuple containing transformed next observation, current reward(s),
-                indicator if next state is terminal, and info dictionary.
+            EnvStepOutput: Tuple containing transformed next observation,
+                current reward(s), indicator if next state is terminal,
+                and info dictionary.
         """
         observation, reward, done, info = self.env.step(action)
         return self.observation(observation), reward, done, info
@@ -286,31 +281,27 @@ class ObservationWrapper(Wrapper, metaclass=abc.ABCMeta):
 
 class ActionWrapper(Wrapper, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def action(self, action: Union[int, np.ndarray]) -> Union[int, np.ndarray]:
+    def action(self, action: ActionType) -> ActionType:
         """
         Abstract method for action transformation function.
 
         Args:
-            action (Union[int, numpy.ndarray]): Action.
+            action (ActionType): Action.
 
         Returns:
-            Union[int, np.ndarray]: Transformed action.
+            ActionType: Transformed action.
         """
         raise NotImplementedError
 
-    def step(
-            self,
-            action: Union[int, np.ndarray]
-    ) -> Tuple[np.ndarray, Union[float, Mapping[str, float]], bool, Mapping[str, Any]]:
+    def step(self, action: ActionType) -> EnvStepOutput:
         """
-        Step the wrapped version of the environment, by transforming the action.
+        Steps the wrapped version of the environment, by transforming the action.
 
         Args:
-            action (Union[int, numpy.ndarray]): Action.
+            action (ActionType): Action.
 
         Returns:
-            Tuple[numpy.ndarray, Union[float, Mapping[str, float]], bool, Mapping[str, Any]]:
-                Tuple containing next observation, current reward(s),
+            EnvStepOutput: Tuple containing next observation, current reward(s),
                 indicator if next state is terminal, and info dictionary.
         """
         return self.env.step(self.action(action))
@@ -318,35 +309,29 @@ class ActionWrapper(Wrapper, metaclass=abc.ABCMeta):
 
 class RewardWrapper(Wrapper, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def reward(
-        self,
-        reward: Union[float, Mapping[str, float]]
-    ) -> Union[float, Mapping[str, float]]:
+    def reward(self, reward: RewardType) -> RewardType:
         """
         Abstract method for reward transformation function.
 
         Args:
-            reward (Union[float, Mapping[str, float]]): A reward to be transformed.
+            reward (RewardType): A reward to be transformed.
 
         Returns:
-            Union[float, Mapping[str, float]]: Transformed reward.
+            RewardType: Transformed reward.
         """
         raise NotImplementedError
 
-    def step(
-            self,
-            action: Union[int, np.ndarray]
-    ) -> Tuple[np.ndarray, Union[float, Mapping[str, float]], bool, Mapping[str, Any]]:
+    def step(self, action: ActionType) -> EnvStepOutput:
         """
-        Step the wrapped version of the environment.
+        Steps the wrapped version of the environment.
 
         Args:
-            action (Union[int, numpy.ndarray]): Action.
+            action (ActionType): Action.
 
         Returns:
-            Tuple[numpy.ndarray, Union[float, Mapping[str, float]], bool, Mapping[str, Any]]:
-                Tuple containing next observation, transformed current reward(s),
-                indicator if next state is terminal, and info dictionary.
+            EnvStepOutput: Tuple containing next observation, transformed
+                current reward(s), indicator if next state is terminal,
+                and info dictionary.
         """
         observation, reward, done, info = self.env.step(action)
         return observation, self.reward(reward), done, info

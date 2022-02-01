@@ -2,9 +2,9 @@ from typing import Mapping
 
 import numpy as np
 import torch as tc
-from  torch.nn.parallel import DistributedDataParallel as DDP
+from torch.nn.parallel import DistributedDataParallel as DDP
 
-from drl.utils.types import Optimizer
+from drl.utils.typing import Optimizer
 
 
 def norm(vector: np.ndarray) -> float:
@@ -60,8 +60,7 @@ def pcgrad_gradient_surgery(
         network: DDP,
         optimizer: Optimizer,
         task_losses: Mapping[str, tc.Tensor],
-        normalize: bool = True
-) -> np.ndarray:
+        normalize: bool = True) -> np.ndarray:
     """
     Implements the PCGrad gradient surgery algorithm.
 
@@ -108,8 +107,7 @@ def apply_pcgrad(
         network: DDP,
         optimizer: Optimizer,
         task_losses: Mapping[str, tc.Tensor],
-        normalize: bool = True
-) -> None:
+        normalize: bool = True) -> None:
     """
     Implements the PCGrad gradient surgery algorithm, and writes the result
     into the network parameters' grad attributes.

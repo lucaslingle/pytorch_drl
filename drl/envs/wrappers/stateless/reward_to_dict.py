@@ -2,11 +2,24 @@
 Reward to dictionary wrapper.
 """
 
-from drl.envs.wrappers.stateless.abstract import RewardWrapper, RewardSpec
+from typing import Union, Dict
+
+import gym
+
+from drl.envs.wrappers.stateless.abstract import (
+    Wrapper, RewardWrapper, RewardSpec)
+from drl.utils.typing import RewardType
 
 
 class RewardToDictWrapper(RewardWrapper):
-    def __init__(self, env):
+    """
+    Reward to dictionary wrapper. Also creates a reward spec for the wrapped environment.
+    """
+    def __init__(self, env: Union[gym.core.Env, Wrapper]):
+        """
+        Args:
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
+        """
         super().__init__(env)
         self._reward_spec = self._get_reward_spec()
 
@@ -18,7 +31,7 @@ class RewardToDictWrapper(RewardWrapper):
             reward_keys = parent_reward_spec.keys
         return RewardSpec(keys=reward_keys)
 
-    def reward(self, reward):
+    def reward(self, reward: RewardType) -> Dict[str, float]:
         if isinstance(reward, dict):
             return reward
         if isinstance(reward, float):
