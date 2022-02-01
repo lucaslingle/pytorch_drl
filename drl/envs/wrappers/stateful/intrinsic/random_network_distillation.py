@@ -31,8 +31,7 @@ class _RNDNetwork(tc.nn.Module):
             tc.nn.LeakyReLU(negative_slope=0.2),
             tc.nn.Conv2d(32 * widening, 32 * widening, (4,4), (1,1), (0,0)),
             tc.nn.LeakyReLU(negative_slope=0.2),
-            tc.nn.Flatten(),
-        )
+            tc.nn.Flatten())
         self._init_weights()
 
     def _init_weights(self):
@@ -51,8 +50,7 @@ class _TeacherNetwork(tc.nn.Module):
         self._data_shape = data_shape
         self._network = tc.nn.Sequential(
             _RNDNetwork(data_shape=data_shape, widening=1),
-            tc.nn.Linear(1152, 512)
-        )
+            tc.nn.Linear(1152, 512))
         self._init_weights()
 
     def _init_weights(self):
@@ -74,8 +72,7 @@ class _StudentNetwork(tc.nn.Module):
             tc.nn.ReLU(),
             tc.nn.Linear(256 * widening, 256 * widening),
             tc.nn.ReLU(),
-            tc.nn.Linear(256 * widening, 512),
-        )
+            tc.nn.Linear(256 * widening, 512))
         self._init_weights()
 
     def _init_weights(self):
@@ -89,6 +86,13 @@ class _StudentNetwork(tc.nn.Module):
 
 
 class RandomNetworkDistillationWrapper(TrainableWrapper):
+    """
+    Implements Random Network Distillation intrinsic reward.
+
+    Reference:
+        Y. Burda et al., 2018 -
+            'Exploration by Random Network Distillation'.
+    """
     def __init__(
             self,
             env: Union[gym.core.Env, Wrapper],
@@ -99,12 +103,6 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             non_learning_steps: int,
     ):
         """
-        Implements Random Network Distillation intrinsic reward.
-
-        Reference:
-            Burda et al., 2018 -
-                'Exploration by Random Network Distillation'.
-
         Args:
             env (Union[gym.core.Env, Wrapper]): OpenAI gym env, or Wrapper instance.
             rnd_optimizer_cls_name (str): Class name of RND prediction net optimizer.
