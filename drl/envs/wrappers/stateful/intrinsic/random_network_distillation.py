@@ -125,8 +125,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         self._optimizer = get_optimizer(
             model=self._student_net,
             cls_name=rnd_optimizer_cls_name,
-            cls_args=rnd_optimizer_args,
-        )
+            cls_args=rnd_optimizer_args)
         self._non_learning_steps = non_learning_steps
         self._reward_name = "intrinsic_rnd"
         self._reward_spec = self._get_reward_spec()
