@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Mapping, Any, List
 
 import torch as tc
 
@@ -34,17 +34,16 @@ class NatureCNN(StatelessArchitecture):
             tc.nn.ReLU(),
             tc.nn.Flatten(),
             tc.nn.Linear(3136, self._num_features),
-            tc.nn.ReLU(),
-        )
+            tc.nn.ReLU())
         self._init_weights(self._network)
 
     @property
-    def input_shape(self):
-        shape = (self._img_channels, 84, 84)
+    def input_shape(self) -> List[int]:
+        shape = [self._img_channels, 84, 84]
         return shape
 
     @property
-    def output_dim(self):
+    def output_dim(self) -> int:
         return self._num_features
 
     def forward(self, x, **kwargs):

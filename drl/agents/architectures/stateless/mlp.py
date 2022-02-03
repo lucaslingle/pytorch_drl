@@ -28,13 +28,15 @@ class MLP(HeadEligibleArchitecture):
             b_init (Callable[[torch.Tensor], None]): Bias initializer.
         """
         super().__init__(input_dim, output_dim, w_init, b_init)
+        if not num_layers > 1:
+            raise ValueError("MLP requires num_layers > 1.")
         self._network = tc.nn.Sequential(*[
-            tc.nn.Sequential(
-                tc.nn.Linear(
-                    in_features=input_dim if l == 0 else hidden_dim,
-                    out_features=output_dim if l == num_layers-1 else hidden_dim),
-                tc.nn.ReLU())
-            for l in range(num_layers)
+            tc.nn.Linear(
+                in_features=input_dim if l//2 == 0 else hidden_dim,
+                out_features=output_dim if l//2 == num_layers-1 else hidden_dim)
+            if l % 2 == 0 else
+            tc.nn.ReLU()
+            for l in range(2 * num_layers)
         ])
         self._init_weights(self._network)
 

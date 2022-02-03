@@ -1,4 +1,4 @@
-from typing import Callable, Mapping, Any
+from typing import Callable, Mapping, Any, List
 import abc
 
 import torch as tc
@@ -35,7 +35,7 @@ class StatefulArchitecture(Architecture, metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def input_shape(self):
+    def input_shape(self) -> List[int]:
         """
         Returns:
             Input shape without batch or time dimension.
@@ -43,7 +43,7 @@ class StatefulArchitecture(Architecture, metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def output_dim(self):
+    def output_dim(self) -> int:
         """
         Returns:
             Dimensionality of output features.
