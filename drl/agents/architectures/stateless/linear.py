@@ -24,7 +24,9 @@ class Linear(HeadEligibleArchitecture):
             b_init (Callable[[torch.Tensor], None]): Bias initializer.
         """
         super().__init__(input_dim, output_dim, w_init, b_init)
-        self._network = tc.nn.Sequential(tc.nn.Linear(input_dim, output_dim))
+        self._network = tc.nn.Sequential(
+            tc.nn.Linear(input_dim, output_dim)
+        )
         self._init_weights(self._network)
 
     def forward(self, x, **kwargs):

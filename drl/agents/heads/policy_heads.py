@@ -1,3 +1,7 @@
+"""
+Policy heads.
+"""
+
 from typing import Mapping, Any, Type, Callable
 import abc
 
@@ -34,7 +38,7 @@ class DiscretePolicyHead(PolicyHead, metaclass=abc.ABCMeta):
             num_features (int): Number of features.
             num_actions (int): Number of actions.
         """
-        super().__init__(num_features)
+        PolicyHead.__init__(self, num_features)
         self._num_actions = num_actions
 
 
@@ -48,7 +52,7 @@ class ContinuousPolicyHead(PolicyHead, metaclass=abc.ABCMeta):
             num_features (int): Number of features.
             action_dim (int): Action dimensionality.
         """
-        super().__init__(num_features)
+        PolicyHead.__init__(self, num_features)
         self._action_dim = action_dim
 
 
@@ -79,7 +83,7 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
             b_init (Callable[[torch.Tensor], None]): Bias initializer.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
-        super().__init__(num_features, num_actions)
+        DiscretePolicyHead.__init__(self, num_features, num_actions)
         self._policy_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=num_actions,
@@ -94,12 +98,13 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
     ) -> tc.distributions.Categorical:
         """
         Args:
-            features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
+            features (torch.Tensor): Torch tensor with shape
+                [batch_size, num_features].
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
-            torch.distributions.Categorical: Torch categorical distribution
-                with batch shape [batch_size], and element shape [num_actions].
+            torch.distributions.Categorical: Torch distribution
+                with batch shape [batch_size], and event shape [].
         """
         logits = self._policy_head(features)
         dist = tc.distributions.Categorical(logits=logits)
@@ -133,7 +138,7 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
             b_init (Callable[[torch.Tensor], None]): Bias initializer.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
-        super().__init__(num_features, action_dim)
+        ContinuousPolicyHead.__init__(self, num_features, action_dim)
         self._policy_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=action_dim * 2,
@@ -145,19 +150,21 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
             self,
             features: tc.Tensor,
             **kwargs: Mapping[str, Any]
-    ) -> tc.distributions.Normal:
+    ) -> tc.distributions.Independent:
         """
         Args:
-            features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
+            features (torch.Tensor): Torch tensor with shape
+                [batch_size, num_features].
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
-            torch.distributions.Normal: Torch normal distribution with
-                batch shape [batch_size], and element shape [action_dim].
+            torch.distributions.Independent: Torch distribution with
+                batch shape [batch_size], and event shape [action_dim].
         """
         vec = self._policy_head(features)
         mu, logsigma = tc.chunk(vec, 2, dim=-1)
         dist = tc.distributions.Normal(loc=mu, scale=tc.exp(logsigma))
+        dist = tc.distributions.Independent(dist, reinterpreted_batch_ndims=1)
         return dist
 
 
@@ -199,7 +206,8 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
     ) -> tc.distributions.Categorical:
         """
         Args:
-            features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
+            features (torch.Tensor): Torch tensor with shape
+                [batch_size, num_features].
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:

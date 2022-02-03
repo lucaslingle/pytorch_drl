@@ -4,6 +4,7 @@ from drl.agents.architectures.stateless import (
     HeadEligibleArchitecture,
     AsyncCNN,
     DuelingArchitecture,
+    Identity,
     Linear,
     MLP,
     NatureCNN
@@ -16,6 +17,7 @@ __all__ = [
     "HeadEligibleArchitecture",
     "AsyncCNN",
     "DuelingArchitecture",
+    "Identity",
     "Linear",
     "MLP",
     "NatureCNN"

@@ -1,3 +1,7 @@
+"""
+Action-value prediction heads.
+"""
+
 from typing import Mapping, Any, Type, Callable
 import abc
 
@@ -35,7 +39,7 @@ class DistributionalActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
             vmax (float): Maximum return value.
             num_bins (int): Number of bins for distributional value learning.
         """
-        super().__init__()
+        ActionValueHead.__init__(self)
         self._vmin = vmin
         self._vmax = vmax
         self._num_bins = num_bins
@@ -57,7 +61,7 @@ class DiscreteActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
         Args:
             num_actions (int): Number of actions.
         """
-        super().__init__()
+        ActionValueHead.__init__(self)
         self._num_actions = num_actions
 
 
@@ -246,7 +250,7 @@ class DistributionalDiscreteActionValueHead(
         bin_midpoints = self._vmin + 0.5 * bin_width + \
             bin_width * tc.arange(self._num_bins).float()
         bin_midpoints = bin_midpoints.view(1, 1, self._num_bins)
-        value_dists = tc.nn.functional.softmax(dim=-1)(q_value_logits)
+        value_dists = tc.nn.functional.softmax(input=q_value_logits, dim=-1)
         q_value_means = (value_dists * bin_midpoints).sum(dim=-1)
         return q_value_means
 

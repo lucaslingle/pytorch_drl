@@ -41,5 +41,4 @@ __all__ = [
     "SimpleDiscreteActionValueHead",
     "SimpleContinuousActionValueHead",
     "DistributionalDiscreteActionValueHead"
-
 ]

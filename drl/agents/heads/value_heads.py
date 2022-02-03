@@ -1,3 +1,7 @@
+"""
+Value prediction heads.
+"""
+
 from typing import Mapping, Any, Type, Callable
 import abc
 

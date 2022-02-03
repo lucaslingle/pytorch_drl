@@ -28,8 +28,8 @@ class StatelessArchitecture(Architecture, metaclass=abc.ABCMeta):
 
     def _init_weights(self, sequential_module: tc.nn.Sequential) -> None:
         for m in sequential_module:
-            if hasattr(m, 'weights'):
-                self._w_init(m.weights)
+            if hasattr(m, 'weight'):
+                self._w_init(m.weight)
             if hasattr(m, 'bias'):
                 self._b_init(m.bias)
 
