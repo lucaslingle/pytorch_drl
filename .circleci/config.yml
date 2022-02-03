@@ -13,10 +13,14 @@ jobs:
             sudo apt-get install -y libglu1-mesa-dev libgl1-mesa-dev libosmesa6-dev xvfb ffmpeg curl patchelf libglfw3 libglfw3-dev cmake libjpeg-dev zlib1g zlib1g-dev swig python3-dev
       - run:
           name: "Install python dependencies"
-          command: pip install -e .
+          command: |
+            pip install --upgrade pip
+            pip install -e .
       - run:
           name: "Run unit tests"
-          command: pytest
+          command: |
+            mkdir test-results
+            pytest
       - store_test_results:
           path: test-results
       - store_artifacts:
