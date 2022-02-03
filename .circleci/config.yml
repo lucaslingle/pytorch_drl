@@ -20,7 +20,7 @@ jobs:
           name: "Run unit tests"
           command: |
             mkdir test-results
-            pytest
+            pytest --junitxml=test-results/junit.xml
       - store_test_results:
           path: test-results
       - store_artifacts:
