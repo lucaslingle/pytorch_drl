@@ -15,11 +15,14 @@ def create_argparser():
         description='Deep RL algorithms, using Torch DDP.')
     parser.add_argument(
         '--mode', choices=['train', 'evaluate', 'video'], default='train')
-    parser.add_argument('--models_dir', type=str, default='models_dir')
-    parser.add_argument('--experiment_group', type=str, default='atari_ppo')
+    parser.add_argument(
+        '--models_dir', type=str, default='models_dir')
+    parser.add_argument(
+        '--experiment_group', type=str, default='atari_ppo')
     parser.add_argument(
         '--env_name', type=str, default='BreakoutNoFrameskip-v4')
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument(
+        '--seed', type=int, default=0)
     return parser
 
 
@@ -41,7 +44,8 @@ def get_config(args):
             'checkpoint_dir': checkpoint_dir,
             'log_dir': log_dir,
             'media_dir': media_dir
-        })
+        }
+    )
     config.read(config_path, verbose=True)
     return config
 
@@ -102,9 +106,13 @@ def video(rank, config):
 if __name__ == '__main__':
     args = create_argparser().parse_args()
     config = get_config(args)
-    ops = {'train': train, 'evaluate': evaluate, 'video': video}
+    ops = {
+        'train': train,
+        'evaluate': evaluate,
+        'video': video
+    }
     tc.multiprocessing.spawn(
         ops[args.mode],
-        args=(config, ),
+        args=(config,),
         nprocs=config['distributed']['world_size'],
         join=True)
