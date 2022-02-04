@@ -236,9 +236,9 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
         n = self._extra_steps + 1
         bellman_backups = tc.zeros(size=(T, ), dtype=tc.float32)
         for t in reversed(range(0, T)):  # T-1, ..., 0
-            Qs_tpn_tgt = tgt_qpreds[t + n]  # Qtgt[t+n]
+            Qs_tpn_tgt = tgt_qpreds[t + n]  # Qtgt(s[t+n], .)
             if self._double_q:
-                Qs_tpn = qpreds[t + n]  # Q[t+n]
+                Qs_tpn = qpreds[t + n]  # Q(s[t+n], .)
                 greedy_a_tpn = tc.argmax(Qs_tpn, dim=-1)
             else:
                 greedy_a_tpn = tc.argmax(Qs_tpn_tgt, dim=-1)
