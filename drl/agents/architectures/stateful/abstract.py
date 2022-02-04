@@ -14,8 +14,7 @@ class StatefulArchitecture(Architecture, metaclass=abc.ABCMeta):
             self,
             w_init: Callable[[tc.Tensor], None],
             b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             w_init (Callable[[torch.Tensor], None]): Weight initializer.

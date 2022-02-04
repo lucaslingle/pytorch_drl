@@ -14,15 +14,12 @@ from drl.envs.wrappers.stateless import (
     ScaleObservationsWrapper,
     TimeLimitWrapper,
     AtariWrapper,
-    DeepmindWrapper
-)
+    DeepmindWrapper)
 from drl.envs.wrappers.stateful import (
     TrainableWrapper,
     Normalizer,
     NormalizeRewardWrapper,
-    RandomNetworkDistillationWrapper
-)
-
+    RandomNetworkDistillationWrapper)
 
 __all__ = [
     "RewardSpec",

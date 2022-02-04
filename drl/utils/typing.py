@@ -16,5 +16,7 @@ CreditAssignmentSpec = Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]]
 
 ActionType = Union[int, np.ndarray]
 ObservationType = np.ndarray
-RewardType = Union[float, Mapping[str, float]]
+ScalarRewardType = float
+DictRewardType = Mapping[str, float]
+RewardType = Union[ScalarRewardType, DictRewardType]
 EnvStepOutput = Tuple[ObservationType, RewardType, bool, Mapping[str, Any]]

@@ -83,7 +83,8 @@ def get_weight_decay_param_groups(
             no_decay.append(param)
         else:
             apply_decay.append(param)
-    return [
-        {'params': apply_decay, 'weight_decay': wd},
-        {'params': no_decay, 'weight_decay': 0.0}
-    ]
+    return [{
+        'params': apply_decay, 'weight_decay': wd
+    }, {
+        'params': no_decay, 'weight_decay': 0.0
+    }]

@@ -4,7 +4,6 @@ from drl.agents.heads.value_heads import SimpleValueHead
 from drl.agents.architectures import Linear
 from drl.utils.initializers import get_initializer
 
-
 batch_size = 1
 num_features = 10
 num_actions = 4

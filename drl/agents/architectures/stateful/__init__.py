@@ -1,5 +1,3 @@
 from drl.agents.architectures.stateful.abstract import StatefulArchitecture
 
-__all__ = [
-    "StatefulArchitecture"
-]
+__all__ = ["StatefulArchitecture"]

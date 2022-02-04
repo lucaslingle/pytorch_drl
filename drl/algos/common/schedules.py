@@ -2,7 +2,8 @@ class LinearSchedule:
     """
     Schedule for linearly annealing something.
     """
-    def __init__(self, initial_value: float, final_value: float, final_step: int):
+    def __init__(
+            self, initial_value: float, final_value: float, final_step: int):
         """
         Args:
             initial_value (float): Initial value to anneal from.

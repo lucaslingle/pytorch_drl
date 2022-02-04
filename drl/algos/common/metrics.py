@@ -5,11 +5,9 @@ import torch as tc
 import numpy as np
 
 
-def global_mean(
-        local_value: tc.Tensor,
-        world_size: int,
-        item: bool = False
-) -> Union[tc.Tensor, float]:
+def global_mean(local_value: tc.Tensor,
+                world_size: int,
+                item: bool = False) -> Union[tc.Tensor, float]:
     """
     Takes the global mean of a tensor across processes.
 
@@ -29,10 +27,8 @@ def global_mean(
 
 
 def global_means(
-        local_values: Mapping[str, tc.Tensor],
-        world_size: int,
-        item: bool
-) -> Counter:
+        local_values: Mapping[str, tc.Tensor], world_size: int,
+        item: bool) -> Counter:
     """
     Performs a global_mean on each tensor in a mapping of names to Torch tensors.
 
@@ -45,15 +41,11 @@ def global_means(
     Returns:
         collections.Counter: Counter instance storing Torch tensors or floats.
     """
-    return Counter({
-        k: global_mean(v, world_size, item) for k,v in local_values.items()
-    })
+    return Counter(
+        {k: global_mean(v, world_size, item) for k, v in local_values.items()})
 
 
-def global_gather(
-        local_list: List[Any],
-        world_size: int
-) -> List[Any]:
+def global_gather(local_list: List[Any], world_size: int) -> List[Any]:
     """
     Gathers all items into a list from across processes.
 
@@ -70,9 +62,8 @@ def global_gather(
     return output
 
 
-def global_gathers(
-        local_lists: Mapping[str, List[Any]], world_size: int
-) -> Mapping[str, List[Any]]:
+def global_gathers(local_lists: Mapping[str, List[Any]],
+                   world_size: int) -> Mapping[str, List[Any]]:
     """
     Performs a global_gather on each item in a mapping from names to lists.
 
@@ -84,9 +75,8 @@ def global_gathers(
     Returns:
         collections.Counter: Counter storing lists of Torch tensors or floats.
     """
-    return Counter({
-        k: global_gather(v, world_size) for k,v in local_lists.items()
-    })
+    return Counter(
+        {k: global_gather(v, world_size) for k, v in local_lists.items()})
 
 
 def pretty_print(metrics: Union[Mapping[str, Any], 'MultiQueue']) -> None:
@@ -168,7 +158,5 @@ class MultiQueue:
                 containing field names and either queues or their means.
 
         """
-        return iter(
-            (field, self.mean(field) if mean else self._queues[field])
-            for field in self._queues
-        )
+        return iter((field, self.mean(field) if mean else self._queues[field])
+                    for field in self._queues)

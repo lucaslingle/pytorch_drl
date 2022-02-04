@@ -8,9 +8,10 @@ import abc
 import torch as tc
 
 from drl.agents.heads.action_value_heads import (
-    Head, DiscreteActionValueHead,
-    SimpleDiscreteActionValueHead, DistributionalDiscreteActionValueHead
-)
+    Head,
+    DiscreteActionValueHead,
+    SimpleDiscreteActionValueHead,
+    DistributionalDiscreteActionValueHead)
 from drl.agents.architectures.stateless.abstract import HeadEligibleArchitecture
 from drl.agents.preprocessing.tabular import one_hot
 
@@ -68,8 +69,7 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
             head_architecture_cls_args: Mapping[str, Any],
             w_init: Callable[[tc.Tensor], None],
             b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -92,10 +92,8 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
             **head_architecture_cls_args)
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.distributions.Categorical:
+            self, features: tc.Tensor,
+            **kwargs: Mapping[str, Any]) -> tc.distributions.Categorical:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape
@@ -123,8 +121,7 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
             head_architecture_cls_args: Mapping[str, Any],
             w_init: Callable[[tc.Tensor], None],
             b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -147,10 +144,8 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
             **head_architecture_cls_args)
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.distributions.Independent:
+            self, features: tc.Tensor,
+            **kwargs: Mapping[str, Any]) -> tc.distributions.Independent:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape
@@ -176,8 +171,7 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
     def __init__(
             self,
             action_value_head: DiscreteActionValueHead,
-            **kwargs: Mapping[str, Any]
-    ):
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             action_value_head (DiscreteActionValueHead):
@@ -200,10 +194,8 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
         self._epsilon = value
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.distributions.Categorical:
+            self, features: tc.Tensor,
+            **kwargs: Mapping[str, Any]) -> tc.distributions.Categorical:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape
@@ -216,7 +208,8 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
         """
         if isinstance(self._action_value_head, SimpleDiscreteActionValueHead):
             q_values = self._action_value_head(features)
-        elif isinstance(self._action_value_head, DistributionalDiscreteActionValueHead):
+        elif isinstance(self._action_value_head,
+                        DistributionalDiscreteActionValueHead):
             q_logits = self._action_value_head(features)
             q_values = self._action_value_head.logits_to_mean(q_logits)
         else:
@@ -227,6 +220,7 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
         greedy_policy = one_hot(greedy_action, depth=num_actions)
         uniform_policy = tc.ones_like(q_values)
         uniform_policy /= uniform_policy.sum(dim=-1, keepdim=True)
-        probs = (1.-self.epsilon) * greedy_policy + self.epsilon * uniform_policy
+        probs = (
+            1. - self.epsilon) * greedy_policy + self.epsilon * uniform_policy
         dist = tc.distributions.Categorical(probs=probs)
         return dist

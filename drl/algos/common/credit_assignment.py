@@ -4,6 +4,8 @@ import importlib
 
 import torch as tc
 
+from drl.utils.typing import CreditAssignmentSpec
+
 
 def extract_reward_name(prediction_key: str) -> str:
     """
@@ -43,8 +45,7 @@ def get_credit_assignment_op(
 def get_credit_assignment_ops(
     seg_len: int,
     extra_steps: int,
-    credit_assignment_spec: Mapping[str,
-                                    Mapping[str, Union[str, Mapping[str, Any]]]]
+    credit_assignment_spec: CreditAssignmentSpec
 ) -> Dict[str, 'CreditAssignmentOp']:
     """
     Creates a dictionary of credit assignment ops from class names and args.
@@ -148,7 +149,7 @@ class GAE(AdvantageEstimator):
     Generalized Advantage Estimation.
 
     Reference:
-        Schulman et al., 2016 -
+        J. Schulman et al., 2016 -
             'High Dimensional Continuous Control
              with Generalized Advantage Estimation'
     """
@@ -157,18 +158,19 @@ class GAE(AdvantageEstimator):
         self._lambda = lambda_
 
     def estimate_advantages(self, rewards, vpreds, dones):
-        advantages = tc.zeros(
-            size=(self._seg_len+self._extra_steps+1,), dtype=tc.float32)
-        for t in reversed(range(0, self._seg_len+self._extra_steps)):  # T+(n-1)-1, ..., 0
+        T = self._seg_len
+        n = self._extra_steps + 1
+        advantages = tc.zeros(size=(T + n, ), dtype=tc.float32)
+        for t in reversed(range(0, T + n - 1)):  # T+(n-1)-1, ..., 0
             r_t = rewards[t]
             V_t = vpreds[t]
-            V_tp1 = vpreds[t+1]
-            A_tp1 = advantages[t+1]
-            nonterminal_t = (1.-dones[t]) if self._use_dones else 1.
+            V_tp1 = vpreds[t + 1]
+            A_tp1 = advantages[t + 1]
+            nonterminal_t = (1. - dones[t]) if self._use_dones else 1.
             delta_t = -V_t + r_t + nonterminal_t * self._gamma * V_tp1
             A_t = delta_t + nonterminal_t * self._gamma * self._lambda * A_tp1
             advantages[t] = A_t
-        return advantages
+        return advantages[0:T]
 
 
 class NStepAdvantageEstimator(AdvantageEstimator):
@@ -184,15 +186,16 @@ class NStepAdvantageEstimator(AdvantageEstimator):
 
     def estimate_advantages(self, rewards, vpreds, dones):
         # r_t + gamma * r_tp1 + ... + gamma^nm1 * r_tpnm1 + gamma^n * V(s_tpn)
-        # todo: think about this more and add a unit test.
         #  extra steps equals n-1 for n-step returns.
-        advantages = tc.zeros(size=(self._seg_len,), dtype=tc.float32)
-        for t in reversed(range(0, self._seg_len)):  # T-1, ..., 0
-            V_tpn = vpreds[t+self._extra_steps+1]    # V[t+(n-1)+1] = V[t+n]
+        T = self._seg_len
+        n = self._extra_steps + 1
+        advantages = tc.zeros(size=(T, ), dtype=tc.float32)
+        for t in reversed(range(0, T)):  # T-1, ..., 0
+            V_tpn = vpreds[t + n]  # V(s[t+n])
             R_t = V_tpn
-            for s in reversed(range(0, self._extra_steps+1)):  # ((n-1)+1)-1 = n-1, ..., 0
-                r_tps = rewards[t+s]                           # r[t+n-1], ..., r[t+0].
-                nonterminal_tps = (1.-dones[t+s]) if self._use_dones else 1.
+            for s in reversed(range(0, n)):  # n-1, ..., 0
+                r_tps = rewards[t + s]  # r[t+n-1], ..., r[t+0].
+                nonterminal_tps = (1. - dones[t + s]) if self._use_dones else 1.
                 R_t = r_tps + nonterminal_tps * self._gamma * R_t
             V_t = vpreds[t]
             advantages[t] = R_t - V_t
@@ -205,9 +208,9 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
 
     Reference:
         V. Mnih et al., 2015 -
-            'Human Level Control through Deep Reinforcement Learning'
+            'Human Level Control through Deep Reinforcement Learning';
         H. van Hasselt et al., 2015 -
-            'Deep Reinforcement Learning with Double Q-learning'
+            'Deep Reinforcement Learning with Double Q-learning'.
     """
     def __init__(self, seg_len, extra_steps, gamma, use_dones, double_q):
         """
@@ -228,13 +231,14 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
 
     def estimate_action_values(self, rewards, qpreds, tgt_qpreds, dones):
         # r_t + gamma * r_tp1 + ... + gamma^nm1 * r_tpnm1 + gamma^n * Q(s_tpn, a_tpn)
-        # todo: think about this more and add a unit test.
         #  extra steps equals n-1 for n-step returns.
-        bellman_backups = tc.zeros(size=(self._seg_len,), dtype=tc.float32)
-        for t in reversed(range(0, self._seg_len)):         # T-1, ..., 0
-            Qs_tpn_tgt = tgt_qpreds[t+self._extra_steps+1]  # Q[t+(n-1)+1] = Q[t+n]
+        T = self._seg_len
+        n = self._extra_steps + 1
+        bellman_backups = tc.zeros(size=(T, ), dtype=tc.float32)
+        for t in reversed(range(0, T)):  # T-1, ..., 0
+            Qs_tpn_tgt = tgt_qpreds[t + n]  # Q[t+n]
             if self._double_q:
-                Qs_tpn = qpreds[t+self._extra_steps+1]      # Q[t+(n-1)+1] = Q[t+n]
+                Qs_tpn = qpreds[t + n]  # Q[t+(n-1)+1] = Q[t+n]
                 greedy_a_tpn = tc.argmax(Qs_tpn, dim=-1)
             else:
                 greedy_a_tpn = tc.argmax(Qs_tpn_tgt, dim=-1)
@@ -242,9 +246,9 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
                 input=Qs_tpn_tgt, dim=-1,
                 index=greedy_a_tpn.unsqueeze(-1)).squeeze(-1)
             R_t = Q_tpn_tgt
-            for s in reversed(range(0, self._extra_steps+1)):  # ((n-1)+1)-1 = n-1, ..., 0
-                r_tps = rewards[t+s]                           # r[t+n-1], ..., r[t+0].
-                nonterminal_tps = (1.-dones[t+s]) if self._use_dones else 1.
+            for s in reversed(range(0, n)):  # n-1, ..., 0
+                r_tps = rewards[t + s]  # r[t+n-1], ..., r[t+0].
+                nonterminal_tps = (1. - dones[t + s]) if self._use_dones else 1.
                 R_t = r_tps + nonterminal_tps * self._gamma * R_t
             bellman_backups[t] = R_t
         return bellman_backups

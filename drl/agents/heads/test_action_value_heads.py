@@ -7,7 +7,6 @@ from drl.agents.heads.action_value_heads import (
 from drl.agents.architectures import Linear
 from drl.utils.initializers import get_initializer
 
-
 batch_size = 8
 num_features = 10
 num_actions = 4

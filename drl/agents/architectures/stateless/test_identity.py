@@ -16,7 +16,4 @@ def test_identity():
     assert identity.input_shape == input_shape
     assert identity.output_dim == input_dim
     tc.testing.assert_close(
-        actual=identity(img_batch),
-        expected=img_batch,
-        rtol=1e-4,
-        atol=1e-4)
+        actual=identity(img_batch), expected=img_batch, rtol=1e-4, atol=1e-4)

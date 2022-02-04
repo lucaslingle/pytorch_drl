@@ -18,8 +18,7 @@ class DuelingArchitecture(HeadEligibleArchitecture):
             output_dim: int,
             widening: int,
             w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None]
-    ):
+            b_init: Callable[[tc.Tensor], None]):
         """
         Args:
             input_dim (int): Input dimensionality.
@@ -32,8 +31,7 @@ class DuelingArchitecture(HeadEligibleArchitecture):
         """
         super().__init__(input_dim, output_dim, w_init, b_init)
         self._proj = tc.nn.Sequential(
-            tc.nn.Linear(input_dim, 50 * widening),
-            tc.nn.ReLU())
+            tc.nn.Linear(input_dim, 50 * widening), tc.nn.ReLU())
         self._advantage_stream = MLP(
             input_dim=50 * widening,
             hidden_dim=25 * widening,

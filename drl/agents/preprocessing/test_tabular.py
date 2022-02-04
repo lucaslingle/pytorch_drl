@@ -2,7 +2,6 @@ import torch as tc
 
 from drl.agents.preprocessing.tabular import one_hot, OneHotEncode
 
-
 depth = 3
 
 

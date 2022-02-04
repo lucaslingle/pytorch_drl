@@ -28,8 +28,7 @@ class SimpleValueHead(ValueHead):
             head_architecture_cls_args: Mapping[str, Any],
             w_init: Callable[[tc.Tensor], None],
             b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -51,10 +50,8 @@ class SimpleValueHead(ValueHead):
             **head_architecture_cls_args)
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.Tensor:
+            self, features: tc.Tensor, **kwargs: Mapping[str,
+                                                         Any]) -> tc.Tensor:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape [batch_size, num_features].

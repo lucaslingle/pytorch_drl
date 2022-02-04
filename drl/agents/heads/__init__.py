@@ -5,12 +5,8 @@ from drl.agents.heads.policy_heads import (
     ContinuousPolicyHead,
     CategoricalPolicyHead,
     DiagonalGaussianPolicyHead,
-    EpsilonGreedyCategoricalPolicyHead
-)
-from drl.agents.heads.value_heads import (
-    ValueHead,
-    SimpleValueHead
-)
+    EpsilonGreedyCategoricalPolicyHead)
+from drl.agents.heads.value_heads import (ValueHead, SimpleValueHead)
 from drl.agents.heads.action_value_heads import (
     ActionValueHead,
     SimpleActionValueHead,
@@ -19,9 +15,7 @@ from drl.agents.heads.action_value_heads import (
     ContinuousActionValueHead,
     SimpleDiscreteActionValueHead,
     SimpleContinuousActionValueHead,
-    DistributionalDiscreteActionValueHead
-)
-
+    DistributionalDiscreteActionValueHead)
 
 __all__ = [
     "Head",

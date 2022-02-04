@@ -14,8 +14,7 @@ class Identity(StatelessArchitecture):
             self,
             input_shape: List[int],
             w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None]
-    ):
+            b_init: Callable[[tc.Tensor], None]):
         """
         Args:
             input_dim (List[int]): Input shape.

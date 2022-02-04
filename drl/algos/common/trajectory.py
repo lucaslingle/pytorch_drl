@@ -1,4 +1,4 @@
-from typing import Mapping, Any, List, Union
+from typing import Mapping, Any, List, Union, Optional
 import importlib
 import copy
 
@@ -8,6 +8,7 @@ import numpy as np
 import gym
 
 from drl.envs.wrappers import Wrapper
+from drl.utils.typing import ActionType, ObservationType, DictRewardType
 
 
 def torch_dtype(np_dtype: np.dtype) -> tc.dtype:
@@ -103,8 +104,7 @@ class Trajectory:
             ac_space: gym.spaces.Space,
             rew_keys: List[str],
             seg_len: int,
-            extra_steps: int
-    ):
+            extra_steps: int):
         """
         Args:
             obs_space (gym.spaces.Space): Observation space.
@@ -129,29 +129,31 @@ class Trajectory:
     def _erase(self) -> None:
         obs_shape, ac_shape = self._obs_space.shape, self._ac_space.shape
         ac_dtype = torch_dtype(self._ac_space.dtype)
-        self._observations = tc.zeros((self._timesteps+1, *obs_shape), dtype=tc.float32)
-        self._actions = tc.zeros((self._timesteps+1, *ac_shape), dtype=ac_dtype)
+        self._observations = tc.zeros((self._timesteps + 1, *obs_shape),
+                                      dtype=tc.float32)
+        self._actions = tc.zeros((self._timesteps + 1, *ac_shape),
+                                 dtype=ac_dtype)
         self._rewards = {
-            k: tc.zeros(self._timesteps, dtype=tc.float32) for k in self._rew_keys
+            k: tc.zeros(self._timesteps, dtype=tc.float32)
+            for k in self._rew_keys
         }
         self._dones = tc.zeros(self._timesteps, dtype=tc.float32)
 
     def record(
             self,
             t: int,
-            o_t: np.ndarray,
-            a_t: Union[int, np.ndarray],
-            r_t: Mapping[str, float],
-            d_t: bool
-    ) -> None:
+            o_t: ObservationType,
+            a_t: ActionType,
+            r_t: DictRewardType,
+            d_t: bool) -> None:
         """
         Records a timestep of experience to internal experience buffers.
 
         Args:
             t (int): Integer index for the step to be stored.
-            o_t (numpy.ndarray): Observation.
-            a_t (Union[int, numpy.ndarray]): Action.
-            r_t (Mapping[str, float]): Reward dict.
+            o_t (ObservationType): Observation.
+            a_t (ActionType): Action.
+            r_t (DictRewardType): Reward dict.
             d_t (bool): Done signal.
 
         Returns:
@@ -164,11 +166,7 @@ class Trajectory:
             self._rewards[key][i] = tc.tensor(r_t[key]).float()
         self._dones[i] = tc.tensor(d_t).float()
 
-    def record_nexts(
-            self,
-            o_Tp1: np.ndarray,
-            a_Tp1: Union[int, np.ndarray]
-    ) -> None:
+    def record_nexts(self, o_Tp1: ObservationType, a_Tp1: ActionType) -> None:
         """
         Records the next observation and next action to rightmost slot of
         internal experience buffers.
@@ -183,7 +181,7 @@ class Trajectory:
         self._observations[-1] = tc.tensor(o_Tp1).float()
         self._actions[-1] = tc.tensor(a_Tp1).long()
 
-    def report(self):
+    def report(self) -> Mapping[str, tc.Tensor]:
         """
         Generates a dictionary of observations, actions, rewards, and dones.
         Erases the internally-stored trajectory.
@@ -217,8 +215,7 @@ class TrajectoryManager:
             env: Union[gym.core.Env, Wrapper],
             policy_net: DDP,
             seg_len: int,
-            extra_steps: int
-    ):
+            extra_steps: int):
         """
         Args:
             env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper instance.
@@ -228,6 +225,9 @@ class TrajectoryManager:
             extra_steps (int): Extra steps for n-step reward based credit assignment.
                 Should equal n-1 when n steps are used.
         """
+        assert seg_len > 0
+        assert extra_steps >= 0
+
         self._env = env
         self._policy_net = policy_net
         self._seg_len = seg_len
@@ -243,12 +243,8 @@ class TrajectoryManager:
             extra_steps=self._extra_steps)
         self._metadata_mgr = MetadataManager(
             present_defaults={
-                'ep_len': 0,
-                'ep_ret': 0.,
-                'ep_len_raw': 0,
-                'ep_ret_raw': 0.
-            }
-        )
+                'ep_len': 0, 'ep_ret': 0., 'ep_len_raw': 0, 'ep_ret_raw': 0.
+            })
         _ = self.generate(initial=True)
 
     def _get_reward_keys(self):
@@ -263,29 +259,28 @@ class TrajectoryManager:
         # todo(lucaslingle): add support for RL^2/NGU-style inputting
         #    of past rewards as inputs
         predictions = self._policy_net(
-            tc.tensor(o_t).unsqueeze(0), predict=['policy'])
+            observations=tc.tensor(o_t).unsqueeze(0), predict=['policy'])
         pi_dist_t = predictions.get('policy')
         a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
         return a_t
 
     def _step_env(self, a_t):
         o_tp1, r_t, done_t, info_t = self._env.step(a_t)
-        if not isinstance(r_t, dict):
-            r_t = {'extrinsic_raw': r_t, 'extrinsic': r_t}
         return o_tp1, r_t, done_t, info_t
 
     @tc.no_grad()
-    def generate(self, initial=False):
+    def generate(self,
+                 initial: bool = False) -> Optional[Mapping[str, tc.Tensor]]:
         """
         Generates a trajectory by stepping the environment.
 
         Args:
-            initial (bool): If true, steps the environment for self._extra_steps
+            initial (bool): If True, steps the environment for self._extra_steps
                and saves the results without returning anything. Otherwise,
                the full trajectory is returned.
 
         Returns:
-            Optional[Dict[str, tc.Tensor]]: Maybe some trajectory data.
+            Optional[Mapping[str, tc.Tensor]]: Maybe some trajectory data.
         """
         # determine the time indices for the trajectory segment to generate
         if initial:
@@ -306,14 +301,15 @@ class TrajectoryManager:
                     'ep_ret': r_t['extrinsic'],
                     'ep_len_raw': 1,
                     'ep_ret_raw': r_t['extrinsic_raw']
-                }
-            )
+                })
             if done_t:
                 self._metadata_mgr.present_done(fields=['ep_len', 'ep_ret'])
+
                 def was_real_done():
                     if 'ale.lives' in info_t:
                         return info_t['ale.lives'] == 0
                     return True
+
                 if was_real_done():
                     self._metadata_mgr.present_done(
                         fields=['ep_len_raw', 'ep_ret_raw'])

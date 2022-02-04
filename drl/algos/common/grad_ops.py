@@ -51,8 +51,9 @@ def write_gradient(network: DDP, gradient: np.ndarray) -> None:
     for p in network.parameters():
         if p.grad is not None:
             numel = np.prod(p.shape)
-            subvec = gradient[dims_so_far:dims_so_far+numel]
-            p.grad.copy_(tc.tensor(subvec, requires_grad=False).reshape(p.shape))
+            subvec = gradient[dims_so_far:dims_so_far + numel]
+            p.grad.copy_(
+                tc.tensor(subvec, requires_grad=False).reshape(p.shape))
             dims_so_far += numel
 
 

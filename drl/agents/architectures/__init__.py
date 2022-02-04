@@ -7,9 +7,7 @@ from drl.agents.architectures.stateless import (
     Identity,
     Linear,
     MLP,
-    NatureCNN
-)
-
+    NatureCNN)
 
 __all__ = [
     "Architecture",

@@ -47,7 +47,8 @@ class DistributionalActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     def returns_to_bin_ids(self, returns):
         returns = tc.clip(returns, self._vmin, self._vmax)
         bin_width = (self._vmax - self._vmin) / self._num_bins
-        bin_edges = self._vmin + bin_width * tc.arange(self._num_bins+1).float()
+        bin_edges = self._vmin + bin_width * tc.arange(self._num_bins +
+                                                       1).float()
         indices = tc.bucketize(returns, bin_edges)
         return indices
 
@@ -71,8 +72,8 @@ class ContinuousActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     """
 
 
-class SimpleDiscreteActionValueHead(
-    SimpleActionValueHead, DiscreteActionValueHead):
+class SimpleDiscreteActionValueHead(SimpleActionValueHead,
+                                    DiscreteActionValueHead):
     """
     Simple discrete-action action-value prediction head.
 
@@ -90,8 +91,7 @@ class SimpleDiscreteActionValueHead(
             head_architecture_cls_args: Mapping[str, Any],
             w_init: Callable[[tc.Tensor], None],
             b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -115,10 +115,8 @@ class SimpleDiscreteActionValueHead(
             **head_architecture_cls_args)
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.Tensor:
+            self, features: tc.Tensor, **kwargs: Mapping[str,
+                                                         Any]) -> tc.Tensor:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
@@ -132,8 +130,8 @@ class SimpleDiscreteActionValueHead(
         return qpreds
 
 
-class SimpleContinuousActionValueHead(
-    SimpleActionValueHead, ContinuousActionValueHead):
+class SimpleContinuousActionValueHead(SimpleActionValueHead,
+                                      ContinuousActionValueHead):
     """
     Simple continuous-action action-value prediction head.
 
@@ -148,8 +146,7 @@ class SimpleContinuousActionValueHead(
             head_architecture_cls_args: Mapping[str, Any],
             w_init: Callable[[tc.Tensor], None],
             b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -172,10 +169,8 @@ class SimpleContinuousActionValueHead(
             **head_architecture_cls_args)
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.Tensor:
+            self, features: tc.Tensor, **kwargs: Mapping[str,
+                                                         Any]) -> tc.Tensor:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
@@ -189,8 +184,8 @@ class SimpleContinuousActionValueHead(
         return qpred
 
 
-class DistributionalDiscreteActionValueHead(
-    DistributionalActionValueHead, DiscreteActionValueHead):
+class DistributionalDiscreteActionValueHead(DistributionalActionValueHead,
+                                            DiscreteActionValueHead):
     """
     Distributional discrete-action action-value prediction head.
 
@@ -209,8 +204,7 @@ class DistributionalDiscreteActionValueHead(
             vmin: float,
             vmax: float,
             num_bins: int,
-            **kwargs: Mapping[str, Any]
-    ):
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -255,10 +249,8 @@ class DistributionalDiscreteActionValueHead(
         return q_value_means
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.Tensor:
+            self, features: tc.Tensor, **kwargs: Mapping[str,
+                                                         Any]) -> tc.Tensor:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape [batch_size, num_features].

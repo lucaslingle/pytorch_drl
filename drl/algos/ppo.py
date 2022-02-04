@@ -252,9 +252,11 @@ class PPO(Algo):
                 rewards=trajectory['rewards'][k],
                 vpreds=trajectory['vpreds'][k],
                 dones=trajectory['dones'])
-            td_lambda_returns[k] = advantages[k] + trajectory['vpreds'][k]
+            vpreds_k = trajectory['vpreds'][k][slice(0, self._seg_len)]
+            td_lambda_returns[k] = advantages[k] + vpreds_k
         trajectory.update({
-            'advantages': advantages, 'td_lambda_returns': td_lambda_returns
+            'advantages': advantages,
+            'td_lambda_returns': td_lambda_returns,
         })
         trajectory = self._slice_minibatch(trajectory, slice(0, self._seg_len))
         trajectory = self._maybe_standardize_advantages(trajectory)

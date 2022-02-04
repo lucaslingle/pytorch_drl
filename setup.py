@@ -1,6 +1,5 @@
 from setuptools import setup
 
-
 setup(
     name="pytorch_drl",
     py_modules=["drl"],
@@ -16,5 +15,4 @@ setup(
         'gym==0.18.0',
         'moviepy==1.0.3',
         'opencv-python==4.5.2.52',
-    ]
-)
+    ])
