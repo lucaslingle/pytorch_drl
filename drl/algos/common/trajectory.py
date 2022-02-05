@@ -140,11 +140,7 @@ class Trajectory:
         self._dones = tc.zeros(self._timesteps, dtype=tc.float32)
 
     def record(
-            self,
-            t: int,
-            o_t: Observation,
-            a_t: Action,
-            r_t: DictReward,
+            self, t: int, o_t: Observation, a_t: Action, r_t: DictReward,
             d_t: bool) -> None:
         """
         Records a timestep of experience to internal experience buffers.

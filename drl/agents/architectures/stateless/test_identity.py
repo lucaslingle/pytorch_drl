@@ -15,5 +15,4 @@ def test_identity():
         b_init=get_initializer(('zeros_', {})))
     assert identity.input_shape == input_shape
     assert identity.output_dim == input_dim
-    tc.testing.assert_close(
-        actual=identity(img_batch), expected=img_batch, rtol=1e-4, atol=1e-4)
+    tc.testing.assert_close(actual=identity(img_batch), expected=img_batch)

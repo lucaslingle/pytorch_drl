@@ -18,6 +18,4 @@ def test_linear():
     assert linear.output_dim == output_dim
     tc.testing.assert_close(
         actual=linear(img_batch),
-        expected=tc.zeros(size=[batch_size, output_dim], dtype=tc.float32),
-        rtol=1e-4,
-        atol=1e-4)
+        expected=tc.zeros(size=[batch_size, output_dim], dtype=tc.float32))

@@ -19,6 +19,4 @@ def test_dueling():
     assert dueling.output_dim == num_actions
     tc.testing.assert_close(
         actual=dueling(img_batch),
-        expected=tc.zeros(size=[batch_size, num_actions], dtype=tc.float32),
-        rtol=1e-4,
-        atol=1e-4)
+        expected=tc.zeros(size=[batch_size, num_actions], dtype=tc.float32))

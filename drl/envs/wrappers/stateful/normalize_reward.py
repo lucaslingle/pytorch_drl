@@ -122,6 +122,7 @@ class NormalizeRewardWrapper(TrainableWrapper):
             if isinstance(self.env, Wrapper):
                 return self.env.reward_spec is not None
             return False
+
         if not spec_exists():
             keys = ['extrinsic_raw', 'extrinsic']
             return RewardSpec(keys)
@@ -172,6 +173,8 @@ class NormalizeRewardWrapper(TrainableWrapper):
             rew = {'extrinsic_raw': reward, 'extrinsic': normalized}
         return obs, rew, done, info
 
-    def learn(self, mb: Mapping[str, tc.Tensor], **kwargs: Mapping[str, Any]) -> None:
+    def learn(
+            self, mb: Mapping[str, tc.Tensor], **kwargs: Mapping[str,
+                                                                 Any]) -> None:
         self._sync_normalizers_global()
         self._sync_normalizers_local()
