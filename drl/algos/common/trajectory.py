@@ -8,7 +8,7 @@ import numpy as np
 import gym
 
 from drl.envs.wrappers import Wrapper
-from drl.utils.typing import Action, Observation, DictReward
+from drl.utils.typing import Action, Observation, DictReward, EnvOutput
 
 
 def torch_dtype(np_dtype: np.dtype) -> tc.dtype:
@@ -33,7 +33,7 @@ class MetadataManager:
 
         Args:
             present_defaults (Mapping[str, Any]): A dictionary of field names
-                and their default values.
+                and their default values. The each value must implement __add__.
         """
         self._fields = present_defaults.keys()
         self._present_defaults = present_defaults
@@ -172,8 +172,8 @@ class Trajectory:
         internal experience buffers.
         
         Args:
-            o_Tp1 (numpy.ndarray): Next observation.
-            a_Tp1 (Union[int, numpy.ndarray]): Next action.
+            o_Tp1 (Observation): Next observation.
+            a_Tp1 (Action): Next action.
 
         Returns:
             None.
@@ -181,7 +181,7 @@ class Trajectory:
         self._observations[-1] = tc.tensor(o_Tp1).float()
         self._actions[-1] = tc.tensor(a_Tp1).long()
 
-    def report(self) -> Mapping[str, tc.Tensor]:
+    def report(self) -> Dict[str, tc.Tensor]:
         """
         Generates a dictionary of observations, actions, rewards, and dones.
         Erases the internally-stored trajectory.
@@ -189,7 +189,7 @@ class Trajectory:
             of the old trajectory to the front of the the blank trajectory.
 
         Returns:
-            Mapping[str, tc.Tensor]: Trajectory data.
+            Dict[str, tc.Tensor]: Trajectory data.
         """
         results = {
             'observations': self._observations,
@@ -247,14 +247,14 @@ class TrajectoryManager:
             })
         _ = self.generate(initial=True)
 
-    def _get_reward_keys(self):
+    def _get_reward_keys(self) -> List[str]:
         if self._env.reward_spec is None:
             msg1 = "Reward spec cannot be None."
             msg2 = "Wrap environment with RewardToDict wrapper to fix."
             raise ValueError(f"{msg1}\n{msg2}")
         return self._env.reward_spec.keys
 
-    def _choose_action(self, o_t):
+    def _choose_action(self, o_t: Observation) -> Action:
         # todo(lucaslingle): add support for stateful policies
         # todo(lucaslingle): add support for RL^2/NGU-style inputting
         #    of past rewards as inputs
@@ -264,7 +264,7 @@ class TrajectoryManager:
         a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
         return a_t
 
-    def _step_env(self, a_t):
+    def _step_env(self, a_t: Action) -> EnvOutput:
         o_tp1, r_t, done_t, info_t = self._env.step(a_t)
         return o_tp1, r_t, done_t, info_t
 
