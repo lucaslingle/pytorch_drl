@@ -9,7 +9,7 @@ import numpy as np
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
-from drl.utils.typing import ObservationType, ActionType, EnvStepOutput
+from drl.utils.typing import Observation, Action, EnvOutput
 
 
 class FrameStackWrapper(Wrapper):
@@ -34,26 +34,26 @@ class FrameStackWrapper(Wrapper):
         self._frames = deque(maxlen=self._num_frames)
         self._set_observation_space()
 
-    def _set_observation_space(self):
+    def _set_observation_space(self) -> None:
         start_shape = self.env.observation_space.shape
         stacked_shape = (*start_shape[:-1], start_shape[-1] * self._num_frames)
         dtype = self.env.observation_space.dtype
         self.observation_space = gym.spaces.Box(
             low=0, high=255, shape=stacked_shape, dtype=dtype)
 
-    def _get_obs(self) -> Union[ObservationType, 'LazyFrames']:
+    def _get_obs(self) -> Union[Observation, 'LazyFrames']:
         assert len(self._frames) == self._num_frames
         if not self._lazy:
             return np.concatenate(list(self._frames), axis=-1)
         return LazyFrames(list(self._frames))
 
-    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
+    def reset(self, **kwargs: Mapping[str, Any]) -> Observation:
         obs = self.env.reset()
         for _ in range(self._num_frames):
             self._frames.append(obs)
         return self._get_obs()
 
-    def step(self, action: ActionType) -> EnvStepOutput:
+    def step(self, action: Action) -> EnvOutput:
         obs, rew, done, info = self.env.step(action)
         self._frames.append(obs)
         return self._get_obs(), rew, done, info

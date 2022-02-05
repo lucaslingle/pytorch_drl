@@ -7,7 +7,7 @@ from typing import Union
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper, ActionWrapper
-from drl.utils.typing import ActionType
+from drl.utils.typing import Action
 
 
 class StickyActionsWrapper(ActionWrapper):
@@ -30,7 +30,7 @@ class StickyActionsWrapper(ActionWrapper):
         self._stick_prob = stick_prob
         self._last_action = 0
 
-    def action(self, action: ActionType) -> ActionType:
+    def action(self, action: Action) -> Action:
         u = self.unwrapped.np_random.uniform(low=0., high=1.)
         if u < self._stick_prob:
             return self._last_action

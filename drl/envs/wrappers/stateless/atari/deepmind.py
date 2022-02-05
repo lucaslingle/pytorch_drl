@@ -35,7 +35,7 @@ class DeepmindWrapper(ws.Wrapper):
         self._lazy = lazy
         self.env = self._build()
 
-    def _build(self):
+    def _build(self) -> ws.Wrapper:
         env = ws.ResizeObservationsWrapper(
             env=self.env,
             width=acs.TARGET_WIDTH,

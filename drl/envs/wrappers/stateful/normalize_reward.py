@@ -2,7 +2,7 @@
 Reward normalization wrapper.
 """
 
-from typing import Union, Optional
+from typing import Union, Optional, Dict, Any, Mapping
 
 import torch as tc
 import gym
@@ -11,6 +11,7 @@ from drl.envs.wrappers.stateless.abstract import Wrapper, RewardSpec
 from drl.envs.wrappers.stateful.abstract import TrainableWrapper
 from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.algos.common import global_mean
+from drl.utils.typing import Checkpointable, Action, EnvOutput
 
 
 class _ReturnAcc(tc.nn.Module):
@@ -114,19 +115,20 @@ class NormalizeRewardWrapper(TrainableWrapper):
         self._unsynced_normalizer = _ReturnAcc(gamma, -10, 10, use_dones)
         self._key = key
         self._world_size = world_size
-        self._set_reward_spec()
+        self._reward_spec = self._get_reward_spec()
 
-    def _set_reward_spec(self):
+    def _get_reward_spec(self) -> RewardSpec:
         def spec_exists():
             if isinstance(self.env, Wrapper):
                 return self.env.reward_spec is not None
             return False
-
         if not spec_exists():
             keys = ['extrinsic_raw', 'extrinsic']
-            self.reward_spec = RewardSpec(keys)
+            return RewardSpec(keys)
+        else:
+            return self.env.reward_spec
 
-    def _sync_normalizers_global(self):
+    def _sync_normalizers_global(self) -> None:
         self._synced_normalizer.steps = global_mean(
             self._unsynced_normalizer.steps, self._world_size)
         self._synced_normalizer.moment1 = global_mean(
@@ -134,18 +136,18 @@ class NormalizeRewardWrapper(TrainableWrapper):
         self._synced_normalizer.moment2 = global_mean(
             self._unsynced_normalizer.moment2, self._world_size)
 
-    def _sync_normalizers_local(self):
+    def _sync_normalizers_local(self) -> None:
         self._unsynced_normalizer.steps = self._synced_normalizer.steps
         self._unsynced_normalizer.moment1 = self._synced_normalizer.moment1
         self._unsynced_normalizer.moment2 = self._synced_normalizer.moment2
 
     @property
-    def checkpointables(self):
+    def checkpointables(self) -> Dict[str, Checkpointable]:
         checkpoint_dict = self.env.checkpointables
         checkpoint_dict.update({'reward_normalizer': self._synced_normalizer})
         return checkpoint_dict
 
-    def step(self, ac):
+    def step(self, ac: Action) -> EnvOutput:
         if self._unsynced_normalizer.steps < self._synced_normalizer.steps:
             self._sync_normalizers_local()
         obs, rew, done, info = self.env.step(ac)
@@ -170,6 +172,6 @@ class NormalizeRewardWrapper(TrainableWrapper):
             rew = {'extrinsic_raw': reward, 'extrinsic': normalized}
         return obs, rew, done, info
 
-    def learn(self, mb, **kwargs):
+    def learn(self, mb: Mapping[str, tc.Tensor], **kwargs: Mapping[str, Any]) -> None:
         self._sync_normalizers_global()
         self._sync_normalizers_local()

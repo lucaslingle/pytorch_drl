@@ -8,7 +8,7 @@ import gym
 
 from drl.envs.wrappers.stateless.abstract import (
     Wrapper, RewardWrapper, RewardSpec)
-from drl.utils.typing import RewardType
+from drl.utils.typing import Reward
 
 
 class ClipRewardWrapper(RewardWrapper):
@@ -41,7 +41,7 @@ class ClipRewardWrapper(RewardWrapper):
             msg = "Low value must be less than high value."
             raise ValueError(msg)
 
-    def _get_reward_spec(self):
+    def _get_reward_spec(self) -> RewardSpec:
         parent_reward_spec = self.env.reward_spec
         if parent_reward_spec is None:
             reward_keys = ['extrinsic_raw', 'extrinsic']
@@ -49,7 +49,7 @@ class ClipRewardWrapper(RewardWrapper):
             reward_keys = parent_reward_spec.keys
         return RewardSpec(keys=reward_keys)
 
-    def reward(self, reward: RewardType) -> RewardType:
+    def reward(self, reward: Reward) -> Reward:
         if self._key:
             assert self._key != 'extrinsic_raw', 'Must be preserved for logging'
             if not isinstance(reward, dict):

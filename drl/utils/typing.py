@@ -2,7 +2,7 @@
 Typing util.
 """
 
-from typing import Union, Mapping, Any, Tuple
+from typing import Union, Mapping, Any, Tuple, List
 
 import torch as tc
 import numpy as np
@@ -14,9 +14,11 @@ Checkpointable = Union[Module, Optimizer, Scheduler]
 
 CreditAssignmentSpec = Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]]
 
-ActionType = Union[int, np.ndarray]
-ObservationType = np.ndarray
-ScalarRewardType = float
-DictRewardType = Mapping[str, float]
-RewardType = Union[ScalarRewardType, DictRewardType]
-EnvStepOutput = Tuple[ObservationType, RewardType, bool, Mapping[str, Any]]
+Action = Union[int, np.ndarray]
+Observation = np.ndarray
+ScalarReward = float
+DictReward = Mapping[str, float]
+Reward = Union[ScalarReward, DictReward]
+EnvOutput = Tuple[Observation, Reward, bool, Mapping[str, Any]]
+
+EpisodeMetadata = Union[List[int], List[float]]

@@ -1,4 +1,4 @@
-from typing import Mapping, Any, List, Union, Optional
+from typing import Mapping, Any, List, Union, Optional, Dict
 import importlib
 import copy
 
@@ -8,7 +8,7 @@ import numpy as np
 import gym
 
 from drl.envs.wrappers import Wrapper
-from drl.utils.typing import ActionType, ObservationType, DictRewardType
+from drl.utils.typing import Action, Observation, DictReward
 
 
 def torch_dtype(np_dtype: np.dtype) -> tc.dtype:
@@ -142,18 +142,18 @@ class Trajectory:
     def record(
             self,
             t: int,
-            o_t: ObservationType,
-            a_t: ActionType,
-            r_t: DictRewardType,
+            o_t: Observation,
+            a_t: Action,
+            r_t: DictReward,
             d_t: bool) -> None:
         """
         Records a timestep of experience to internal experience buffers.
 
         Args:
             t (int): Integer index for the step to be stored.
-            o_t (ObservationType): Observation.
-            a_t (ActionType): Action.
-            r_t (DictRewardType): Reward dict.
+            o_t (Observation): Observation.
+            a_t (Action): Action.
+            r_t (DictReward): Reward dict.
             d_t (bool): Done signal.
 
         Returns:
@@ -166,7 +166,7 @@ class Trajectory:
             self._rewards[key][i] = tc.tensor(r_t[key]).float()
         self._dones[i] = tc.tensor(d_t).float()
 
-    def record_nexts(self, o_Tp1: ObservationType, a_Tp1: ActionType) -> None:
+    def record_nexts(self, o_Tp1: Observation, a_Tp1: Action) -> None:
         """
         Records the next observation and next action to rightmost slot of
         internal experience buffers.
@@ -269,8 +269,7 @@ class TrajectoryManager:
         return o_tp1, r_t, done_t, info_t
 
     @tc.no_grad()
-    def generate(self,
-                 initial: bool = False) -> Optional[Mapping[str, tc.Tensor]]:
+    def generate(self, initial: bool = False) -> Optional[Dict[str, Any]]:
         """
         Generates a trajectory by stepping the environment.
 
@@ -280,7 +279,8 @@ class TrajectoryManager:
                the full trajectory is returned.
 
         Returns:
-            Optional[Mapping[str, tc.Tensor]]: Maybe some trajectory data.
+            Optional[Dict[str, Any]]:
+                Maybe a dictionary of trajectory data and metadata, or None.
         """
         # determine the time indices for the trajectory segment to generate
         if initial:

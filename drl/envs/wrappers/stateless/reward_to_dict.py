@@ -2,13 +2,13 @@
 Reward to dictionary wrapper.
 """
 
-from typing import Union, Dict
+from typing import Union
 
 import gym
 
 from drl.envs.wrappers.stateless.abstract import (
     Wrapper, RewardWrapper, RewardSpec)
-from drl.utils.typing import RewardType
+from drl.utils.typing import Reward, DictReward
 
 
 class RewardToDictWrapper(RewardWrapper):
@@ -23,7 +23,7 @@ class RewardToDictWrapper(RewardWrapper):
         super().__init__(env)
         self._reward_spec = self._get_reward_spec()
 
-    def _get_reward_spec(self):
+    def _get_reward_spec(self) -> RewardSpec:
         parent_reward_spec = self.env.reward_spec
         if parent_reward_spec is None:
             reward_keys = ['extrinsic_raw', 'extrinsic']
@@ -31,7 +31,7 @@ class RewardToDictWrapper(RewardWrapper):
             reward_keys = parent_reward_spec.keys
         return RewardSpec(keys=reward_keys)
 
-    def reward(self, reward: RewardType) -> Dict[str, float]:
+    def reward(self, reward: Reward) -> DictReward:
         if isinstance(reward, dict):
             return reward
         if isinstance(reward, float):
