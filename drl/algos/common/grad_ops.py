@@ -11,14 +11,14 @@ def _norm(gradient: FlatGrad) -> float:
 
 
 @tc.no_grad()
-def read_gradient(network: Module, normalize: bool) -> FlatGrad:
+def read_gradient(network: Module, normalize: bool = False) -> FlatGrad:
     """
     Reads the currently stored gradient in the network parameters' grad
     attributes, and returns it as a vector.
 
     Args:
         network (Module): Torch Module instance.
-        normalize (bool): Whether to normalize the gradient extracted.
+        normalize (bool): Normalize the gradient extracted? Default: False.
 
     Returns:
         numpy.ndarray: Gradient as a one-dimensional numpy ndarray.
@@ -67,10 +67,9 @@ def task_losses_to_grads(
     Args:
         network (torch.nn.Module): Torch Module instance.
         optimizer (torch.optim.Optimizer): Torch Optimizer instance.
-        task_losses (Mapping[str, torch.Tensor]): Dictionary of losses to
-            perform PCGrad on, keyed by name.
-        normalize (bool): Normalize the task gradients before performing PCGrad?
-            Default: True.
+        task_losses (Mapping[str, torch.Tensor]): Dictionary mapping from
+            task names to losses.
+        normalize (bool): Normalize the task gradients? Default: False.
 
     Returns:
         Mapping[str, FlatGrad]: Dictionary mapping from task names to gradients.
@@ -122,7 +121,7 @@ def apply_pcgrad(
         network: Module,
         optimizer: Optimizer,
         task_losses: Mapping[str, tc.Tensor],
-        normalize: bool = True) -> None:
+        normalize: bool = False) -> None:
     """
     Implements the PCGrad gradient surgery algorithm, and writes the result
     into the network parameters' grad attributes.
@@ -134,10 +133,10 @@ def apply_pcgrad(
     Args:
         network (torch.nn.Module): Torch Module instance.
         optimizer (torch.optim.Optimizer): Torch Optimizer instance.
-        task_losses (Mapping[str, torch.Tensor]): Dictionary of losses to
-            perform PCGrad on, keyed by name.
+        task_losses (Mapping[str, torch.Tensor]): Dictionary mapping from
+            task names to losses.
         normalize (bool): Normalize the task gradients before performing PCGrad?
-            Default: True.
+            Default: False.
 
     Returns:
         None.

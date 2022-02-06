@@ -1,5 +1,5 @@
 from typing import Union, Mapping, List, Any
-from collections import Counter, deque
+from collections import deque
 
 import torch as tc
 import numpy as np
@@ -28,21 +28,25 @@ def global_mean(local_value: tc.Tensor,
 
 def global_means(
         local_values: Mapping[str, tc.Tensor], world_size: int,
-        item: bool) -> Counter:
+        item: bool) -> Mapping[str, Union[tc.Tensor, float]]:
     """
     Performs a global_mean on each tensor in a mapping of names to Torch tensors.
 
     Args:
-        local_values (Mapping[str, tc.Tensor]): Dict of Torch tensors,
+        local_values (Mapping[str, torch.Tensor]): Dict of Torch tensors,
              keyed by name.
         world_size (int): Number of processes.
-        item (bool): Whether to call the 'item' method on the global-mean tensor.
+        item (bool): Whether to call the 'item' method on each global-mean tensor.
+            Only applicable when the number of elements of each torch tensor in
+            `local_values` is one.
 
     Returns:
-        collections.Counter: Counter instance storing Torch tensors or floats.
+        Mapping[str, Union[torch.Tensor, float]]: Dict of Torch tensors or floats,
+            keyed by name.
     """
-    return Counter(
-        {k: global_mean(v, world_size, item) for k, v in local_values.items()})
+    return {
+        k: global_mean(v, world_size, item) for k, v in local_values.items()
+    }
 
 
 def global_gather(local_list: List[Any], world_size: int) -> List[Any]:
@@ -73,10 +77,10 @@ def global_gathers(local_lists: Mapping[str, List[Any]],
         world_size (int): Number of processes.
 
     Returns:
-        collections.Counter: Counter storing lists of Torch tensors or floats.
+        Mapping[str, List[Any]]: Dict of lists of Torch tensors or floats,
+            keyed by name.
     """
-    return Counter(
-        {k: global_gather(v, world_size) for k, v in local_lists.items()})
+    return {k: global_gather(v, world_size) for k, v in local_lists.items()}
 
 
 def pretty_print(metrics: Union[Mapping[str, Any], 'MultiQueue']) -> None:
