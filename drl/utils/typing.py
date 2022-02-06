@@ -2,7 +2,7 @@
 Typing util.
 """
 
-from typing import Union, Mapping, Any, Tuple, List
+from typing import Union, Mapping, Any, Tuple
 
 import torch as tc
 import numpy as np
@@ -21,4 +21,4 @@ DictReward = Mapping[str, float]
 Reward = Union[ScalarReward, DictReward]
 EnvOutput = Tuple[Observation, Reward, bool, Mapping[str, Any]]
 
-EpisodeMetadata = Union[List[int], List[float]]
+FlatGrad = np.ndarray

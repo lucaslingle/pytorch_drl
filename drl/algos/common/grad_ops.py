@@ -3,15 +3,15 @@ from typing import Mapping
 import numpy as np
 import torch as tc
 
-from drl.utils.typing import Module, Optimizer
+from drl.utils.typing import Module, Optimizer, FlatGrad
 
 
-def _norm(vector: np.ndarray) -> float:
-    return np.sqrt(np.sum(np.square(vector)) + 1e-6)
+def _norm(gradient: FlatGrad) -> float:
+    return np.sqrt(np.sum(np.square(gradient)) + 1e-6)
 
 
 @tc.no_grad()
-def read_gradient(network: Module, normalize: bool) -> np.ndarray:
+def read_gradient(network: Module, normalize: bool) -> FlatGrad:
     """
     Reads the currently stored gradient in the network parameters' grad
     attributes, and returns it as a vector.
@@ -21,7 +21,7 @@ def read_gradient(network: Module, normalize: bool) -> np.ndarray:
         normalize (bool): Whether to normalize the gradient extracted.
 
     Returns:
-        numpy.ndarray: Gradient as a vector.
+        numpy.ndarray: Gradient as a one-dimensional numpy ndarray.
     """
     gradient_subvecs = []
     for p in network.parameters():
@@ -35,13 +35,13 @@ def read_gradient(network: Module, normalize: bool) -> np.ndarray:
 
 
 @tc.no_grad()
-def write_gradient(network: Module, gradient: np.ndarray) -> None:
+def write_gradient(network: Module, gradient: FlatGrad) -> None:
     """
     Writes a gradient vector into a network's parameters' grad attributes.
 
     Args:
         network (torch.nn.Module): Torch Module instance.
-        gradient (numpy.ndarray): Gradient as a numpy ndarray.
+        gradient (numpy.ndarray): Gradient as a one-dimensional numpy ndarray.
 
     Returns:
         None.
@@ -56,21 +56,13 @@ def write_gradient(network: Module, gradient: np.ndarray) -> None:
             dims_so_far += numel
 
 
-# todo(lucaslingle):
-#  refactor this function to take the task gradients only,
-#  and make a separate function to get the task gradients from task losses.
-#  it's easier to unit test. then add unit tests for this.
-def pcgrad_gradient_surgery(
+def task_losses_to_grads(
         network: Module,
         optimizer: Optimizer,
         task_losses: Mapping[str, tc.Tensor],
-        normalize: bool = True) -> np.ndarray:
+        normalize: bool = False) -> Mapping[str, FlatGrad]:
     """
-    Implements the PCGrad gradient surgery algorithm.
-
-    Reference:
-        T. Yu et al., 2020 -
-            'Gradient Surgery for Multi-Task Learning'
+    Computes a dictionary of task gradients from task losses.
 
     Args:
         network (torch.nn.Module): Torch Module instance.
@@ -81,28 +73,47 @@ def pcgrad_gradient_surgery(
             Default: True.
 
     Returns:
-        numpy.ndarray: PCGrad gradient as a vector.
+        Mapping[str, FlatGrad]: Dictionary mapping from task names to gradients.
     """
     task_gradients = dict()
     for k in task_losses:
         optimizer.zero_grad()
         task_losses[k].backward(retain_graph=True)
         task_gradients[k] = read_gradient(network, normalize)
+    optimizer.zero_grad()
+    return task_gradients
 
+
+def pcgrad_gradient_surgery(task_gradients: Mapping[str, FlatGrad]) -> FlatGrad:
+    """
+    Implements the PCGrad gradient surgery algorithm.
+
+    Reference:
+        T. Yu et al., 2020 -
+            'Gradient Surgery for Multi-Task Learning'
+
+    Args:
+        task_gradients (Mapping[str, np.ndarray]): Dictionary mapping from
+            task names to gradients.
+
+    Returns:
+        numpy.ndarray: PCGrad gradient as a vector.
+    """
     pcgrad_gradients = list()
-    for i in task_losses:
+    for i in task_gradients:
         grad_i = task_gradients[i]
         pcgrad_i = grad_i
-        for j in task_losses:
+        for j in task_gradients:
             if i == j:
                 continue
             grad_j = task_gradients[j]
             if np.dot(pcgrad_i, grad_j) < 0.:
                 coef = np.dot(pcgrad_i, grad_j) / np.square(_norm(grad_j))
-                pcgrad_i -= coef * grad_j
+                pcgrad_i = pcgrad_i - coef * grad_j
+                # bug caught: dont do inplace subtraction -= with numpy ndarrays
+                # or it will also mess up grad_i (!)
         pcgrad_gradients.append(pcgrad_i)
 
-    optimizer.zero_grad()
     pcgrad_output = sum(pcgrad_gradients)
     return pcgrad_output
 
@@ -131,6 +142,10 @@ def apply_pcgrad(
     Returns:
         None.
     """
-    pcgrad_output = pcgrad_gradient_surgery(
-        network, optimizer, task_losses, normalize)
+    task_gradients = task_losses_to_grads(
+        network=network,
+        optimizer=optimizer,
+        task_losses=task_losses,
+        normalize=normalize)
+    pcgrad_output = pcgrad_gradient_surgery(task_gradients)
     write_gradient(network, pcgrad_output)
