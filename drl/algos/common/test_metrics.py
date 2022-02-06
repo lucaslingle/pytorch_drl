@@ -5,7 +5,6 @@ import torch as tc
 from drl.algos.common.metrics import (
     global_mean, global_means, global_gather, global_gathers)
 
-
 WORLD_SIZE = 2
 
 
@@ -13,9 +12,7 @@ def make_process_group(rank: int, port: int) -> None:
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = str(port)
     tc.distributed.init_process_group(
-        backend='gloo',
-        world_size=WORLD_SIZE,
-        rank=rank)
+        backend='gloo', world_size=WORLD_SIZE, rank=rank)
 
 
 def destroy_process_group() -> None:
@@ -36,10 +33,7 @@ def local_test_global_mean(rank, port):
 
 def test_global_mean():
     tc.multiprocessing.spawn(
-        local_test_global_mean,
-        args=(12001,),
-        nprocs=WORLD_SIZE,
-        join=True)
+        local_test_global_mean, args=(12001, ), nprocs=WORLD_SIZE, join=True)
 
 
 def local_test_global_means(rank, port):
@@ -64,10 +58,7 @@ def local_test_global_means(rank, port):
 
 def test_global_means():
     tc.multiprocessing.spawn(
-        local_test_global_means,
-        args=(12002,),
-        nprocs=WORLD_SIZE,
-        join=True)
+        local_test_global_means, args=(12002, ), nprocs=WORLD_SIZE, join=True)
 
 
 def local_test_global_gather(rank, port):
@@ -91,10 +82,7 @@ def local_test_global_gather(rank, port):
 
 def test_global_gather():
     tc.multiprocessing.spawn(
-        local_test_global_gather,
-        args=(12003,),
-        nprocs=WORLD_SIZE,
-        join=True)
+        local_test_global_gather, args=(12003, ), nprocs=WORLD_SIZE, join=True)
 
 
 def local_test_global_gathers(rank, port):
@@ -109,7 +97,9 @@ def local_test_global_gathers(rank, port):
     if rank == 0:
         global_lists_expected_upto_permute = {
             'foo': [j * tc.tensor([1., 2., 3.]) for j in range(WORLD_SIZE)],
-            'bar': [-2 * j * tc.tensor([1., 2., 3.]) for j in range(WORLD_SIZE)]
+            'bar': [
+                -2 * j * tc.tensor([1., 2., 3.]) for j in range(WORLD_SIZE)
+            ]
         }
         for name in local_lists.keys():
             global_list_actual = global_lists_actual[name]
@@ -127,7 +117,4 @@ def local_test_global_gathers(rank, port):
 
 def test_global_gathers():
     tc.multiprocessing.spawn(
-        local_test_global_gathers,
-        args=(12004,),
-        nprocs=WORLD_SIZE,
-        join=True)
+        local_test_global_gathers, args=(12004, ), nprocs=WORLD_SIZE, join=True)
