@@ -1,6 +1,8 @@
 import os
 
+import pytest
 import torch as tc
+from torch.multiprocessing.spawn import ProcessRaisedException
 
 from drl.algos.common.metrics import (
     global_mean, global_means, global_gather, global_gathers)
@@ -19,7 +21,40 @@ def destroy_process_group() -> None:
     return tc.distributed.destroy_process_group()
 
 
-def local_test_global_mean(rank, port):
+def local_vanilla_false_assert(rank, port):
+    make_process_group(rank, port)
+    if rank == 0:
+        assert 2 + 2 == 5
+    destroy_process_group()
+
+
+def test_vanilla_false_assert() -> None:
+    with pytest.raises(ProcessRaisedException):
+        tc.multiprocessing.spawn(
+            local_vanilla_false_assert,
+            args=(11999, ),
+            nprocs=WORLD_SIZE,
+            join=True)
+
+
+def local_torch_false_assert(rank: int, port: int) -> None:
+    make_process_group(rank, port)
+    if rank == 0:
+        tc.testing.assert_close(
+            actual=tc.tensor([1.]), expected=tc.tensor([0.]))
+    destroy_process_group()
+
+
+def test_torch_false_assert() -> None:
+    with pytest.raises(ProcessRaisedException):
+        tc.multiprocessing.spawn(
+            local_torch_false_assert,
+            args=(12000, ),
+            nprocs=WORLD_SIZE,
+            join=True)
+
+
+def local_test_global_mean(rank: int, port: int) -> None:
     make_process_group(rank, port)
     local_value = rank * tc.tensor([1., 2., 3.])
     global_value_actual = global_mean(
@@ -31,12 +66,12 @@ def local_test_global_mean(rank, port):
     destroy_process_group()
 
 
-def test_global_mean():
+def test_global_mean() -> None:
     tc.multiprocessing.spawn(
         local_test_global_mean, args=(12001, ), nprocs=WORLD_SIZE, join=True)
 
 
-def local_test_global_means(rank, port):
+def local_test_global_means(rank: int, port: int) -> None:
     make_process_group(rank, port)
     local_values = {
         'foo': rank * tc.tensor([1., 2., 3.]),
@@ -56,12 +91,12 @@ def local_test_global_means(rank, port):
     destroy_process_group()
 
 
-def test_global_means():
+def test_global_means() -> None:
     tc.multiprocessing.spawn(
         local_test_global_means, args=(12002, ), nprocs=WORLD_SIZE, join=True)
 
 
-def local_test_global_gather(rank, port):
+def local_test_global_gather(rank: int, port: int) -> None:
     make_process_group(rank, port)
     local_list = [rank * tc.tensor([1., 2., 3.])]
     global_list_actual = global_gather(
@@ -80,12 +115,12 @@ def local_test_global_gather(rank, port):
     destroy_process_group()
 
 
-def test_global_gather():
+def test_global_gather() -> None:
     tc.multiprocessing.spawn(
         local_test_global_gather, args=(12003, ), nprocs=WORLD_SIZE, join=True)
 
 
-def local_test_global_gathers(rank, port):
+def local_test_global_gathers(rank: int, port: int) -> None:
     make_process_group(rank, port)
     local_lists = {
         'foo': [rank * tc.tensor([1., 2., 3.])],
@@ -115,6 +150,9 @@ def local_test_global_gathers(rank, port):
     destroy_process_group()
 
 
-def test_global_gathers():
+def test_global_gathers() -> None:
     tc.multiprocessing.spawn(
         local_test_global_gathers, args=(12004, ), nprocs=WORLD_SIZE, join=True)
+
+
+# todo(lucaslingle): add test for multideque methods

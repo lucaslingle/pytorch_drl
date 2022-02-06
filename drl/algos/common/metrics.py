@@ -1,4 +1,4 @@
-from typing import Union, Mapping, List, Any
+from typing import Union, Mapping, List, Any, Iterable, Tuple
 from collections import deque
 
 import torch as tc
@@ -147,10 +147,11 @@ class MultiQueue:
             return np.nan
         return sum(self._queues[field]) / len(self._queues[field])
 
-    def keys(self):
+    def keys(self) -> Iterable[str]:
         return iter(field for field in self._queues)
 
-    def items(self, mean=True):
+    def items(self,
+              mean: bool = True) -> Iterable[Tuple[str, Union[float, deque]]]:
         """
         Gets the queues as an iterator, or their means.
 
