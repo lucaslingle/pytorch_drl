@@ -5,7 +5,8 @@ import gym
 
 from drl.algos.common.trajectory import (
     torch_dtype, MetadataManager, Trajectory, TrajectoryManager)
-from drl.envs.wrappers.stateless import RewardToDictWrapper
+from drl.envs.wrappers.stateless import RewardSpec, RewardToDictWrapper
+from drl.utils.typing import Observation, Action, EnvOutput
 
 
 def test_torch_dtype():
@@ -151,13 +152,17 @@ def make_env(wrap=True):
     return env
 
 
+SEG_LEN = 7
+EXTRA_STEPS = 2
+
+
 def make_trajectory(env):
     return Trajectory(
         obs_space=env.observation_space,
         ac_space=env.action_space,
         rew_keys=env.reward_spec.keys,
-        seg_len=16,
-        extra_steps=4)
+        seg_len=SEG_LEN,
+        extra_steps=EXTRA_STEPS)
 
 
 def test_trajectory_record():
@@ -180,12 +185,67 @@ def test_trajectory_record():
     tc.testing.assert_close(
         actual=traj._dones[0], expected=tc.tensor(d_t, dtype=tc.float32))
 
-"""
+
+class FakeEnv:
+    def __init__(self):
+        self._observation_space_cardinality = 100
+        self._observation_space = gym.spaces.Discrete(
+            self._observation_space_cardinality)
+        self._action_space = gym.spaces.Discrete(1)
+        self._initial_state = 0
+        self._state = self._initial_state
+
+    @property
+    def observation_space(self) -> gym.spaces.Space:
+        return self._observation_space
+
+    @property
+    def action_space(self) -> gym.spaces.Space:
+        return self._action_space
+
+    @property
+    def reward_spec(self) -> RewardSpec:
+        return RewardSpec(keys=['extrinsic', 'extrinsic_raw'])
+
+    def reset(self) -> Observation:
+        self._state = self._initial_state
+        return np.array(self._state)
+
+    def step(self, action: Action) -> EnvOutput:
+        new_state = self._state + 1
+        new_state %= self._observation_space_cardinality
+        self._state = new_state
+
+        o_tp1 = self._state
+        r_t = {'extrinsic': 2.0, 'extrinsic_raw': 2.0}
+        d_t = False
+        i_t = {}
+        return np.array(o_tp1), r_t, d_t, i_t
+
+
 def test_trajectory_report():
-    env = make_env(wrap=True)
+    env = FakeEnv()
     traj = make_trajectory(env)
     o_t = env.reset()
-    a_t = tc.randint(0, env.action_space.n).item()
-    o_tp1, r_t, d_t, i_t = env.step(a_t)
-    traj.record(t=0, o_t=o_t, a_t=a_t, r_t=r_t, d_t=d_t)
-"""
+
+    for t in range(SEG_LEN + EXTRA_STEPS):
+        a_t = 0
+        o_tp1, r_t, d_t, i_t = env.step(a_t)
+        traj.record(t=t, o_t=o_t, a_t=a_t, r_t=r_t, d_t=d_t)
+        o_t = o_tp1
+    traj.record_nexts(o_Tp1=o_t, a_Tp1=0)
+    report = traj.report()
+    tc.testing.assert_close(
+        actual=report['observations'],
+        expected=tc.arange(SEG_LEN + EXTRA_STEPS + 1))
+
+    for t in range(EXTRA_STEPS, SEG_LEN + EXTRA_STEPS):
+        a_t = 0
+        o_tp1, r_t, d_t, i_t = env.step(a_t)
+        traj.record(t=t, o_t=o_t, a_t=a_t, r_t=r_t, d_t=d_t)
+        o_t = o_tp1
+    traj.record_nexts(o_Tp1=o_t, a_Tp1=0)
+    report = traj.report()
+    tc.testing.assert_close(
+        actual=report['observations'],
+        expected=tc.tensor([7, 8, 9, 10, 11, 12, 13, 14, 15, 16]))
