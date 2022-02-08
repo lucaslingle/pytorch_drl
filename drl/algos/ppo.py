@@ -52,7 +52,7 @@ class PPO(Algo):
             extra_steps: int,
             standardize_adv: bool,
             use_pcgrad: bool,
-            stats_memory_len: int,
+            stats_window_len: int,
             checkpoint_frequency: int,
             non_learning_steps: int,
             max_steps: int,
@@ -102,7 +102,7 @@ class PPO(Algo):
                 segment?
             use_pcgrad (bool): Use the PCGrad algorithm from Yu et al., 2020?
                 Only allowed if policy and value architecture is shared.
-            stats_memory_len (int): Window size for moving average of episode
+            stats_window_len (int): Window size for moving average of episode
                  metadata.
             checkpoint_frequency (int): Checkpoint frequency, measured in
                 global steps.
@@ -177,7 +177,7 @@ class PPO(Algo):
             policy_net=policy_net,
             seg_len=seg_len,
             extra_steps=extra_steps)
-        self._metadata_acc = MultiQueue(memory_len=stats_memory_len)
+        self._metadata_acc = MultiQueue(maxlen=stats_window_len)
         if self._rank == 0:
             self._writer = SummaryWriter(log_dir)
 

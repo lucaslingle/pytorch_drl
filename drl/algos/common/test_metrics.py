@@ -1,11 +1,12 @@
 import os
+from collections import deque
 
 import pytest
 import torch as tc
 from torch.multiprocessing.spawn import ProcessRaisedException
 
 from drl.algos.common.metrics import (
-    global_mean, global_means, global_gather, global_gathers)
+    global_mean, global_means, global_gather, global_gathers, MultiQueue)
 
 WORLD_SIZE = 2
 
@@ -155,4 +156,47 @@ def test_global_gathers() -> None:
         local_test_global_gathers, args=(12004, ), nprocs=WORLD_SIZE, join=True)
 
 
-# todo(lucaslingle): add test for multideque methods
+def test_multiqueue_empty():
+    mq = MultiQueue(maxlen=2)
+    assert list(mq.keys()) == []
+
+
+def test_multiqueue_get():
+    mq = MultiQueue(maxlen=2)
+    q = deque(maxlen=2)
+    q.extend([1, 2])
+    mq._queues['foo'] = q
+    assert mq.get('foo') == deque([1, 2], maxlen=2)
+
+
+def test_multiqueue_keys():
+    mq = MultiQueue(maxlen=2)
+    q = deque(maxlen=2)
+    q.extend([1, 2])
+    mq._queues['foo'] = q
+    assert set(mq.keys()) == {'foo'}
+
+
+def test_multiqueue_items():
+    mq = MultiQueue(maxlen=2)
+    q = deque(maxlen=2)
+    q.extend([1, 2])
+    mq._queues['foo'] = q
+    assert list(mq.items(mean=False))[0] == ('foo', deque([1, 2], maxlen=2))
+    assert list(mq.items(mean=True))[0] == ('foo', 1.5)
+
+
+def test_multiqueue_update():
+    mq = MultiQueue(maxlen=2)
+    mq.update({'foo': [1, 2], 'bar': [0.0, -1.0]})
+    assert set(mq.keys()) == {'foo', 'bar'}
+    assert mq.get('foo') == deque([1, 2], maxlen=2)
+    assert mq.get('bar') == deque([0.0, -1.0], maxlen=2)
+
+
+def test_multiqueue_mean():
+    mq = MultiQueue(maxlen=2)
+    mq.update({'foo': [1, 2], 'bar': [0.0, -1.0]})
+    assert set(mq.keys()) == {'foo', 'bar'}
+    assert mq.mean('foo') == 1.5
+    assert mq.mean('bar') == -0.5

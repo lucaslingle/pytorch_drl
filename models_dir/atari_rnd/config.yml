@@ -30,7 +30,7 @@ algo:
             extrinsic: 2.0
             intrinsic_rnd: 1.0
         use_pcgrad: False
-        stats_memory_len: 100
+        stats_window_len: 100
         checkpoint_frequency: 100
         non_learning_steps: 409600  # RNDWrapper nonlearning steps * world_size
         max_steps: 500000000        # 0.5B

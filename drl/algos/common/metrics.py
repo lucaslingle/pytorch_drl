@@ -106,32 +106,68 @@ class MultiQueue:
     A data-structure containing queues to track running stats,
     which possibly arrive at different or variable rates.
     """
-    def __init__(self, memory_len: int):
+    def __init__(self, maxlen: int):
         """
         Args:
-            memory_len (int): Capacity of each deque.
+            maxlen (int): Capacity of each deque.
         """
-        self._memory_len = memory_len
+        self._memory_len = maxlen
         self._queues = dict()
 
-    def _update_field(self, field, values):
-        if field not in self._queues:
-            self._queues[field] = deque(maxlen=self._memory_len)
-        self._queues[field].extend(values)
+    def _update_queue(self, key, values):
+        if key not in self._queues:
+            self._queues[key] = deque(maxlen=self._memory_len)
+        self._queues[key].extend(values)
 
-    def update(self, new_stats: Mapping[str, List[Union[int, float]]]) -> None:
+    def get(self, key: str) -> deque:
+        """
+        Gets the queue for a given key.
+
+        Args:
+            key (str): Key name.
+
+        Returns:
+            collections.deque: Queue for the key.
+        """
+        return self._queues[key]
+
+    def keys(self) -> Iterable[str]:
+        """
+        Returns:
+            Iterable[str]: Iterator of keys.
+        """
+        return iter(field for field in self._queues)
+
+    def items(self,
+              mean: bool = True) -> Iterable[Tuple[str, Union[float, deque]]]:
+        """
+        Gets the queues as an iterator, or their means.
+
+        Args:
+            mean (bool): Return the means? Default: True.
+
+        Returns:
+            Iterable[Tuple[str, Union[float, collections.deque]]]: Iterator of tuples,
+                containing keys and the corresponding queues or their mean values.
+        """
+        return iter((field, self.mean(field) if mean else self._queues[field])
+                    for field in self._queues)
+
+    def update(
+            self, new_stats: Mapping[str, Union[List[int],
+                                                List[float]]]) -> None:
         """
         Updates the queues with the provided new values.
 
         Args:
-            new_stats (Mapping[str, List[Union[int, float]]]): A dictionary of new values,
-                keyed by field name, each mapping to a list of new stats for that key.
+            new_stats (Mapping[str, Union[List[int], List[float]]]): A
+                dictionary mapping from field names to a list of new stats.
 
         Returns:
             None:
         """
-        for field in new_stats:
-            self._update_field(field, new_stats[field])
+        for key in new_stats:
+            self._update_queue(key, new_stats[key])
 
     def mean(self, field: str) -> float:
         """
@@ -146,22 +182,3 @@ class MultiQueue:
         if len(self._queues[field]) == 0:
             return np.nan
         return sum(self._queues[field]) / len(self._queues[field])
-
-    def keys(self) -> Iterable[str]:
-        return iter(field for field in self._queues)
-
-    def items(self,
-              mean: bool = True) -> Iterable[Tuple[str, Union[float, deque]]]:
-        """
-        Gets the queues as an iterator, or their means.
-
-        Args:
-            mean (bool): Return the means? Default: True.
-
-        Returns:
-            Iterable[Tuple[str, Union[float, collections.deque]]]: Iterator of tuples,
-                containing field names and either queues or their means.
-
-        """
-        return iter((field, self.mean(field) if mean else self._queues[field])
-                    for field in self._queues)
