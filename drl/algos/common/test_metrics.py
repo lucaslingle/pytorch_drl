@@ -192,6 +192,11 @@ def test_multiqueue_update():
     assert set(mq.keys()) == {'foo', 'bar'}
     assert mq.get('foo') == deque([1, 2], maxlen=2)
     assert mq.get('bar') == deque([0.0, -1.0], maxlen=2)
+    mq.update({'foo': [3], 'bar': [1.0], 'baz': [3.0]})
+    assert set(mq.keys()) == {'foo', 'bar', 'baz'}
+    assert mq.get('foo') == deque([2, 3], maxlen=2)
+    assert mq.get('bar') == deque([-1.0, 1.0], maxlen=2)
+    assert mq.get('baz') == deque([3.0], maxlen=2)
 
 
 def test_multiqueue_mean():
@@ -200,3 +205,7 @@ def test_multiqueue_mean():
     assert set(mq.keys()) == {'foo', 'bar'}
     assert mq.mean('foo') == 1.5
     assert mq.mean('bar') == -0.5
+    mq.update({'foo': [3], 'bar': [1.0], 'baz': [3.0]})
+    assert mq.mean('foo') == 2.5
+    assert mq.mean('bar') == 0.0
+    assert mq.mean('baz') == 3.0
