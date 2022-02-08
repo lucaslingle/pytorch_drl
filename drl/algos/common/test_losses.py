@@ -1,5 +1,4 @@
 import torch as tc
-import numpy as np
 
 from drl.algos.common.losses import get_loss
 

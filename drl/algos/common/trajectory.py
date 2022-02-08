@@ -1,4 +1,4 @@
-from typing import Mapping, Any, List, Union, Optional, Dict
+from typing import Any, List, Union, Optional, Dict, Iterable
 import importlib
 import copy
 
@@ -11,90 +11,94 @@ from drl.envs.wrappers import Wrapper
 from drl.utils.typing import Action, Observation, DictReward, EnvOutput
 
 
-def torch_dtype(np_dtype: np.dtype) -> tc.dtype:
+def torch_dtype(dtype: str) -> tc.dtype:
     """
-    Converts a numpy dtype to a torch dtype.
+    Converts a string to a torch dtype.
 
     Args:
-        np_dtype (np.dtype): A numpy dtype.
+        dtype (str): A dtype string like uint8, int32, float64, etc.
 
     Returns:
         torch.dtype: The corresponding torch dtype.
     """
     module = importlib.import_module('torch')
-    dtype = getattr(module, str(np_dtype))
+    dtype = getattr(module, str(dtype))
     return dtype
 
 
 class MetadataManager:
-    def __init__(self, present_defaults: Mapping[str, Any]):
+    def __init__(self, defaults: Dict[str, Any]):
         """
         Maintains running statistics on a stream of experience.
 
         Args:
-            present_defaults (Mapping[str, Any]): A dictionary of field names
-                and their default values. The each value must implement __add__.
+            defaults (Dict[str, Any]): A dictionary mapping from names
+                to default values. The each value must implement __add__.
         """
-        self._fields = present_defaults.keys()
-        self._present_defaults = present_defaults
-        self._present_meta = copy.deepcopy(present_defaults)
-        self._past_meta = {key: list() for key in self._fields}
+        self._keys = defaults.keys()
+        self._defaults = defaults
+        self._present = copy.deepcopy(defaults)
+        self._pasts = {key: list() for key in self._keys}
 
     @property
-    def present_meta(self):
-        """
-        A dictionary of tracked statistics, keyed by field name.
-        """
-        return self._present_meta
+    def keys(self):
+        return self._keys
 
     @property
-    def past_meta(self):
+    def present(self) -> Dict[str, Any]:
         """
-        A dictionary of lists of tracked statistics, keyed by field name.
-        Each stat in a field's list was computed by aggregating over a
-        field-dependent timespan, such as a life or an episode.
+        A dictionary mapping from names to aggregated present values.
         """
-        return self._past_meta
+        return self._present
 
-    def update_present(self, deltas: Mapping[str, Any]) -> None:
+    @property
+    def pasts(self) -> Dict[str, List[Any]]:
         """
-        Update present_meta by incrementing each field by delta[field].
+        A dictionary mapping from names to a list of aggregated past values.
+        """
+        return self._pasts
+
+    def update_present(self, deltas: Dict[str, Any]) -> None:
+        """
+        Updates `self.present` by incrementing `present[key]` by `deltas[key]`.
 
         Args:
-            deltas (Mapping[str, Any]): Deltas for some of the provided fields.
-                The keys must be a subset of self._fields.
+            deltas (Dict[str, Any]): A dictionary mapping a subset of
+                `self.keys` to deltas to increment aggregated present values by.
 
         Returns:
             None.
         """
-        assert set(deltas.keys()) <= set(self._fields)
+        assert set(deltas.keys()) <= set(self.keys)
         for key in deltas:
-            self._present_meta[key] += deltas[key]
+            self._present[key] += deltas[key]
 
-    def present_done(self, fields: List[str]) -> None:
+    def present_done(self, *keys: Iterable[str]) -> None:
         """
-        Update past_meta for listed fields by appending present_meta[field].
+        Updates `pasts` for listed fields by appending present[field].
 
         Args:
-            fields (List[str]): Fields whose present is done.
+            *keys (Iterable[str]): A variable-length listing of keys whose present
+                is done.
 
         Returns:
             None.
         """
-        for key in fields:
-            self._past_meta[key].append(self._present_meta[key])
-            self._present_meta[key] = copy.deepcopy(self._present_defaults[key])
+        for key in keys:
+            self._pasts[key].append(self._present[key])
+            self._present[key] = copy.deepcopy(self._defaults[key])
 
     def past_done(self) -> None:
         """
-        Update past_meta by resetting to empty. To ensure correct aggregation
-        of statistics is not interrupted by trajectory segment boundaries,
-        present_meta is kept intact.
+        Resets `self.pasts` to a dictionary of empty lists.
+
+        To ensure correct aggregation of statistics is not interrupted by
+        trajectory segment boundaries, `self.present` is kept intact.
 
         Returns:
             None.
         """
-        self._past_meta = {key: list() for key in self._fields}
+        self._pasts = {key: list() for key in self._keys}
 
 
 class Trajectory:
@@ -126,13 +130,24 @@ class Trajectory:
         self._dones = None
         self._erase()
 
+    @property
+    def observation_dtype(self):
+        return torch_dtype(self._obs_space.dtype.name)
+
+    @property
+    def action_dtype(self):
+        return torch_dtype(self._ac_space.dtype.name)
+
     def _erase(self) -> None:
         obs_shape, ac_shape = self._obs_space.shape, self._ac_space.shape
-        ac_dtype = torch_dtype(self._ac_space.dtype)
-        self._observations = tc.zeros((self._timesteps + 1, *obs_shape),
-                                      dtype=tc.float32)
-        self._actions = tc.zeros((self._timesteps + 1, *ac_shape),
-                                 dtype=ac_dtype)
+        self._observations = tc.zeros(
+            size=(self._timesteps + 1, *obs_shape),
+            dtype=self.observation_dtype,
+        )
+        self._actions = tc.zeros(
+            size=(self._timesteps + 1, *ac_shape),
+            dtype=self.action_dtype,
+        )
         self._rewards = {
             k: tc.zeros(self._timesteps, dtype=tc.float32)
             for k in self._rew_keys
@@ -156,8 +171,8 @@ class Trajectory:
             None.
         """
         i = t % self._timesteps
-        self._observations[i] = tc.tensor(o_t).float()
-        self._actions[i] = tc.tensor(a_t).long()
+        self._observations[i] = tc.tensor(o_t, dtype=self.observation_dtype)
+        self._actions[i] = tc.tensor(a_t, dtype=self.action_dtype)
         for key in self._rew_keys:
             self._rewards[key][i] = tc.tensor(r_t[key]).float()
         self._dones[i] = tc.tensor(d_t).float()
@@ -238,7 +253,7 @@ class TrajectoryManager:
             seg_len=self._seg_len,
             extra_steps=self._extra_steps)
         self._metadata_mgr = MetadataManager(
-            present_defaults={
+            defaults={
                 'ep_len': 0, 'ep_ret': 0., 'ep_len_raw': 0, 'ep_ret_raw': 0.
             })
         _ = self.generate(initial=True)
@@ -299,7 +314,7 @@ class TrajectoryManager:
                     'ep_ret_raw': r_t['extrinsic_raw']
                 })
             if done_t:
-                self._metadata_mgr.present_done(fields=['ep_len', 'ep_ret'])
+                self._metadata_mgr.present_done('ep_len', 'ep_ret')
 
                 def was_real_done():
                     if 'ale.lives' in info_t:
@@ -307,8 +322,7 @@ class TrajectoryManager:
                     return True
 
                 if was_real_done():
-                    self._metadata_mgr.present_done(
-                        fields=['ep_len_raw', 'ep_ret_raw'])
+                    self._metadata_mgr.present_done('ep_len_raw', 'ep_ret_raw')
                 o_tp1 = self._env.reset()
             a_tp1 = self._choose_action(o_tp1)
             self._o_t = o_tp1
@@ -326,7 +340,7 @@ class TrajectoryManager:
         self._trajectory.record_nexts(o_Tp1=o_tp1, a_Tp1=a_tp1)
         results = {
             **self._trajectory.report(),
-            'metadata': self._metadata_mgr.past_meta
+            'metadata': self._metadata_mgr.pasts
         }
         self._metadata_mgr.past_done()
         return results
