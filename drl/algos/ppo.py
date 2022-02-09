@@ -154,7 +154,7 @@ class PPO(Algo):
         self._use_pcgrad = use_pcgrad
         self._reward_weights = reward_weights
 
-        self._stats_memory_len = stats_memory_len
+        self._stats_window_len = stats_window_len
         self._checkpoint_frequency = checkpoint_frequency
         self._non_learning_steps = non_learning_steps
         self._max_steps = max_steps
