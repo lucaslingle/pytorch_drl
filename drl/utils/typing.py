@@ -22,3 +22,5 @@ Reward = Union[ScalarReward, DictReward]
 EnvOutput = Tuple[Observation, Reward, bool, Mapping[str, Any]]
 
 FlatGrad = np.ndarray
+
+NestedTensor = Union[tc.Tensor, 'NestedTensor']

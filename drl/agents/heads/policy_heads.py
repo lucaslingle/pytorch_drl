@@ -2,7 +2,7 @@
 Policy heads.
 """
 
-from typing import Mapping, Any, Type, Callable
+from typing import Mapping, Any, Type, Callable, Optional
 import abc
 
 import torch as tc
@@ -67,8 +67,8 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
             num_actions: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
             **kwargs: Mapping[str, Any]):
         """
         Args:
@@ -79,8 +79,8 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
                 HeadEligibleArchitecture.
             head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
                 for head architecture.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         DiscretePolicyHead.__init__(self, num_features, num_actions)
@@ -119,8 +119,8 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
             action_dim: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
             **kwargs: Mapping[str, Any]):
         """
         Args:
@@ -131,8 +131,8 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
                 HeadEligibleArchitecture.
             head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
                 for head architecture.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         ContinuousPolicyHead.__init__(self, num_features, action_dim)

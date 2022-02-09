@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Optional, Callable
 
 import torch as tc
 
@@ -17,8 +17,8 @@ class DuelingArchitecture(HeadEligibleArchitecture):
             input_dim: int,
             output_dim: int,
             widening: int,
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None]):
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]]):
         """
         Args:
             input_dim (int): Input dimensionality.
@@ -26,8 +26,8 @@ class DuelingArchitecture(HeadEligibleArchitecture):
             widening (int): Widening factor for multiplying the number of
                 internal features present in the original architecture
                 of Wang et al., 2016.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
         """
         super().__init__(input_dim, output_dim, w_init, b_init)
         self._proj = tc.nn.Sequential(

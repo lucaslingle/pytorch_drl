@@ -2,7 +2,7 @@
 Action-value prediction heads.
 """
 
-from typing import Mapping, Any, Type, Callable
+from typing import Mapping, Any, Type, Callable, Optional
 import abc
 
 import torch as tc
@@ -89,8 +89,8 @@ class SimpleDiscreteActionValueHead(SimpleActionValueHead,
             num_actions: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
             **kwargs: Mapping[str, Any]):
         """
         Args:
@@ -101,8 +101,8 @@ class SimpleDiscreteActionValueHead(SimpleActionValueHead,
                 HeadEligibleArchitecture.
             head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
                 for head architecture.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         SimpleActionValueHead.__init__(self)
@@ -144,8 +144,8 @@ class SimpleContinuousActionValueHead(SimpleActionValueHead,
             num_features: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
             **kwargs: Mapping[str, Any]):
         """
         Args:
@@ -155,8 +155,8 @@ class SimpleContinuousActionValueHead(SimpleActionValueHead,
                 HeadEligibleArchitecture.
             head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
                 for head architecture.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         SimpleActionValueHead.__init__(self)
@@ -199,8 +199,8 @@ class DistributionalDiscreteActionValueHead(DistributionalActionValueHead,
             num_actions: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
             vmin: float,
             vmax: float,
             num_bins: int,
@@ -214,8 +214,8 @@ class DistributionalDiscreteActionValueHead(DistributionalActionValueHead,
                 HeadEligibleArchitecture.
             head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
                 for head architecture.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
             vmin (float): Minimum return value.
             vmax (float): Maximum return value.
             num_bins (int): Number of bins for distributional value learning.

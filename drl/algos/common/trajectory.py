@@ -4,10 +4,11 @@ import copy
 
 import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
-import numpy as np
 import gym
 
 from drl.envs.wrappers import Wrapper
+from drl.agents.integration import Agent
+from drl.utils.nested import clone_nested_tensor
 from drl.utils.typing import Action, Observation, DictReward, EnvOutput
 
 
@@ -170,7 +171,7 @@ class Trajectory:
         Returns:
             None.
         """
-        i = t % self._timesteps
+        i = t
         self._observations[i] = tc.tensor(o_t, dtype=self.observation_dtype)
         self._actions[i] = tc.tensor(a_t, dtype=self.action_dtype)
         for key in self._rew_keys:
@@ -203,20 +204,22 @@ class Trajectory:
             Dict[str, tc.Tensor]: Trajectory data.
         """
         results = {
-            'observations': self._observations,
-            'actions': self._actions,
-            'rewards': self._rewards,
-            'dones': self._dones
+            'observations': clone_nested_tensor(self._observations),
+            'actions': clone_nested_tensor(self._actions),
+            'rewards': clone_nested_tensor(self._rewards),
+            'dones': clone_nested_tensor(self._dones)
         }
         self._erase()
         if self._extra_steps > 0:
             src = slice(self._seg_len, self._seg_len + self._extra_steps)
             dest = slice(0, self._extra_steps)
-            self._observations[dest] = results['observations'][src]
-            self._actions[dest] = results['actions'][src]
+            self._observations[dest] = clone_nested_tensor(
+                results['observations'][src])
+            self._actions[dest] = clone_nested_tensor(results['actions'][src])
             for k in self._rew_keys:
-                self._rewards[k][dest] = results['rewards'][k][src]
-            self._dones[dest] = results['dones'][src]
+                self._rewards[k][dest] = clone_nested_tensor(
+                    results['rewards'][k][src])
+            self._dones[dest] = clone_nested_tensor(results['dones'][src])
         return results
 
 
@@ -224,14 +227,15 @@ class TrajectoryManager:
     def __init__(
             self,
             env: Union[gym.core.Env, Wrapper],
-            policy_net: DDP,
+            policy_net: Union[Agent, DDP],
             seg_len: int,
             extra_steps: int):
         """
         Args:
             env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper instance.
-            policy_net (torch.nn.parallel.DistributedDataParallel): DDP-wrapped
-                `Agent` instance. Must have 'policy' as a prediction key.
+            policy_net (Union[Agent, torch.nn.parallel.DistributedDataParallel]):
+                `Agent` or DDP-wrapped `Agent` instance. Must have 'policy'
+                as a prediction key.
             seg_len (int): Trajectory segment length.
             extra_steps (int): Extra steps for n-step reward based credit assignment.
                 Should equal n-1 when n steps are used.
@@ -339,8 +343,7 @@ class TrajectoryManager:
         # a_Tp1 is included to simplify the implementation elsewhere.
         self._trajectory.record_nexts(o_Tp1=o_tp1, a_Tp1=a_tp1)
         results = {
-            **self._trajectory.report(),
-            'metadata': self._metadata_mgr.pasts
+            **self._trajectory.report(), 'metadata': self._metadata_mgr.pasts
         }
         self._metadata_mgr.past_done()
         return results
