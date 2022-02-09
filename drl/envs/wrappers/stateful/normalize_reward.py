@@ -11,7 +11,7 @@ from drl.envs.wrappers.stateless.abstract import Wrapper, RewardSpec
 from drl.envs.wrappers.stateful.abstract import TrainableWrapper
 from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.algos.common import global_mean
-from drl.utils.typing import Checkpointable, Action, EnvOutput
+from drl.utils.types import Checkpointable, Action, EnvOutput
 
 
 class _ReturnAcc(tc.nn.Module):

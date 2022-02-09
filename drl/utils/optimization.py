@@ -3,7 +3,7 @@ import importlib
 
 import torch as tc
 
-from drl.utils.typing import Module, Optimizer, Scheduler
+from drl.utils.types import Module, Optimizer, Scheduler
 
 
 def get_optimizer(

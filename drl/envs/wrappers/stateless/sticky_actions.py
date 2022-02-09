@@ -7,7 +7,7 @@ from typing import Union
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper, ActionWrapper
-from drl.utils.typing import Action
+from drl.utils.types import Action
 
 
 class StickyActionsWrapper(ActionWrapper):

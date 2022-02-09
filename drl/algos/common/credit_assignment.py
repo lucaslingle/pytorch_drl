@@ -4,7 +4,7 @@ import importlib
 
 import torch as tc
 
-from drl.utils.typing import CreditAssignmentSpec
+from drl.utils.types import CreditAssignmentSpec
 
 
 def extract_reward_name(prediction_key: str) -> str:

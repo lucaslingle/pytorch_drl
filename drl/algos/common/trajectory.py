@@ -9,7 +9,7 @@ import gym
 from drl.envs.wrappers import Wrapper
 from drl.agents.integration import Agent
 from drl.utils.nested import clone_nested_tensor
-from drl.utils.typing import Action, Observation, DictReward, EnvOutput
+from drl.utils.types import Action, Observation, DictReward, EnvOutput
 
 
 def torch_dtype(dtype: str) -> tc.dtype:

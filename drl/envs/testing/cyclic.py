@@ -1,7 +1,7 @@
 import numpy as np
 import gym
 
-from drl.utils.typing import Observation, Action, EnvOutput
+from drl.utils.types import Observation, Action, EnvOutput
 from drl.envs.wrappers.stateless import RewardSpec
 
 

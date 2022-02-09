@@ -16,7 +16,7 @@ from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.agents.preprocessing import ToChannelMajor
 from drl.algos.common import global_mean
 from drl.utils.optimization import get_optimizer
-from drl.utils.typing import Checkpointable, Action, EnvOutput
+from drl.utils.types import Checkpointable, Action, EnvOutput
 
 
 class _RNDNetwork(tc.nn.Module):

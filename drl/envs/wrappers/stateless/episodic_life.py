@@ -7,7 +7,7 @@ from typing import Union, Callable, Mapping, Any
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
-from drl.utils.typing import Action, Observation, EnvOutput
+from drl.utils.types import Action, Observation, EnvOutput
 
 
 class EpisodicLifeWrapper(Wrapper):

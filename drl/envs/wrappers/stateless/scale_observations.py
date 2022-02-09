@@ -8,7 +8,7 @@ import numpy as np
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper, ObservationWrapper
-from drl.utils.typing import Observation
+from drl.utils.types import Observation
 
 
 class ScaleObservationsWrapper(ObservationWrapper):

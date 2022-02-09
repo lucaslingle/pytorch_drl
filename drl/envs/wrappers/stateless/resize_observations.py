@@ -9,7 +9,7 @@ import gym
 import cv2
 
 from drl.envs.wrappers.stateless.abstract import Wrapper, ObservationWrapper
-from drl.utils.typing import Observation
+from drl.utils.types import Observation
 
 
 class ResizeObservationsWrapper(ObservationWrapper):

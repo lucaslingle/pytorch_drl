@@ -28,7 +28,7 @@ from drl.agents.heads import (
 from drl.agents.integration.agent import Agent
 from drl.utils.optimization import get_optimizer, get_scheduler
 from drl.utils.checkpointing import maybe_load_checkpoints
-from drl.utils.typing import Optimizer, Scheduler
+from drl.utils.types import Optimizer, Scheduler
 
 
 def get_process_seed(rank: int, config: ConfigParser) -> int:

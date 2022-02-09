@@ -8,7 +8,7 @@ import gym
 
 from drl.envs.wrappers.stateless.abstract import (
     Wrapper, RewardWrapper, RewardSpec)
-from drl.utils.typing import Reward, DictReward
+from drl.utils.types import Reward, DictReward
 
 
 class RewardToDictWrapper(RewardWrapper):

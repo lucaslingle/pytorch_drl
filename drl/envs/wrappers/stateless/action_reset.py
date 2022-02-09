@@ -7,7 +7,7 @@ from typing import Union, List, Any, Mapping
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
-from drl.utils.typing import Action, Observation
+from drl.utils.types import Action, Observation
 
 
 class ActionResetWrapper(Wrapper):

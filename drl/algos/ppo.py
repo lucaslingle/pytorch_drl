@@ -22,7 +22,7 @@ from drl.algos.common import (
     LinearSchedule)
 from drl.envs.wrappers import Wrapper
 from drl.utils.checkpointing import save_checkpoints
-from drl.utils.typing import CreditAssignmentSpec, Optimizer, Scheduler
+from drl.utils.types import CreditAssignmentSpec, Optimizer, Scheduler
 
 
 class PPO(Algo):

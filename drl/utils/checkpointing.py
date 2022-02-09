@@ -8,7 +8,7 @@ import re
 
 import torch as tc
 
-from drl.utils.typing import Checkpointable
+from drl.utils.types import Checkpointable
 
 
 def format_name(kind: str, steps: int, suffix: str) -> str:

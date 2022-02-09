@@ -3,7 +3,7 @@ from typing import Mapping
 import numpy as np
 import torch as tc
 
-from drl.utils.typing import Module, Optimizer, FlatGrad
+from drl.utils.types import Module, Optimizer, FlatGrad
 
 
 def _norm(gradient: FlatGrad) -> float:

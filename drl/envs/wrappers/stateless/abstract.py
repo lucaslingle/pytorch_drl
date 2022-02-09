@@ -7,7 +7,7 @@ import abc
 
 import gym
 
-from drl.utils.typing import Checkpointable, Action, Observation, Reward, EnvOutput
+from drl.utils.types import Checkpointable, Action, Observation, Reward, EnvOutput
 
 
 class RewardSpec:

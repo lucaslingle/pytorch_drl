@@ -19,7 +19,10 @@ class ConfigParser(dict):
         """
         super().__init__()
         self._defaults = defaults if defaults else dict()
-        self._config = None
+        self._config = defaults
+
+    def to_dict(self):
+        return self._config
 
     def read(self, config_path: str, verbose: bool = False) -> None:
         """

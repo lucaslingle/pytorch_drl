@@ -7,7 +7,7 @@ from typing import Union, Mapping, Any
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
-from drl.utils.typing import Action, Observation
+from drl.utils.types import Action, Observation
 
 
 class NoopResetWrapper(Wrapper):

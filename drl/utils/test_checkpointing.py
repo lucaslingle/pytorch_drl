@@ -6,7 +6,8 @@ import torch as tc
 from drl.utils.checkpointing import (
     format_name, parse_name, save_checkpoints, maybe_load_checkpoints)
 
-CHECKPOINT_DIR = os.path.join(tempfile.gettempdir(), 'pytorch_drl_testing')
+CHECKPOINT_DIR = os.path.join(
+    tempfile.gettempdir(), 'pytorch_drl_testing/checkpoints')
 STEPS = 7357
 
 

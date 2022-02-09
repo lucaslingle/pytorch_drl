@@ -9,7 +9,7 @@ import numpy as np
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
-from drl.utils.typing import Action, EnvOutput
+from drl.utils.types import Action, EnvOutput
 
 
 class MaxAndSkipWrapper(Wrapper):

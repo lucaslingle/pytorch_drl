@@ -1,6 +1,6 @@
 import torch as tc
 
-from drl.utils.typing import NestedTensor, Indices
+from drl.utils.types import NestedTensor, Indices
 
 
 def slice_nested_tensor(nt: NestedTensor, indices: Indices) -> NestedTensor:

@@ -29,7 +29,7 @@ def create_argparser():
 
 def get_config(args):
     experiment_group_path = os.path.join(args.models_dir, args.experiment_group)
-    config_path = os.path.join(experiment_group_path, 'config.yml')
+    config_path = os.path.join(experiment_group_path, 'config.yaml')
 
     experiment_path = os.path.join(
         experiment_group_path, args.env_name, str(args.seed))
