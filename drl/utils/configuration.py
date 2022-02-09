@@ -64,7 +64,7 @@ class ConfigParser(dict):
         results = nonnested_defaults
         for k in nested_defaults:
             nested = self.make_nested(k, nested_defaults[k])
-            results.update(nested)
+            results = self.merge(defaults=results, provided=nested)
         return results
 
     def merge(self, defaults: Dict[str, Any],
