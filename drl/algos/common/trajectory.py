@@ -171,12 +171,12 @@ class Trajectory:
         Returns:
             None.
         """
-        i = t
-        self._observations[i] = tc.tensor(o_t, dtype=self.observation_dtype)
-        self._actions[i] = tc.tensor(a_t, dtype=self.action_dtype)
+        assert 0 <= t <= self._timesteps - 1
+        self._observations[t] = tc.tensor(o_t, dtype=self.observation_dtype)
+        self._actions[t] = tc.tensor(a_t, dtype=self.action_dtype)
         for key in self._rew_keys:
-            self._rewards[key][i] = tc.tensor(r_t[key]).float()
-        self._dones[i] = tc.tensor(d_t).float()
+            self._rewards[key][t] = tc.tensor(r_t[key]).float()
+        self._dones[t] = tc.tensor(d_t).float()
 
     def record_nexts(self, o_Tp1: Observation, a_Tp1: Action) -> None:
         """

@@ -24,3 +24,4 @@ EnvOutput = Tuple[Observation, Reward, bool, Mapping[str, Any]]
 FlatGrad = np.ndarray
 
 NestedTensor = Union[tc.Tensor, 'NestedTensor']
+Indices = Union[np.ndarray, slice]

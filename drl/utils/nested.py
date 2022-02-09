@@ -1,14 +1,14 @@
 import torch as tc
 
-from drl.utils.typing import NestedTensor
+from drl.utils.typing import NestedTensor, Indices
 
 
-def slice_nested_tensor(nt: NestedTensor, slice_: slice) -> NestedTensor:
+def slice_nested_tensor(nt: NestedTensor, indices: Indices) -> NestedTensor:
     if isinstance(nt, tc.Tensor):
-        return nt[slice_]
+        return nt[indices]
     nt_new = {}
     for k in nt:
-        nt_new[k] = slice_nested_tensor(nt[k], slice_)
+        nt_new[k] = slice_nested_tensor(nt[k], indices)
     return nt_new
 
 

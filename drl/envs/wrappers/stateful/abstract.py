@@ -15,7 +15,9 @@ class TrainableWrapper(Wrapper, metaclass=abc.ABCMeta):
     Wrapper with trainable parameters.
     """
     @abc.abstractmethod
-    def learn(self, mb: Mapping[str, tc.Tensor], **kwargs: Mapping[str, Any]):
+    def learn(
+            self, mb: Mapping[str, tc.Tensor], **kwargs: Mapping[str,
+                                                                 Any]) -> None:
         """
         Args:
             mb (Mapping[str, torch.Tensor]): Minibatch of experience to learn from.

@@ -1,16 +1,15 @@
 import torch as tc
-import numpy as np
 import gym
 
 from drl.algos.common.trajectory import (
     torch_dtype, MetadataManager, Trajectory, TrajectoryManager)
-from drl.envs.wrappers.stateless import RewardSpec, RewardToDictWrapper
+from drl.envs.wrappers import RewardToDictWrapper
+from drl.envs.testing import CyclicEnv
 from drl.agents.preprocessing import OneHotEncode
 from drl.agents.architectures import Identity, Linear
 from drl.agents.integration import Agent
 from drl.agents.heads import CategoricalPolicyHead
 from drl.utils.initializers import get_initializer
-from drl.utils.typing import Observation, Action, EnvOutput
 
 
 def test_torch_dtype():
@@ -140,46 +139,8 @@ def test_trajectory_record():
         actual=traj._dones[0], expected=tc.tensor(d_t, dtype=tc.float32))
 
 
-class FakeEnv(gym.core.Env):
-    def __init__(self):
-        super().__init__()
-        self._observation_space_cardinality = 100
-        self._observation_space = gym.spaces.Discrete(
-            self._observation_space_cardinality)
-        self._action_space = gym.spaces.Discrete(1)
-        self._initial_state = 0
-        self._state = self._initial_state
-
-    @property
-    def observation_space(self) -> gym.spaces.Space:
-        return self._observation_space
-
-    @property
-    def action_space(self) -> gym.spaces.Space:
-        return self._action_space
-
-    @property
-    def reward_spec(self) -> RewardSpec:
-        return RewardSpec(keys=['extrinsic', 'extrinsic_raw'])
-
-    def reset(self) -> Observation:
-        self._state = self._initial_state
-        return np.array(self._state)
-
-    def step(self, action: Action) -> EnvOutput:
-        new_state = self._state + 1
-        new_state %= self._observation_space_cardinality
-        self._state = new_state
-
-        o_tp1 = self._state
-        r_t = {'extrinsic': 1.0, 'extrinsic_raw': 1.0}
-        d_t = False
-        i_t = {}
-        return np.array(o_tp1), r_t, d_t, i_t
-
-
 def test_trajectory_report():
-    env = FakeEnv()
+    env = CyclicEnv()
     traj = make_trajectory(env)
     o_t = env.reset()
 
@@ -208,7 +169,7 @@ def test_trajectory_report():
 
 def make_trajectory_mgr():
     return TrajectoryManager(
-        env=FakeEnv(),
+        env=CyclicEnv(),
         policy_net=Agent(
             preprocessing=[OneHotEncode(depth=100)],
             architecture=Identity(input_shape=[100], w_init=None, b_init=None),
