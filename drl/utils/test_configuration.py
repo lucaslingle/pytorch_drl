@@ -12,6 +12,8 @@ foo:
 bar:
    d: '4.0'
    e: '5.0.0'
+baz:
+   f: 6
 """.strip("\n")
 
 
@@ -41,8 +43,8 @@ def test_parse_defaults():
     path = make_config_path()
     save_config(path)
     config = make_config()
-    results = config.parse_defaults({'foo': 123, 'baz.spam': 42})
-    assert results == {'foo': 123, 'baz': {'spam': 42}}
+    results = config.parse_defaults({'xyz': 1, 'abc.def': 2})
+    assert results == {'xyz': 1, 'abc': {'def': 2}}
 
 
 def test_config_read():
@@ -63,6 +65,7 @@ def test_config_read():
             'e': '5.0.0',
         },
         'baz': {
+            'f': 6,
             'spam': 42,
         }
     }
@@ -77,4 +80,4 @@ def test_config_get():
     config.read(path)
     assert config.get('foo') == {'a': 1, 'b': 2.0, 'c': '3'}
     assert config.get('bar') == {'d': '4.0', 'e': '5.0.0'}
-    assert config.get('baz') == {'spam': 42}
+    assert config.get('baz') == {'f': 6, 'spam': 42}

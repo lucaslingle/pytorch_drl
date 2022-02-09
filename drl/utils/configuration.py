@@ -22,6 +22,14 @@ class ConfigParser(dict):
         self._defaults = self.parse_defaults(defaults if defaults else dict())
         self._config = copy.deepcopy(self._defaults)
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns:
+
+           Dict[str, Any]: Dictionary of configuration keys and values.
+        """
+        return self._config
+
     def make_nested(self, key: str, value: Any) -> Dict[str, Any]:
         """
         Transforms a key of the form 'a.b.c ... x.y.z' and a value into a
@@ -58,14 +66,6 @@ class ConfigParser(dict):
             nested = self.make_nested(k, nested_defaults[k])
             results.update(nested)
         return results
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Returns:
-
-           Dict[str, Any]: Dictionary of configuration keys and values.
-        """
-        return self._config
 
     def merge(self, defaults: Dict[str, Any],
               provided: Dict[str, Any]) -> Dict[str, Any]:
