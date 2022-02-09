@@ -20,9 +20,9 @@ class DummyTrainableWrapper(TrainableWrapper):
     def counts(self):
         return self._counts
 
-    def learn(self,
-              mb: Mapping[str, tc.Tensor],
-              **kwargs: Mapping[str, Any]) -> None:
+    def learn(
+            self, mb: Mapping[str, tc.Tensor], **kwargs: Mapping[str,
+                                                                 Any]) -> None:
         mb_size = mb['observations'].shape[0]
         for idx in range(mb_size):
             o_idx = mb['observations'][idx]
