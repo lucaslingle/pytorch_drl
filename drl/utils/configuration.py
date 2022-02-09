@@ -18,10 +18,24 @@ class ConfigParser(dict):
                 defaults['env.id'].
         """
         super().__init__()
-        self._defaults = defaults if defaults else dict()
-        self._config = defaults
+        self._config = self.parse_defaults(defaults if defaults else dict())
 
-    def to_dict(self):
+    def make_nested(self, key_suffix, value):
+        key_prefix, _, key_suffix = key_suffix.partition('.')
+        if len(key_suffix) == 0:
+            return {key_prefix: value}
+        return {key_prefix: self.make_nested(key_suffix, value)}
+
+    def parse_defaults(self, defaults):
+        nonnested_defaults = {k: v for k, v in defaults.items() if '.' not in k}
+        nested_defaults = {k: v for k, v in defaults.items() if '.' in k}
+        results = nonnested_defaults
+        for k in nested_defaults:
+            nested = self.make_nested(k, nested_defaults[k])
+            results.update(nested)
+        return results
+
+    def to_dict(self) -> Dict[str, Any]:
         return self._config
 
     def read(self, config_path: str, verbose: bool = False) -> None:
@@ -36,23 +50,8 @@ class ConfigParser(dict):
         Returns:
             None.
         """
-        config = {k: v for k, v in self._defaults.items() if '.' not in k}
-        nested_defaults = {k: v for k, v in self._defaults.items() if '.' in k}
-
-        # read in a yaml file.
         with open(config_path, 'rb') as f:
-            config.update(yaml.safe_load(f))
-
-        # support for nested defaults, makes syntax easier elsewhere.
-        for k in nested_defaults:
-            key_sequence = k.split('.')
-            subconfig = config
-            for key in key_sequence[0:-1]:
-                subconfig = subconfig[key]
-            if not hasattr(subconfig, key_sequence[-1]):
-                subconfig[key_sequence[-1]] = nested_defaults[k]
-
-        self._config = config
+            self._config.update(yaml.safe_load(f))
         if verbose:
             for k in self._config:
                 print(f"{k}: {self._config[k]}")
@@ -79,7 +78,7 @@ class ConfigParser(dict):
         Returns:
             Any: item value.
         """
-        return self._config[item]
+        return self.__getitem__(item)
 
     def items(self) -> Iterable[Tuple[str, Any]]:
         """
