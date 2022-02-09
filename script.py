@@ -19,7 +19,7 @@ def create_argparser():
     parser.add_argument(
         '--models_dir', type=str, default='models_dir')
     parser.add_argument(
-        '--experiment_group', type=str, default='atari_ppo')
+        '--experiment_group', type=str, default='debug') #default='atari_ppo')
     parser.add_argument(
         '--env_name', type=str, default='BreakoutNoFrameskip-v4')
     parser.add_argument(

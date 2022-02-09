@@ -2,8 +2,8 @@
 Config util.
 """
 
-from typing import Optional, Dict, Any
-from collections.abc import ItemsView
+from typing import Optional, Dict, Any, ItemsView
+import copy
 
 import yaml
 
@@ -19,7 +19,8 @@ class ConfigParser(dict):
                 defaults['env.id'].
         """
         super().__init__()
-        self._config = self.parse_defaults(defaults if defaults else dict())
+        self._defaults = self.parse_defaults(defaults if defaults else dict())
+        self._config = copy.deepcopy(self._defaults)
 
     def make_nested(self, key: str, value: Any) -> Dict[str, Any]:
         """
@@ -61,9 +62,38 @@ class ConfigParser(dict):
     def to_dict(self) -> Dict[str, Any]:
         """
         Returns:
+
            Dict[str, Any]: Dictionary of configuration keys and values.
         """
         return self._config
+
+    def merge(self, defaults: Dict[str, Any],
+              provided: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Merges a dictionary of provided and default values.
+        Required to properly combine nested dictionaries.
+
+        Args:
+            defaults (Dict[str, Any]): Dict of default values.
+            provided (Dict[str, Any]): Dict of provided non-default values.
+
+        Returns:
+            Dict[str, Any]: Dictionary with merged results.
+        """
+        keyspace = set(defaults.keys()).union(set(provided.keys()))
+        results = dict()
+        for key in keyspace:
+            if key not in defaults:
+                results[key] = provided[key]
+            elif key not in provided:
+                results[key] = defaults[key]
+            else:
+                if isinstance(defaults[key], dict) and isinstance(provided[key],
+                                                                  dict):
+                    results[key] = self.merge(defaults[key], provided[key])
+                else:
+                    results[key] = provided[key]
+        return results
 
     def read(self, config_path: str, verbose: bool = False) -> None:
         """
@@ -78,7 +108,8 @@ class ConfigParser(dict):
             None.
         """
         with open(config_path, 'rb') as f:
-            self._config.update(yaml.safe_load(f))
+            self._config = self.merge(
+                defaults=self._defaults, provided=yaml.safe_load(f))
         if verbose:
             for k in self._config:
                 print(f"{k}: {self._config[k]}")
