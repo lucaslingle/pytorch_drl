@@ -1,8 +1,11 @@
 from drl.algos.common.credit_assignment import (
     extract_reward_name,
     get_credit_assignment_ops,
+    AdvantageEstimator,
+    BellmanOperator,
     GAE,
-    NStepAdvantageEstimator)
+    NStepAdvantageEstimator,
+    SimpleDiscreteBellmanOptimalityOperator)
 from drl.algos.common.grad_ops import apply_pcgrad
 from drl.algos.common.losses import get_loss
 from drl.algos.common.metrics import (
@@ -19,8 +22,11 @@ from drl.algos.common.wrapper_ops import update_trainable_wrappers
 __all__ = [
     "extract_reward_name",
     "get_credit_assignment_ops",
+    "AdvantageEstimator",
+    "BellmanOperator",
     "GAE",
     "NStepAdvantageEstimator",
+    "SimpleDiscreteBellmanOptimalityOperator",
     "apply_pcgrad",
     "get_loss",
     "global_mean",
