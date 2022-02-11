@@ -203,14 +203,13 @@ class PPO(Algo):
                  no_grad: bool) -> Dict[str, NestedTensor]:
         with tc.no_grad() if no_grad else ExitStack():
             # make policy and value predictions.
-            separate_value_net = self._value_net is not None
             policy_predict, value_predict = self._get_prediction_keys()
-            if not separate_value_net:
+            if not self._value_net:
                 policy_predict.extend(value_predict)
             predictions = self._policy_net(
                 trajectory['observations'], predict=policy_predict)
             pi = predictions['policy']
-            if separate_value_net:
+            if self._value_net:
                 predictions = self._value_net(
                     trajectory['observations'], predict=value_predict)
             vpreds = {k: predictions[k] for k in value_predict}
@@ -287,7 +286,7 @@ class PPO(Algo):
                                entropy_dict['policy_entropy_bonus']
             policy_loss = -policy_objective
             value_loss = value_dict['vf_loss']
-            vf_coef = 1 if self._value_net is not None else self._vf_loss_coef
+            vf_coef = 1 if self._value_net else self._vf_loss_coef
             composite_loss = policy_loss + vf_coef * value_loss
             return {
                 'policy_loss': policy_loss,
@@ -310,7 +309,7 @@ class PPO(Algo):
             if k.startswith('policy_'):
                 policy_losses[k] = losses[k]
             if k.startswith('value_'):
-                if self._value_net is not None:
+                if self._value_net:
                     value_losses[k] = losses[k]
                 else:
                     policy_losses[k] = losses[k]
