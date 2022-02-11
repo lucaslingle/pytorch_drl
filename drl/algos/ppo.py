@@ -306,14 +306,11 @@ class PPO(Algo):
             policy_losses['composite_loss'] = losses['composite_loss']
             value_losses['composite_loss'] = losses['composite_loss']
             return policy_losses, value_losses
-        for k in losses:
-            if k.startswith('policy_'):
-                policy_losses[k] = losses[k]
-            if k.startswith('value_'):
-                if self._value_net:
-                    value_losses[k] = losses[k]
-                else:
-                    policy_losses[k] = losses[k]
+        policy_losses['policy_loss'] = losses['policy_loss']
+        if self._value_net:
+            value_losses['value_loss'] = losses['value_loss']
+        else:
+            policy_losses['value_loss'] = losses['value_loss']
         return policy_losses, value_losses
 
     def _optimize_losses(
