@@ -331,7 +331,6 @@ class PPO(Algo):
         optimizer.step()
 
     def training_loop(self) -> None:
-        separate_value_net = self._value_net is not None
         while self._global_step < self._max_steps:
             # generate trajectory.
             trajectory = self._trajectory_mgr.generate()
@@ -358,8 +357,8 @@ class PPO(Algo):
                         net=self._policy_net,
                         optimizer=self._policy_optimizer,
                         losses=policy_losses,
-                        retain_graph=separate_value_net)
-                    if separate_value_net:
+                        retain_graph=self._value_net is not None)
+                    if self._value_net:
                         self._optimize_losses(
                             net=self._value_net,
                             optimizer=self._value_optimizer,
