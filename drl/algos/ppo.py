@@ -297,7 +297,7 @@ class PPO(Algo):
                 'clipfrac': policy_dict['clipfrac']
             }
 
-    def _maybe_split_losses(
+    def _split_losses(
         self, losses: Dict[str, tc.Tensor]
     ) -> Tuple[Dict[str, tc.Tensor], Dict[str, tc.Tensor]]:
         policy_losses = dict()
@@ -351,8 +351,7 @@ class PPO(Algo):
                         continue
                     losses = self.compute_losses(
                         minibatch=minibatch, no_grad=False)
-                    policy_losses, value_losses = self._maybe_split_losses(
-                        losses=losses)
+                    policy_losses, value_losses = self._split_losses(losses)
                     self._optimize_losses(
                         net=self._policy_net,
                         optimizer=self._policy_optimizer,
