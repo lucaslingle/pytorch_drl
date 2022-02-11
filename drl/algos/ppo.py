@@ -262,8 +262,8 @@ class PPO(Algo):
         return reward_weights
 
     def compute_losses_and_metrics(
-            self, minibatch: Dict[str, NestedTensor], no_grad: bool
-    ) -> Dict[str, tc.Tensor]:
+            self, minibatch: Dict[str, NestedTensor],
+            no_grad: bool) -> Dict[str, tc.Tensor]:
         with tc.no_grad() if no_grad else ExitStack():
             minibatch_new = self.annotate(trajectory=minibatch, no_grad=no_grad)
             entropy_dict = ppo_policy_entropy_bonus(

@@ -23,7 +23,7 @@ class Algo(metaclass=abc.ABCMeta):
     def annotate(self, trajectory: Dict[str, NestedTensor],
                  no_grad: bool) -> Dict[str, NestedTensor]:
         """
-        Forward pass through the networks.
+        Annotates trajectory with predictions.
         """
         pass
 
@@ -32,15 +32,16 @@ class Algo(metaclass=abc.ABCMeta):
             self, trajectory: Dict[str,
                                    NestedTensor]) -> Dict[str, NestedTensor]:
         """
-        Assign credit backwards in time.
+        Assigns credit backwards in time.
         """
         pass
 
     @abc.abstractmethod
-    def compute_losses(self, mb: Dict[str, NestedTensor],
-                       no_grad: bool) -> Dict[str, tc.Tensor]:
+    def compute_losses_and_metrics(
+            self, mb: Dict[str, NestedTensor],
+            no_grad: bool) -> Dict[str, tc.Tensor]:
         """
-        Compute losses for learning.
+        Computes losses and metrics.
         """
         pass
 
