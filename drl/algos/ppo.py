@@ -1,4 +1,4 @@
-from typing import Mapping, Union, Optional, Dict, Tuple
+from typing import Mapping, Union, Optional, Dict, Tuple, List
 from contextlib import ExitStack
 
 import torch as tc
@@ -184,7 +184,7 @@ class PPO(Algo):
         if self._rank == 0:
             self._writer = SummaryWriter(log_dir)
 
-    def _get_reward_keys(self, omit_raw=True):
+    def _get_reward_keys(self, omit_raw: bool = True) -> List[str]:
         reward_spec = self._env.reward_spec
         assert reward_spec is not None
         reward_keys = reward_spec.keys
@@ -193,12 +193,10 @@ class PPO(Algo):
             assert len(reward_keys) > 0
         return reward_keys
 
-    def _maybe_split_prediction_keys(self, separate_value_net):
+    def _get_prediction_keys(self) -> Tuple[List[str], List[str]]:
         reward_keys = self._get_reward_keys(omit_raw=True)
         policy_predict = ['policy']
         value_predict = [f'value_{k}' for k in reward_keys]
-        if not separate_value_net:
-            policy_predict.extend(value_predict)
         return policy_predict, value_predict
 
     def annotate(self, trajectory: Dict[str, NestedTensor],
@@ -206,16 +204,16 @@ class PPO(Algo):
         with tc.no_grad() if no_grad else ExitStack():
             # make policy and value predictions.
             separate_value_net = self._value_net is not None
-            policy_predict, value_predict = self._maybe_split_prediction_keys(
-                separate_value_net=separate_value_net)
+            policy_predict, value_predict = self._get_prediction_keys()
+            if not separate_value_net:
+                policy_predict.extend(value_predict)
             predictions = self._policy_net(
                 trajectory['observations'], predict=policy_predict)
             pi = predictions['policy']
-            if not separate_value_net:
-                vpreds = {k: predictions[k] for k in value_predict}
-            else:
-                vpreds = self._value_net(
+            if separate_value_net:
+                predictions = self._value_net(
                     trajectory['observations'], predict=value_predict)
+            vpreds = {k: predictions[k] for k in value_predict}
 
             # shallow copy of trajectory dict, point to initial/new values.
             trajectory_new = {
