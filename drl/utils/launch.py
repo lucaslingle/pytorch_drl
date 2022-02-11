@@ -14,10 +14,9 @@ import gym
 
 from drl.utils.configuration import ConfigParser
 from drl.envs.wrappers import Wrapper
-from drl.agents.preprocessing.abstract import Preprocessing
-from drl.agents.architectures import Architecture
-from drl.agents.architectures.stateless.abstract import StatelessArchitecture
-from drl.agents.architectures.stateful.abstract import StatefulArchitecture
+from drl.agents.preprocessing import Preprocessing
+from drl.agents.architectures import (
+    Architecture, StatelessArchitecture, StatefulArchitecture)
 from drl.utils.initializers import get_initializer
 from drl.agents.heads import (
     Head,

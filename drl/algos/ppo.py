@@ -1,4 +1,4 @@
-from typing import Mapping, Union, Optional, Dict
+from typing import Mapping, Union, Optional, Dict, Tuple
 from contextlib import ExitStack
 
 import torch as tc
@@ -13,7 +13,6 @@ from drl.algos.common import (
     MultiQueue,
     extract_reward_name,
     get_credit_assignment_ops,
-    AdvantageEstimator,
     get_loss,
     global_means,
     global_gathers,
@@ -264,49 +263,48 @@ class PPO(Algo):
                set(self._get_reward_keys(omit_raw=True))
         return reward_weights
 
-    def compute_losses(self, mb: Dict[str, NestedTensor],
+    def compute_losses(self, minibatch: Dict[str, NestedTensor],
                        no_grad: bool) -> Dict[str, tc.Tensor]:
         with tc.no_grad() if no_grad else ExitStack():
-            mb_new = self.annotate(trajectory=mb, no_grad=no_grad)
-            ent_dict = ppo_policy_entropy_bonus(
-                entropies=mb_new['entropies'],
-                ent_coef=self._ent_coef.value(self._global_step),
-                no_grad=no_grad)
-            pol_dict = ppo_policy_surrogate_objective(
-                logprobs_new=mb_new['logprobs'],
-                logprobs_old=mb['logprobs'],
-                advantages=mb['advantages'],
+            minibatch_new = self.annotate(trajectory=minibatch, no_grad=no_grad)
+            entropy_dict = ppo_policy_entropy_bonus(
+                entropies=minibatch_new['entropies'],
+                ent_coef=self._ent_coef.value(self._global_step))
+            policy_dict = ppo_policy_surrogate_objective(
+                logprobs_new=minibatch_new['logprobs'],
+                logprobs_old=minibatch['logprobs'],
+                advantages=minibatch['advantages'],
                 clip_param=self._clip_param.value(self._global_step),
-                reward_weights=self._get_reward_weights(),
-                no_grad=no_grad)
-            val_dict = ppo_vf_loss(
-                vpreds_new=mb_new['vpreds'],
-                vpreds_old=mb['vpreds'],
-                td_lambda_returns=mb['td_lambda_returns'],
+                reward_weights=self._get_reward_weights())
+            value_dict = ppo_vf_loss(
+                vpreds_new=minibatch_new['vpreds'],
+                vpreds_old=minibatch['vpreds'],
+                td_lambda_returns=minibatch['td_lambda_returns'],
                 clip_param=self._clip_param.value(self._global_step),
                 vf_loss_criterion=self._vf_loss_criterion,
                 vf_loss_clipping=self._vf_loss_clipping,
                 vf_simple_weighting=self._vf_simple_weighting,
-                reward_weights=self._get_reward_weights(),
-                no_grad=no_grad)
-            policy_objective = pol_dict['policy_surrogate_objective'] + \
-                               ent_dict['policy_entropy_bonus']
+                reward_weights=self._get_reward_weights())
+            policy_objective = policy_dict['policy_surrogate_objective'] + \
+                               entropy_dict['policy_entropy_bonus']
             policy_loss = -policy_objective
-            value_loss = val_dict['vf_loss']
+            value_loss = value_dict['vf_loss']
             vf_coef = 1 if self._value_net is not None else self._vf_loss_coef
             composite_loss = policy_loss + vf_coef * value_loss
             return {
                 'policy_loss': policy_loss,
                 'value_loss': value_loss,
                 'composite_loss': composite_loss,
-                'meanent': ent_dict['state_averaged_entropy'],
-                'clipfrac': pol_dict['clipfrac']
+                'meanent': entropy_dict['state_averaged_entropy'],
+                'clipfrac': policy_dict['clipfrac']
             }
 
-    def _maybe_split_losses(self, losses, separate_value_net, use_pcgrad):
+    def _maybe_split_losses(
+        self, losses: Dict[str, tc.Tensor]
+    ) -> Tuple[Dict[str, tc.Tensor], Dict[str, tc.Tensor]]:
         policy_losses = dict()
         value_losses = dict()
-        if not use_pcgrad:
+        if not self._use_pcgrad:
             policy_losses['composite_loss'] = losses['composite_loss']
             value_losses['composite_loss'] = losses['composite_loss']
             return policy_losses, value_losses
@@ -314,16 +312,20 @@ class PPO(Algo):
             if k.startswith('policy_'):
                 policy_losses[k] = losses[k]
             if k.startswith('value_'):
-                if separate_value_net:
+                if self._value_net is not None:
                     value_losses[k] = losses[k]
                 else:
                     policy_losses[k] = losses[k]
         return policy_losses, value_losses
 
     def _optimize_losses(
-            self, net, optimizer, losses, retain_graph, use_pcgrad):
+            self,
+            net: DDP,
+            optimizer: Optimizer,
+            losses: Dict[str, tc.Tensor],
+            retain_graph: bool) -> None:
         optimizer.zero_grad()
-        if not use_pcgrad:
+        if not self._use_pcgrad:
             losses['composite_loss'].backward(retain_graph=retain_graph)
         else:
             apply_pcgrad(
@@ -333,14 +335,7 @@ class PPO(Algo):
                 normalize=False)
         optimizer.step()
 
-    def _pretraining_checks(self):
-        for name, op in self._credit_assignment_ops.items():
-            if not isinstance(op, AdvantageEstimator):
-                msg = "All credit assignment ops must be AdvantageEstimators"
-                raise TypeError(msg)
-
     def training_loop(self) -> None:
-        self._pretraining_checks()
         separate_value_net = self._value_net is not None
         while self._global_step < self._max_steps:
             # generate trajectory.
@@ -354,31 +349,30 @@ class PPO(Algo):
             for opt_epoch in range(self._opt_epochs):
                 indices = np.random.permutation(self._seg_len)
                 for i in range(0, self._seg_len, self._learner_batch_size):
-                    mb_indices = indices[i:i + self._learner_batch_size]
-                    mb = slice_nested_tensor(trajectory, mb_indices)
-                    update_trainable_wrappers(self._env, mb)
+                    minibatch_indices = indices[i:i + self._learner_batch_size]
+                    minibatch = slice_nested_tensor(
+                        trajectory, minibatch_indices)
+                    update_trainable_wrappers(self._env, minibatch)
                     if self._global_step <= self._non_learning_steps:
                         continue
-                    losses = self.compute_losses(mb=mb, no_grad=False)
+                    losses = self.compute_losses(
+                        minibatch=minibatch, no_grad=False)
                     policy_losses, value_losses = self._maybe_split_losses(
-                        losses=losses,
-                        separate_value_net=separate_value_net,
-                        use_pcgrad=self._use_pcgrad)
+                        losses=losses)
                     self._optimize_losses(
                         net=self._policy_net,
                         optimizer=self._policy_optimizer,
                         losses=policy_losses,
-                        retain_graph=separate_value_net,
-                        use_pcgrad=self._use_pcgrad)
+                        retain_graph=separate_value_net)
                     if separate_value_net:
                         self._optimize_losses(
                             net=self._value_net,
                             optimizer=self._value_optimizer,
                             losses=value_losses,
-                            retain_graph=False,
-                            use_pcgrad=self._use_pcgrad)
+                            retain_graph=False)
 
-                metrics = self.compute_losses(mb=trajectory, no_grad=True)
+                metrics = self.compute_losses(
+                    minibatch=trajectory, no_grad=True)
                 global_metrics = global_means(
                     local_values=metrics,
                     world_size=self._world_size,
@@ -449,29 +443,25 @@ class PPO(Algo):
             print(r_tot)
 
 
-def ppo_policy_entropy_bonus(
-        entropies: tc.Tensor, ent_coef: float,
-        no_grad: bool) -> Dict[str, tc.Tensor]:
+def ppo_policy_entropy_bonus(entropies: tc.Tensor,
+                             ent_coef: float) -> Dict[str, tc.Tensor]:
     """
     Computes state-averaged policy entropy.
 
     Args:
         entropies (torch.Tensor): Policy entropy at each visited state.
         ent_coef (float): PPO entropy bonus coefficient.
-        no_grad (bool): Whether or not to record operations to the gradient tape
-            and save intermediate activations for backpropagation.
 
     Returns:
         Dict[str, torch.Tensor]: Dictionary of mapping from names to losses
             and metrics.
     """
-    with tc.no_grad() if no_grad else ExitStack():
-        meanent = tc.mean(entropies)
-        policy_entropy_bonus = ent_coef * meanent
-        return {
-            'state_averaged_entropy': meanent,
-            'policy_entropy_bonus': policy_entropy_bonus
-        }
+    meanent = tc.mean(entropies)
+    policy_entropy_bonus = ent_coef * meanent
+    return {
+        'state_averaged_entropy': meanent,
+        'policy_entropy_bonus': policy_entropy_bonus
+    }
 
 
 def ppo_policy_surrogate_objective(
@@ -479,8 +469,7 @@ def ppo_policy_surrogate_objective(
         logprobs_old: tc.Tensor,
         advantages: Mapping[str, tc.Tensor],
         clip_param: float,
-        reward_weights: Mapping[str, float],
-        no_grad: bool) -> Dict[str, tc.Tensor]:
+        reward_weights: Mapping[str, float]) -> Dict[str, tc.Tensor]:
     """
     Computes PPO policy surrogate objective.
 
@@ -492,29 +481,26 @@ def ppo_policy_surrogate_objective(
         clip_param (float): PPO clip parameter epsilon.
         reward_weights (Mapping[str, float]): Dictionary mapping from reward
             names to reward weights.
-        no_grad (bool): Whether or not to record operations to the gradient tape
-            and save intermediate activations for backpropagation.
 
     Returns:
         Dict[str, torch.Tensor]: Dictionary of mapping from names to losses
             and metrics.
     """
-    with tc.no_grad() if no_grad else ExitStack():
-        policy_ratios = tc.exp(logprobs_new - logprobs_old)
-        clipped_policy_ratios = tc.clip(
-            policy_ratios, 1. - clip_param, 1. + clip_param)
-        advantage_shape = advantages['extrinsic'].shape
-        advantage_acc = tc.zeros(advantage_shape, dtype=tc.float32)
-        for key in reward_weights:
-            advantage_acc += reward_weights[key] * advantages[key]
-        surr1 = advantage_acc * policy_ratios
-        surr2 = advantage_acc * clipped_policy_ratios
-        policy_surrogate_objective = tc.mean(tc.min(surr1, surr2))
-        clipfrac = tc.mean(tc.greater(surr1, surr2).float())
-        return {
-            'policy_surrogate_objective': policy_surrogate_objective,
-            'clipfrac': clipfrac
-        }
+    policy_ratios = tc.exp(logprobs_new - logprobs_old)
+    clipped_policy_ratios = tc.clip(
+        policy_ratios, 1. - clip_param, 1. + clip_param)
+    advantage_shape = advantages['extrinsic'].shape
+    advantage_acc = tc.zeros(advantage_shape, dtype=tc.float32)
+    for key in reward_weights:
+        advantage_acc += reward_weights[key] * advantages[key]
+    surr1 = advantage_acc * policy_ratios
+    surr2 = advantage_acc * clipped_policy_ratios
+    policy_surrogate_objective = tc.mean(tc.min(surr1, surr2))
+    clipfrac = tc.mean(tc.greater(surr1, surr2).float())
+    return {
+        'policy_surrogate_objective': policy_surrogate_objective,
+        'clipfrac': clipfrac
+    }
 
 
 def ppo_vf_loss(
@@ -525,8 +511,7 @@ def ppo_vf_loss(
         vf_loss_criterion: tc.nn.modules.loss._Loss,
         vf_loss_clipping: bool,
         vf_simple_weighting: bool,
-        reward_weights: Mapping[str, float],
-        no_grad: bool) -> Dict[str, tc.Tensor]:
+        reward_weights: Mapping[str, float]) -> Dict[str, tc.Tensor]:
     """
     Computes PPO value surrogate objective.
 
@@ -542,30 +527,27 @@ def ppo_vf_loss(
         vf_simple_weighting (bool): Equal weight on each reward's value loss?
         reward_weights (Mapping[str, float]):  Dictionary mapping from reward
             names to reward weights.
-        no_grad (bool): Whether or not to record operations to the gradient tape
-            and save intermediate activations for backpropagation.
 
     Returns:
         Dict[str, torch.Tensor]: Dictionary of mapping from names to losses
             and metrics.
     """
-    with tc.no_grad() if no_grad else ExitStack():
-        vf_loss = tc.tensor(0.0)
-        for k in reward_weights:
-            if vf_loss_clipping:
-                vpreds_new_clipped_k = vpreds_old[k] + tc.clip(
-                    vpreds_new[k] - vpreds_old[k], -clip_param, clip_param)
-                vsurr1 = vf_loss_criterion(
-                    input=vpreds_new[k], target=td_lambda_returns[k])
-                vsurr2 = vf_loss_criterion(
-                    input=vpreds_new_clipped_k, target=td_lambda_returns[k])
-                vf_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
-            else:
-                vf_loss_for_rew = tc.mean(
-                    vf_loss_criterion(
-                        input=vpreds_new[k], target=td_lambda_returns[k]))
-            if vf_simple_weighting:
-                vf_loss += vf_loss_for_rew
-            else:
-                vf_loss += (reward_weights[k]**2) * vf_loss_for_rew
-        return {'vf_loss': vf_loss}
+    vf_loss = tc.tensor(0.0)
+    for k in reward_weights:
+        if vf_loss_clipping:
+            vpreds_new_clipped_k = vpreds_old[k] + tc.clip(
+                vpreds_new[k] - vpreds_old[k], -clip_param, clip_param)
+            vsurr1 = vf_loss_criterion(
+                input=vpreds_new[k], target=td_lambda_returns[k])
+            vsurr2 = vf_loss_criterion(
+                input=vpreds_new_clipped_k, target=td_lambda_returns[k])
+            vf_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
+        else:
+            vf_loss_for_rew = tc.mean(
+                vf_loss_criterion(
+                    input=vpreds_new[k], target=td_lambda_returns[k]))
+        if vf_simple_weighting:
+            vf_loss += vf_loss_for_rew
+        else:
+            vf_loss += (reward_weights[k]**2) * vf_loss_for_rew
+    return {'vf_loss': vf_loss}
