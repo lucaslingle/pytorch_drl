@@ -209,11 +209,11 @@ class PPO(Algo):
             predictions = self._policy_net(
                 trajectory['observations'], predict=policy_predict)
             pi = predictions.pop('policy')
-            if self._value_net:
+            if not self._value_net:
+                vpreds = predictions
+            else:
                 vpreds = self._value_net(
                     trajectory['observations'], predict=value_predict)
-            else:
-                vpreds = predictions
 
             # shallow copy of trajectory dict, point to initial/new values.
             trajectory_new = {
