@@ -261,8 +261,9 @@ class PPO(Algo):
                set(self._get_reward_keys(omit_raw=True))
         return reward_weights
 
-    def compute_losses(self, minibatch: Dict[str, NestedTensor],
-                       no_grad: bool) -> Dict[str, tc.Tensor]:
+    def compute_losses_and_metrics(
+            self, minibatch: Dict[str, NestedTensor], no_grad: bool
+    ) -> Dict[str, tc.Tensor]:
         with tc.no_grad() if no_grad else ExitStack():
             minibatch_new = self.annotate(trajectory=minibatch, no_grad=no_grad)
             entropy_dict = ppo_policy_entropy_bonus(
@@ -297,7 +298,7 @@ class PPO(Algo):
                 'clipfrac': policy_dict['clipfrac']
             }
 
-    def _split_losses(
+    def _extract_losses(
         self, losses: Dict[str, tc.Tensor]
     ) -> Tuple[Dict[str, tc.Tensor], Dict[str, tc.Tensor]]:
         policy_losses = dict()
@@ -349,9 +350,9 @@ class PPO(Algo):
                     update_trainable_wrappers(self._env, minibatch)
                     if self._global_step <= self._non_learning_steps:
                         continue
-                    losses = self.compute_losses(
+                    losses = self.compute_losses_and_metrics(
                         minibatch=minibatch, no_grad=False)
-                    policy_losses, value_losses = self._split_losses(losses)
+                    policy_losses, value_losses = self._extract_losses(losses)
                     self._optimize_losses(
                         net=self._policy_net,
                         optimizer=self._policy_optimizer,
@@ -364,7 +365,7 @@ class PPO(Algo):
                             losses=value_losses,
                             retain_graph=False)
 
-                metrics = self.compute_losses(
+                metrics = self.compute_losses_and_metrics(
                     minibatch=trajectory, no_grad=True)
                 global_metrics = global_means(
                     local_values=metrics,
