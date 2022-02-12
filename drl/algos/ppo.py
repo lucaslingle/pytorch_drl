@@ -498,8 +498,8 @@ def ppo_policy_surrogate_objective(
 
 
 def ppo_vf_loss(
-        vpreds_new: tc.Tensor,
-        vpreds_old: tc.Tensor,
+        vpreds_new: Mapping[str, tc.Tensor],
+        vpreds_old: Mapping[str, tc.Tensor],
         td_lambda_returns: Mapping[str, tc.Tensor],
         clip_param: float,
         vf_loss_criterion: tc.nn.modules.loss._Loss,
@@ -510,8 +510,10 @@ def ppo_vf_loss(
     Computes PPO value surrogate objective.
 
     Args:
-        vpreds_new (torch.Tensor): New value predictions.
-        vpreds_old (torch.Tensor): Old value predictions.
+        vpreds_new (Mapping[str, torch.Tensor]): Dictionary mapping from
+            reward names to new value predictions.
+        vpreds_old (Mapping[str, torch.Tensor]): Dictionary mapping from
+            reward names to old value predictions.
         td_lambda_returns (Mapping[str, torch.Tensor]): Dictionary mapping from
              reward names to TD(lambda) returns.
         clip_param (float): PPO clip parameter epsilon.
