@@ -43,39 +43,25 @@ def get_credit_assignment_op(
 
 
 def get_credit_assignment_ops(
-    seg_len: int,
-    extra_steps: int,
     credit_assignment_spec: CreditAssignmentSpec
 ) -> Dict[str, 'CreditAssignmentOp']:
     """
     Creates a dictionary of credit assignment ops from class names and args.
 
     Args:
-        seg_len (int): Trajectory segment length for credit assignment.
-        extra_steps (int): Extra steps for n-step return-based credit assignment.
-            Should equal n-1 when n steps are used.
         credit_assignment_spec (CreditAssignmentSpec):
             Mapping of reward name to dictionary with keys 'cls_name' and
             'cls_args'. The 'cls_name' key should map to the name of a derived
             class of `CreditAssignmentOp`. The 'cls_args' key should map to the
-            constructor's reward-varying arguments (i.e., the arguments besides
-            seg_len and extra_steps).
+            constructor's arguments.
 
     Returns:
         Dict[str, CreditAssignmentOp]: Dictionary of credit assignment ops,
         keyed by reward name.
     """
     ops = dict()
-    for reward_name in credit_assignment_spec:
-        op_spec = credit_assignment_spec[reward_name]
-        op = get_credit_assignment_op(
-            cls_name=op_spec['cls_name'],
-            cls_args={
-                'seg_len': seg_len,
-                'extra_steps': extra_steps,
-                **op_spec['cls_args']
-            })
-        ops[reward_name] = op
+    for reward_name, op_spec in credit_assignment_spec.items():
+        ops[reward_name] = get_credit_assignment_op(**op_spec)
     return ops
 
 
@@ -83,14 +69,9 @@ class CreditAssignmentOp(metaclass=abc.ABCMeta):
     """
     Abstract class for credit assignment operations.
     """
-    def __init__(
-            self, seg_len: int, extra_steps: int, gamma: float,
-            use_dones: bool):
+    def __init__(self, gamma: float, use_dones: bool):
         """
         Args:
-            seg_len (int): Trajectory segment length for credit assignment.
-            extra_steps (int): Extra steps for n-step return-based credit
-                assignment. Should equal n-1 when n steps are used.
             gamma (float): Discount factor in [0, 1).
             use_dones (bool): Whether or not to block credit assignment across
                 episodes. Should be True for conventional RL settings.
@@ -98,8 +79,6 @@ class CreditAssignmentOp(metaclass=abc.ABCMeta):
                 like RND (Burda et al., 2018), or with certain meta-RL
                 algorithms like RL^2 (Duan et al., 2016).
         """
-        self._seg_len = seg_len
-        self._extra_steps = extra_steps
         self._gamma = gamma
         self._use_dones = use_dones
 
@@ -107,12 +86,19 @@ class CreditAssignmentOp(metaclass=abc.ABCMeta):
 class AdvantageEstimator(CreditAssignmentOp, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def estimate_advantages(
-            self, rewards: tc.Tensor, vpreds: tc.Tensor,
+            self,
+            seg_len: int,
+            extra_steps: int,
+            rewards: tc.Tensor,
+            vpreds: tc.Tensor,
             dones: tc.Tensor) -> tc.Tensor:
         """
         Estimate advantages.
 
         Args:
+            seg_len (int): Trajectory segment length for credit assignment.
+            extra_steps (int): Extra steps for n-step return-based credit
+                assignment. Should equal n-1 when n steps are used.
             rewards (torch.Tensor): Torch tensor of rewards at each timestep,
                 with shape [seg_len + extra_steps].
             vpreds (torch.Tensor): Torch tensor of value predictions at each
@@ -130,6 +116,8 @@ class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def estimate_action_values(
             self,
+            seg_len: int,
+            extra_steps: int,
             rewards: tc.Tensor,
             qpreds: tc.Tensor,
             tgt_qpreds: tc.Tensor,
@@ -138,6 +126,9 @@ class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
         Estimate action values.
 
         Args:
+            seg_len (int): Trajectory segment length for credit assignment.
+            extra_steps (int): Extra steps for n-step return-based credit
+                assignment. Should equal n-1 when n steps are used.
             rewards (torch.Tensor): Torch tensor of rewards at each timestep,
                 with shape [seg_len + extra_steps].
             qpreds (torch.Tensor): Torch tensor of action-value predictions
@@ -160,24 +151,32 @@ class GAE(AdvantageEstimator):
 
     Reference:
         J. Schulman et al., 2016 -
-            'High Dimensional Continuous Control
-             with Generalized Advantage Estimation'
+            'High Dimensional Continuous Control with Generalized Advantage
+            Estimation'
     """
-    def __init__(
-            self,
-            seg_len: int,
-            extra_steps: int,
-            gamma: float,
-            use_dones: bool,
-            lambda_: float):
-        super().__init__(seg_len, extra_steps, gamma, use_dones)
+    def __init__(self, gamma: float, use_dones: bool, lambda_: float):
+        """
+        Args:
+            gamma (float): Discount factor in [0, 1).
+            use_dones (bool): Whether or not to block credit assignment across
+                episodes. Should be True for conventional RL settings.
+                Intended to be False for use with certain intrinsic rewards
+                like RND (Burda et al., 2018), or with certain meta-RL
+                algorithms like RL^2 (Duan et al., 2016).
+            lambda_ (float): GAE parameter lambda.
+        """
+        super().__init__(gamma, use_dones)
         self._lambda = lambda_
 
     def estimate_advantages(
-            self, rewards: tc.Tensor, vpreds: tc.Tensor,
+            self,
+            seg_len: int,
+            extra_steps: int,
+            rewards: tc.Tensor,
+            vpreds: tc.Tensor,
             dones: tc.Tensor) -> tc.Tensor:
-        T = self._seg_len
-        n = self._extra_steps + 1
+        T = seg_len
+        n = extra_steps + 1
         advantages = tc.zeros(size=(T + n, ), dtype=tc.float32)
         for t in reversed(range(0, T + n - 1)):  # T+(n-1)-1, ..., 0
             r_t = rewards[t]
@@ -199,18 +198,20 @@ class NStepAdvantageEstimator(AdvantageEstimator):
         V. Mnih et al., 2016 -
             'Asynchronous Methods for Deep Reinforcement Learning'.
     """
-    def __init__(
-            self, seg_len: int, extra_steps: int, gamma: float,
-            use_dones: bool):
-        super().__init__(seg_len, extra_steps, gamma, use_dones)
+    def __init__(self, gamma: float, use_dones: bool):
+        super().__init__(gamma, use_dones)
 
     def estimate_advantages(
-            self, rewards: tc.Tensor, vpreds: tc.Tensor,
+            self,
+            seg_len: int,
+            extra_steps: int,
+            rewards: tc.Tensor,
+            vpreds: tc.Tensor,
             dones: tc.Tensor) -> tc.Tensor:
         # r_t + gamma * r_tp1 + ... + gamma^nm1 * r_tpnm1 + gamma^n * V(s_tpn)
         #  extra steps equals n-1 for n-step returns.
-        T = self._seg_len
-        n = self._extra_steps + 1
+        T = seg_len
+        n = extra_steps + 1
         advantages = tc.zeros(size=(T, ), dtype=tc.float32)
         for t in reversed(range(0, T)):  # T-1, ..., 0
             V_tpn = vpreds[t + n]  # V(s[t+n])
@@ -234,18 +235,9 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
         H. van Hasselt et al., 2015 -
             'Deep Reinforcement Learning with Double Q-learning'.
     """
-    def __init__(
-            self,
-            seg_len: int,
-            extra_steps: int,
-            gamma: float,
-            use_dones: bool,
-            double_q: bool):
+    def __init__(self, gamma: float, use_dones: bool, double_q: bool):
         """
         Args:
-            seg_len (int): Trajectory segment length for credit assignment.
-            extra_steps (int): Extra steps for n-step return-based credit assignment.
-                Should equal n-1 when n steps are used.
             gamma (float): Discount factor in [0, 1).
             use_dones (bool): Whether or not to block credit assignment across
                 episodes. Should be True for conventional RL settings.
@@ -254,19 +246,21 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
                 algorithms like RL^2 (Duan et al., 2016).
             double_q (bool): Use double-Q learning?
         """
-        super().__init__(seg_len, extra_steps, gamma, use_dones)
+        super().__init__(gamma, use_dones)
         self._double_q = double_q
 
     def estimate_action_values(
             self,
+            seg_len: int,
+            extra_steps: int,
             rewards: tc.Tensor,
             qpreds: tc.Tensor,
             tgt_qpreds: tc.Tensor,
             dones: tc.Tensor) -> tc.Tensor:
         # r_t + gamma * r_tp1 + ... + gamma^nm1 * r_tpnm1 + gamma^n * Q(s_tpn, a_tpn)
         #  extra steps equals n-1 for n-step returns.
-        T = self._seg_len
-        n = self._extra_steps + 1
+        T = seg_len
+        n = extra_steps + 1
         bellman_backups = tc.zeros(size=(T, ), dtype=tc.float32)
         for t in reversed(range(0, T)):  # T-1, ..., 0
             Qs_tpn_tgt = tgt_qpreds[t + n]  # Qtgt(s[t+n], .)

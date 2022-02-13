@@ -17,10 +17,6 @@ algo:
         vf_loss_cls: MSELoss
         vf_loss_clipping: False
         vf_simple_weighting: True
-        credit_assignment_spec:
-            extrinsic:
-                cls_name: GAE
-                cls_args: {gamma: 0.99, lambda_: 0.95, use_dones: True}
         extra_steps: 0
         standardize_adv: True
         use_pcgrad: False
@@ -28,6 +24,10 @@ algo:
         checkpoint_frequency: 25600
         non_learning_steps: 0
         max_steps: 10000000
+credit_assignment:
+    extrinsic:
+        cls_name: GAE
+        cls_args: {gamma: 0.99, lambda_: 0.95, use_dones: True}
 env:
     wrappers:
         train:

@@ -13,14 +13,13 @@ def test_gae():
     value_estimates = tc.tensor([0., 0., 1.])
 
     dones_1 = tc.tensor([0., 0.])
-    credit_assignment_op_1 = GAE(
+    credit_assignment_op_1 = GAE(gamma=gamma, use_dones=True, lambda_=lambda_)
+    advantages = credit_assignment_op_1.estimate_advantages(
         seg_len=seg_len,
         extra_steps=extra_steps,
-        gamma=gamma,
-        use_dones=True,
-        lambda_=lambda_)
-    advantages = credit_assignment_op_1.estimate_advantages(
-        rewards=rewards, vpreds=value_estimates, dones=dones_1)
+        rewards=rewards,
+        vpreds=value_estimates,
+        dones=dones_1)
     advantages_expected = tc.tensor([
         rewards[0] + gamma * value_estimates[1] + lambda_ *
         (rewards[0] + gamma * rewards[1] + (gamma**2) * value_estimates[2]),
@@ -31,7 +30,11 @@ def test_gae():
     dones_2 = tc.tensor([1., 0.])
     credit_assignment_op_2 = credit_assignment_op_1
     advantages = credit_assignment_op_2.estimate_advantages(
-        rewards=rewards, vpreds=value_estimates, dones=dones_2)
+        seg_len=seg_len,
+        extra_steps=extra_steps,
+        rewards=rewards,
+        vpreds=value_estimates,
+        dones=dones_2)
     advantages_expected = tc.tensor([
         rewards[0] + (1 - dones_2[0]) * gamma * value_estimates[1] + lambda_ * (
             rewards[0] + (1 - dones_2[0]) * gamma * rewards[1] +
@@ -42,14 +45,13 @@ def test_gae():
     tc.testing.assert_close(actual=advantages, expected=advantages_expected)
 
     dones_3 = tc.tensor([1., 0.])
-    credit_assignment_op_3 = GAE(
+    credit_assignment_op_3 = GAE(gamma=gamma, use_dones=False, lambda_=lambda_)
+    advantages = credit_assignment_op_3.estimate_advantages(
         seg_len=seg_len,
         extra_steps=extra_steps,
-        gamma=gamma,
-        use_dones=False,
-        lambda_=lambda_)
-    advantages = credit_assignment_op_3.estimate_advantages(
-        rewards=rewards, vpreds=value_estimates, dones=dones_3)
+        rewards=rewards,
+        vpreds=value_estimates,
+        dones=dones_3)
     advantages_expected = tc.tensor([
         rewards[0] + 1 * gamma * value_estimates[1] + lambda_ * (
             rewards[0] + 1 * gamma * rewards[1] + 1 * 1 *
@@ -68,9 +70,13 @@ def test_nstep_advantages():
 
     dones_1 = tc.tensor([0., 0., 0., 0., 0.])
     credit_assignment_op_1 = NStepAdvantageEstimator(
-        seg_len=seg_len, extra_steps=extra_steps, gamma=gamma, use_dones=True)
+        gamma=gamma, use_dones=True)
     advantages_1 = credit_assignment_op_1.estimate_advantages(
-        rewards=rewards, vpreds=value_estimates, dones=dones_1)
+        seg_len=seg_len,
+        extra_steps=extra_steps,
+        rewards=rewards,
+        vpreds=value_estimates,
+        dones=dones_1)
     advantages_expected_1 = tc.tensor([
         rewards[0] + gamma * rewards[1] + (gamma**2) * rewards[2] +
         (gamma**3) * value_estimates[3],
@@ -82,7 +88,11 @@ def test_nstep_advantages():
     dones_2 = tc.tensor([0., 1., 0., 0.])
     credit_assignment_op_2 = credit_assignment_op_1
     advantages_2 = credit_assignment_op_2.estimate_advantages(
-        rewards=rewards, vpreds=value_estimates, dones=dones_2)
+        seg_len=seg_len,
+        extra_steps=extra_steps,
+        rewards=rewards,
+        vpreds=value_estimates,
+        dones=dones_2)
     advantages_expected_2 = tc.tensor([
         rewards[0] + (1 - dones_2[0]) * gamma * rewards[1] + (1 - dones_2[0]) *
         (1 - dones_2[1]) * (gamma**2) * rewards[2] + (1 - dones_2[0]) *
@@ -95,9 +105,13 @@ def test_nstep_advantages():
 
     dones_3 = dones_2
     credit_assignment_op_3 = NStepAdvantageEstimator(
-        seg_len=seg_len, extra_steps=extra_steps, gamma=gamma, use_dones=False)
+        gamma=gamma, use_dones=False)
     advantages_3 = credit_assignment_op_3.estimate_advantages(
-        rewards=rewards, vpreds=value_estimates, dones=dones_3)
+        seg_len=seg_len,
+        extra_steps=extra_steps,
+        rewards=rewards,
+        vpreds=value_estimates,
+        dones=dones_3)
     tc.testing.assert_close(actual=advantages_3, expected=advantages_expected_1)
 
 
@@ -112,13 +126,14 @@ def test_simple_discrete_bellman_optimality_op():
     dones = tc.tensor([0., 0.])
 
     credit_assignment_op_1 = SimpleDiscreteBellmanOptimalityOperator(
+        gamma=gamma, use_dones=True, double_q=False)
+    operator_image_actual = credit_assignment_op_1.estimate_action_values(
         seg_len=seg_len,
         extra_steps=extra_steps,
-        gamma=gamma,
-        use_dones=True,
-        double_q=False)
-    operator_image_actual = credit_assignment_op_1.estimate_action_values(
-        rewards=rewards, qpreds=qpreds, tgt_qpreds=tgt_qpreds, dones=dones)
+        rewards=rewards,
+        qpreds=qpreds,
+        tgt_qpreds=tgt_qpreds,
+        dones=dones)
     operator_image_expected = tc.tensor([
         rewards[0] + gamma * tgt_qpreds[1, 0],
         rewards[1] + gamma * tgt_qpreds[2, 1]
@@ -127,13 +142,14 @@ def test_simple_discrete_bellman_optimality_op():
         actual=operator_image_actual, expected=operator_image_expected)
 
     credit_assignment_op_2 = SimpleDiscreteBellmanOptimalityOperator(
+        gamma=gamma, use_dones=True, double_q=True)
+    operator_image_actual = credit_assignment_op_2.estimate_action_values(
         seg_len=seg_len,
         extra_steps=extra_steps,
-        gamma=gamma,
-        use_dones=True,
-        double_q=True)
-    operator_image_actual = credit_assignment_op_2.estimate_action_values(
-        rewards=rewards, qpreds=qpreds, tgt_qpreds=tgt_qpreds, dones=dones)
+        rewards=rewards,
+        qpreds=qpreds,
+        tgt_qpreds=tgt_qpreds,
+        dones=dones)
     operator_image_expected = tc.tensor([
         rewards[0] + gamma * tgt_qpreds[1, 2],
         rewards[1] + gamma * tgt_qpreds[2, 2]
@@ -143,13 +159,14 @@ def test_simple_discrete_bellman_optimality_op():
 
     dones_3 = tc.tensor([1., 0.])
     credit_assignment_op_3 = SimpleDiscreteBellmanOptimalityOperator(
+        gamma=gamma, use_dones=False, double_q=True)
+    operator_image_actual = credit_assignment_op_3.estimate_action_values(
         seg_len=seg_len,
         extra_steps=extra_steps,
-        gamma=gamma,
-        use_dones=False,
-        double_q=True)
-    operator_image_actual = credit_assignment_op_3.estimate_action_values(
-        rewards=rewards, qpreds=qpreds, tgt_qpreds=tgt_qpreds, dones=dones_3)
+        rewards=rewards,
+        qpreds=qpreds,
+        tgt_qpreds=tgt_qpreds,
+        dones=dones_3)
     operator_image_expected = tc.tensor([
         rewards[0] + (1 - dones_3[0]) * gamma * tgt_qpreds[1, 2],
         rewards[1] + (1 - dones_3[1]) * gamma * tgt_qpreds[2, 2]

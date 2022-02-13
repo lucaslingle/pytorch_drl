@@ -11,8 +11,8 @@ from drl.algos.abstract import Algo
 from drl.algos.common import (
     TrajectoryManager,
     MultiQueue,
+    AdvantageEstimator,
     extract_reward_name,
-    get_credit_assignment_ops,
     get_loss,
     global_means,
     global_gathers,
@@ -24,8 +24,7 @@ from drl.envs.wrappers import Wrapper
 from drl.utils.checkpointing import save_checkpoints
 from drl.utils.nested import slice_nested_tensor
 from drl.utils.stats import standardize
-from drl.utils.types import (
-    CreditAssignmentSpec, NestedTensor, Optimizer, Scheduler)
+from drl.utils.types import NestedTensor, Optimizer, Scheduler
 
 
 class PPO(Algo):
@@ -41,6 +40,7 @@ class PPO(Algo):
             rank: int,
             world_size: int,
             seg_len: int,
+            extra_steps: int,
             opt_epochs: int,
             learner_batch_size: int,
             clip_param_init: float,
@@ -51,8 +51,7 @@ class PPO(Algo):
             vf_loss_coef: float,
             vf_loss_clipping: bool,
             vf_simple_weighting: bool,
-            credit_assignment_spec: CreditAssignmentSpec,
-            extra_steps: int,
+            credit_assignment_ops: Mapping[str, AdvantageEstimator],
             standardize_adv: bool,
             use_pcgrad: bool,
             stats_window_len: int,
@@ -76,6 +75,9 @@ class PPO(Algo):
             rank (int): Process rank.
             world_size (int): Total number of processes.
             seg_len (int): Trajectory segment length.
+            extra_steps (int): Extra steps required for credit assignment.
+                Should be set to n-1 if using n-step return-based advantage
+                estimation.
             opt_epochs (int): Optimization epochs per policy improvement phase
                 in PPO.
             learner_batch_size (int): Batch size per learner process.
@@ -95,12 +97,8 @@ class PPO(Algo):
             vf_simple_weighting (bool): If true, use equal weighting of all
                 value function losses. Ignored if env.reward_spec.keys() does
                 not contain any intrinsic rewards.
-            credit_assignment_spec (CreditAssignmentSpec):
-                Mapping from reward names to credit assignment conforming to
-                the format detailed in the `get_credit_assignment_ops` docstring.
-            extra_steps (int): Extra steps required for credit assignment.
-                Should be set to n-1 if using n-step return-based advantage
-                estimation.
+            credit_assignment_ops (Mapping[str, AdvantageEstimator]):
+                Mapping from reward names to AdvantageEstimator instances.
             standardize_adv (bool): Standardize advantages per trajectory
                 segment?
             use_pcgrad (bool): Use the PCGrad algorithm from Yu et al., 2020?
@@ -150,8 +148,7 @@ class PPO(Algo):
         self._vf_loss_coef = vf_loss_coef
         self._vf_loss_clipping = vf_loss_clipping
         self._vf_simple_weighting = vf_simple_weighting
-        self._credit_assignment_ops = get_credit_assignment_ops(
-            seg_len, extra_steps, credit_assignment_spec)
+        self._credit_assignment_ops = credit_assignment_ops
         self._extra_steps = extra_steps
         self._standardize_adv = standardize_adv
         self._use_pcgrad = use_pcgrad
@@ -238,6 +235,8 @@ class PPO(Algo):
         advantages, td_lambda_returns = dict(), dict()
         for k in self._get_reward_keys(omit_raw=True):
             advantages_k = self._credit_assignment_ops[k].estimate_advantages(
+                seg_len=self._seg_len,
+                extra_steps=self._extra_steps,
                 rewards=trajectory['rewards'][k],
                 vpreds=trajectory['vpreds'][k],
                 dones=trajectory['dones'])

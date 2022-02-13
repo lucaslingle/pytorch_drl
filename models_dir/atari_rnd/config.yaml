@@ -17,13 +17,6 @@ algo:
         vf_loss_cls: MSELoss
         vf_loss_clipping: False
         vf_simple_weighting: True  # Burda 2018 src code weights all vf losses same
-        credit_assignment_spec:
-            extrinsic:
-                cls_name: GAE
-                cls_args: {gamma: 0.999, lambda_: 0.95, use_dones: True}
-            intrinsic_rnd:
-                cls_name: GAE
-                cls_args: {gamma: 0.99, lambda_: 0.95, use_dones: False}
         extra_steps: 0
         standardize_adv: False
         reward_weights:
@@ -34,6 +27,13 @@ algo:
         checkpoint_frequency: 100
         non_learning_steps: 409600  # RNDWrapper nonlearning steps * world_size
         max_steps: 500000000        # 0.5B
+credit_assignment_spec:
+    extrinsic:
+        cls_name: GAE
+        cls_args: {gamma: 0.999, lambda_: 0.95, use_dones: True}
+    intrinsic_rnd:
+        cls_name: GAE
+        cls_args: {gamma: 0.99, lambda_: 0.95, use_dones: False}
 env:
     wrappers:
         train:

@@ -25,6 +25,7 @@ from drl.agents.heads import (
     DiscretePolicyHead,
     ContinuousPolicyHead)
 from drl.agents.integration.agent import Agent
+from drl.algos.common import get_credit_assignment_ops
 from drl.utils.optimization import get_optimizer, get_scheduler
 from drl.utils.checkpointing import maybe_load_checkpoints
 from drl.utils.types import Optimizer, Scheduler
@@ -371,6 +372,9 @@ def make_learning_system(rank: int, config: ConfigParser) -> Mapping[str, Any]:
     env_config = config.get('env')
     env = get_env(env_config, process_seed, mode)
 
+    credit_assignment_ops = get_credit_assignment_ops(
+        config['credit_assignment'])
+
     learners_config = config.get('networks')
     learning_system = dict()
     for prefix in learners_config:
@@ -405,4 +409,10 @@ def make_learning_system(rank: int, config: ConfigParser) -> Mapping[str, Any]:
         checkpointables=checkpoint_dict,
         map_location='cpu',
         steps=None)
-    return {'global_step': global_step, 'env': env, **learning_system}
+
+    return {
+        'global_step': global_step,
+        'env': env,
+        'credit_assignment_ops': credit_assignment_ops,
+        **learning_system
+    }
