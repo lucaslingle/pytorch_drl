@@ -3,14 +3,11 @@ from contextlib import ExitStack
 
 import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import gym
 
 from drl.algos.abstract import Algo
 from drl.algos.common import (
-    TrajectoryManager,
-    MultiQueue,
     AdvantageEstimator,
     extract_reward_name,
     get_loss,
@@ -69,7 +66,7 @@ class PPO(Algo):
             log_dir: str,
             checkpoint_dir: str,
             media_dir: str,
-            reward_weights: Optional[Mapping[str, float]] = None):
+            reward_weights: Optional[Mapping[str, float]] = None) -> None:
         """
         Args:
             rank (int): Process rank.
@@ -135,9 +132,18 @@ class PPO(Algo):
                 env.reward_spec.keys() does not contain any intrinsic rewards.
                 Required if it does. Default: None.
         """
-        super().__init__(rank=rank)
-        self._world_size = world_size
-        self._seg_len = seg_len
+        super().__init__(
+            rank=rank,
+            world_size=world_size,
+            seg_len=seg_len,
+            extra_steps=extra_steps,
+            credit_assignment_ops=credit_assignment_ops,
+            env=env,
+            rollout_net=policy_net,
+            stats_window_len=stats_window_len,
+            log_dir=log_dir,
+            media_dir=media_dir)
+
         self._opt_epochs = opt_epochs
         self._learner_batch_size = learner_batch_size
         self._clip_param = LinearSchedule(
@@ -149,37 +155,22 @@ class PPO(Algo):
         self._vf_loss_clipping = vf_loss_clipping
         self._vf_simple_weighting = vf_simple_weighting
         self._credit_assignment_ops = credit_assignment_ops
-        self._extra_steps = extra_steps
         self._standardize_adv = standardize_adv
         self._use_pcgrad = use_pcgrad
         self._reward_weights = reward_weights
 
-        self._stats_window_len = stats_window_len
-        self._checkpoint_frequency = checkpoint_frequency
         self._non_learning_steps = non_learning_steps
         self._max_steps = max_steps
+        self._checkpoint_frequency = checkpoint_frequency
+        self._checkpoint_dir = checkpoint_dir
 
         self._global_step = global_step
-        self._env = env
         self._policy_net = policy_net
         self._policy_optimizer = policy_optimizer
         self._policy_scheduler = policy_scheduler
         self._value_net = value_net
         self._value_optimizer = value_optimizer
         self._value_scheduler = value_scheduler
-
-        self._checkpoint_dir = checkpoint_dir
-        self._log_dir = log_dir
-        self._media_dir = media_dir
-
-        self._trajectory_mgr = TrajectoryManager(
-            env=env,
-            policy_net=policy_net,
-            seg_len=seg_len,
-            extra_steps=extra_steps)
-        self._metadata_acc = MultiQueue(maxlen=stats_window_len)
-        if self._rank == 0:
-            self._writer = SummaryWriter(log_dir)
 
     def _get_reward_keys(self, omit_raw: bool = True) -> List[str]:
         reward_spec = self._env.reward_spec
@@ -252,7 +243,7 @@ class PPO(Algo):
         trajectory = slice_nested_tensor(trajectory, slice(0, self._seg_len))
         return trajectory
 
-    def _get_reward_weights(self):
+    def _get_reward_weights(self) -> Mapping[str, float]:
         reward_weights = {'extrinsic': 1.0}
         if self._reward_weights is not None:
             reward_weights.update(self._reward_weights)
@@ -412,28 +403,6 @@ class PPO(Algo):
 
     def evaluation_loop(self):
         raise NotImplementedError
-
-    @tc.no_grad()
-    def render_loop(self):
-        # todo: replace this with video-saving loop in Algo abstract class.
-        #   or implement saving video via wrapper env.
-        if self._rank == 0:
-            t = 0
-            r_tot = 0.
-            o_t = self._env.reset()
-            done_t = False
-            while not done_t:
-                predictions_t = self._policy_net(
-                    observations=tc.tensor(o_t).float().unsqueeze(0),
-                    predict=['policy'])
-                pi_dist_t = predictions_t['policy']
-                a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
-                o_tp1, r_t, done_t, info_t = self._env.step(a_t)
-                _ = self._env.render(mode='human')
-                t += 1
-                r_tot += r_t['extrinsic_raw']
-                o_t = o_tp1
-            print(r_tot)
 
 
 def ppo_policy_entropy_bonus(entropies: tc.Tensor,

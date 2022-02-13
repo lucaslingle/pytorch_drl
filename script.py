@@ -101,7 +101,7 @@ def evaluate(rank, config):
 
 def video(rank, config):
     algo = setup(rank, config)
-    _ = algo.render_loop()
+    _ = algo.video_loop()
     cleanup()
 
 

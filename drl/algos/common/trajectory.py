@@ -227,13 +227,13 @@ class TrajectoryManager:
     def __init__(
             self,
             env: Union[gym.core.Env, Wrapper],
-            policy_net: Union[Agent, DDP],
+            rollout_net: Union[Agent, DDP],
             seg_len: int,
             extra_steps: int):
         """
         Args:
             env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper instance.
-            policy_net (Union[Agent, torch.nn.parallel.DistributedDataParallel]):
+            rollout_net (Union[Agent, torch.nn.parallel.DistributedDataParallel]):
                 `Agent` or DDP-wrapped `Agent` instance. Must have 'policy'
                 as a prediction key.
             seg_len (int): Trajectory segment length.
@@ -244,7 +244,7 @@ class TrajectoryManager:
         assert extra_steps >= 0
 
         self._env = env
-        self._policy_net = policy_net
+        self._rollout_net = rollout_net
         self._seg_len = seg_len
         self._extra_steps = extra_steps
 
@@ -273,7 +273,7 @@ class TrajectoryManager:
         # todo(lucaslingle): add support for stateful policies
         # todo(lucaslingle): add support for RL^2/NGU-style inputting
         #    of past rewards as inputs
-        predictions = self._policy_net(
+        predictions = self._rollout_net(
             observations=tc.tensor(o_t).unsqueeze(0), predict=['policy'])
         pi_dist_t = predictions.get('policy')
         a_t = pi_dist_t.sample().squeeze(0).detach().numpy()
@@ -306,7 +306,7 @@ class TrajectoryManager:
             start_t, end_t = self._extra_steps, self._seg_len+self._extra_steps
 
         # generate a trajectory segment.
-        self._policy_net.eval()
+        self._rollout_net.eval()
         for t in range(start_t, end_t):
             o_tp1, r_t, done_t, info_t = self._step_env(self._a_t)
             self._trajectory.record(t, self._o_t, self._a_t, r_t, done_t)

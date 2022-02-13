@@ -170,7 +170,7 @@ def test_trajectory_report():
 def make_trajectory_mgr():
     return TrajectoryManager(
         env=CyclicEnv(),
-        policy_net=Agent(
+        rollout_net=Agent(
             preprocessing=[OneHotEncode(depth=100)],
             architecture=Identity(input_shape=[100], w_init=None, b_init=None),
             predictors={
