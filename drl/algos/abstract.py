@@ -55,8 +55,14 @@ class Algo(metaclass=abc.ABCMeta):
                  no_grad: bool) -> Dict[str, NestedTensor]:
         """
         Annotates trajectory with predictions.
+
+        Args:
+            trajectory (Dict[str, NestedTensor]): Trajectory segment.
+            no_grad (bool): Disable gradient tape recording?
+
+        Returns:
+            Dict[str, NestedTensor]: Prediction-annotated trajectory segment.
         """
-        pass
 
     @abc.abstractmethod
     def credit_assignment(
@@ -64,29 +70,49 @@ class Algo(metaclass=abc.ABCMeta):
                                    NestedTensor]) -> Dict[str, NestedTensor]:
         """
         Assigns credit backwards in time.
+
+        Args:
+            trajectory (Dict[str, NestedTensor]): Prediction-annotated
+                 trajectory segment.
+
+        Returns:
+            Dict[str, NestedTensor]: Prediction-annotated
+                 trajectory segment with results of credit assignment.
         """
-        pass
 
     @abc.abstractmethod
     def compute_losses_and_metrics(
-            self, mb: Dict[str, NestedTensor],
+            self, minibatch: Dict[str, NestedTensor],
             no_grad: bool) -> Dict[str, tc.Tensor]:
         """
         Computes losses and metrics.
+
+        Args:
+            minibatch (Dict[str, NestedTensor]): Minibatch of experience.
+            no_grad (bool): Disable gradient tape recording?
+
+        Returns:
+            Dict[str, tc.Tensor]: Dictionary mapping from names
+            to metrics.
         """
-        pass
 
     @abc.abstractmethod
     def training_loop(self) -> None:
         """
         Training loop.
+
+        Returns:
+            None.
         """
-        pass
 
     @abc.abstractmethod
     def evaluation_loop(self) -> Dict[str, Union[float, tc.Tensor]]:
         """
-        Evaluation method.
+        Evaluation loop.
+
+        Returns:
+            Dict[str, Union[float, tc.Tensor]]: Dictionary mapping from names
+            to metrics.
         """
 
     def video_loop(self) -> None:
