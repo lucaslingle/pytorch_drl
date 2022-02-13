@@ -88,9 +88,8 @@ def get_wrappers(
         env (Union[gym.core.Env, `Wrapper`]): OpenAI gym environment or
             `Wrapper` thereof.
         **wrappers_spec (Mapping[str, Mapping[str, Any]]): Dictionary of all
-            wrappers to apply. Python dictionaries are not inherently ordered,
-            but here the ordering is assumed to be correct, since in our script
-            pyyaml builds it by parsing the file sequentially.
+            wrappers to apply, in order. This requires Python 3.6+ to work
+            correctly.
 
     Returns:
         Union[gym.core.Env, Wrapper]: Wrapped environment.
