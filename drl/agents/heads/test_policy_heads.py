@@ -20,9 +20,7 @@ def test_categorical_policy_head():
     dist = head(features_batch)
     tc.testing.assert_close(
         actual=dist.log_prob(tc.tensor([0])),
-        expected=tc.log(tc.tensor([1. / num_actions])),
-        rtol=1e-4,
-        atol=1e-4)
+        expected=tc.log(tc.tensor([1. / num_actions])))
 
 
 def test_diagonal_gaussian_policy_head():
@@ -38,7 +36,4 @@ def test_diagonal_gaussian_policy_head():
     logprobs_batch = -0.5 * num_actions * tc.log(tc.tensor([2.0 * tc.pi]))
     dist = head(features_batch)
     tc.testing.assert_close(
-        actual=dist.log_prob(actions_batch),
-        expected=logprobs_batch,
-        rtol=1e-4,
-        atol=1e-4)
+        actual=dist.log_prob(actions_batch), expected=logprobs_batch)
