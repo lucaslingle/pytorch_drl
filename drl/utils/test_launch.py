@@ -273,6 +273,7 @@ def local_test_get_net(rank, port):
     make_process_group(rank, port)
 
     env = gym.make('BreakoutNoFrameskip-v4')
+    # yapf: disable
     net = get_net(
         env=env,
         preprocessing_spec={'ToChannelMajor': {}},
