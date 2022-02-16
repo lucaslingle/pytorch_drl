@@ -57,13 +57,23 @@ class DiscreteActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     """
     Abstract class for discrete-action action-value prediction heads.
     """
-    def __init__(self, num_actions: int):
+    def __init__(self, num_features: int, num_actions: int):
         """
         Args:
+            num_features (int):  Number of input features.
             num_actions (int): Number of actions.
         """
         ActionValueHead.__init__(self)
+        self._num_features = num_features
         self._num_actions = num_actions
+
+    @property
+    def num_features(self):
+        return self._num_features
+
+    @property
+    def num_actions(self):
+        return self._num_actions
 
 
 class ContinuousActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
@@ -106,7 +116,7 @@ class SimpleDiscreteActionValueHead(SimpleActionValueHead,
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         SimpleActionValueHead.__init__(self)
-        DiscreteActionValueHead.__init__(self, num_actions)
+        DiscreteActionValueHead.__init__(self, num_features, num_actions)
         self._action_value_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=num_actions,
@@ -222,7 +232,7 @@ class DistributionalDiscreteActionValueHead(DistributionalActionValueHead,
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         DistributionalActionValueHead.__init__(self, vmin, vmax, num_bins)
-        DiscreteActionValueHead.__init__(self, num_actions)
+        DiscreteActionValueHead.__init__(self, num_features, num_actions)
         self._action_value_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=num_actions * num_bins,

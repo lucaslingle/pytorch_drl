@@ -1,6 +1,6 @@
 import torch as tc
 
-from drl.utils.initializers import get_initializer, normc_
+from drl.utils.initializers import get_initializer, normc_, eye_
 
 
 def test_get_initializer():
@@ -27,3 +27,9 @@ def test_normc_():
     for i in range(3):
         tc.testing.assert_close(
             actual=tc.sum(tc.square(lin.weight[i, :])), expected=tc.tensor(1.0))
+
+
+def test_eye_():
+    lin = tc.nn.Linear(10, 10)
+    eye_(lin.weight)
+    tc.testing.assert_close(actual=lin.weight, expected=tc.eye(10))

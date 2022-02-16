@@ -178,8 +178,8 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
                 DiscreteActionValueHead instance.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
-        num_features = action_value_head.input_dim
-        num_actions = action_value_head.output_dim
+        num_features = action_value_head.num_features
+        num_actions = action_value_head.num_actions
         super().__init__(num_features, num_actions)
         self._action_value_head = action_value_head
         self._epsilon = None
@@ -220,7 +220,7 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
         greedy_policy = one_hot(greedy_action, depth=num_actions)
         uniform_policy = tc.ones_like(q_values)
         uniform_policy /= uniform_policy.sum(dim=-1, keepdim=True)
-        probs = (
-            1. - self.epsilon) * greedy_policy + self.epsilon * uniform_policy
+        probs = (1 - self.epsilon) * greedy_policy + \
+            self.epsilon * uniform_policy
         dist = tc.distributions.Categorical(probs=probs)
         return dist

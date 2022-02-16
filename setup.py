@@ -12,8 +12,8 @@ setup(
         'gym==0.18.0',
         'moviepy==1.0.3',
         'opencv-python==4.5.2.52',
-        'torch==1.10.1',
         'tensorboard==2.7.0',
+        'torch==1.10.1',
         'pytest==6.2.5',
         'pyyaml==6.0',
     ])
