@@ -31,14 +31,6 @@ class NoopResetWrapper(Wrapper):
         self._noop_action = noop_action
         self._noop_min = noop_min
         self._noop_max = noop_max
-        self._run_checks()
-
-    def _run_checks(self) -> None:
-        meanings = self.env.unwrapped.get_action_meanings()
-        cond = meanings[self._noop_action] == 'NOOP'
-        if not cond:
-            msg = "Chosen no-op action does not have meaning 'NOOP'."
-            raise ValueError(msg)
 
     @property
     def noop_action(self) -> Action:

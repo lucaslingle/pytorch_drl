@@ -5,13 +5,12 @@ from drl.utils.types import Observation, EnvOutput
 from drl.envs.wrappers.stateless import RewardSpec
 
 
-class CyclicEnv(gym.core.Env):
+class LockstepEnv(gym.core.Env):
     def __init__(self, cardinality: int = 100):
         super().__init__()
         self._observation_space_cardinality = cardinality
-        self._observation_space = gym.spaces.Discrete(
-            self._observation_space_cardinality)
-        self._action_space = gym.spaces.Discrete(1)
+        self._observation_space = gym.spaces.Discrete(cardinality)
+        self._action_space = gym.spaces.Discrete(cardinality + 1)
         self._initial_state = 0
         self._state = self._initial_state
 
@@ -32,7 +31,11 @@ class CyclicEnv(gym.core.Env):
         return np.array(self._state)
 
     def step(self, action: int) -> EnvOutput:
-        new_state = self._state + 1
+        assert action in self._action_space
+        if action == self._state:
+            new_state = self._state + 1
+        else:
+            new_state = self._state
         new_state %= self._observation_space_cardinality
         self._state = new_state
 
