@@ -27,7 +27,7 @@ algo:
         checkpoint_frequency: 100
         non_learning_steps: 409600  # RNDWrapper nonlearning steps * world_size
         max_steps: 500000000        # 0.5B
-credit_assignment_spec:
+credit_assignment:
     extrinsic:
         cls_name: GAE
         cls_args: {gamma: 0.999, lambda_: 0.95, use_dones: True}

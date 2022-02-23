@@ -2,7 +2,7 @@
 Reward normalization wrapper.
 """
 
-from typing import Union, Optional, Dict, Any, Mapping
+from typing import Union, Optional, Dict, Any, Mapping, List
 
 import torch as tc
 import gym
@@ -46,46 +46,69 @@ class _ReturnAcc(tc.nn.Module):
     def moment2(self, value):
         self._normalizer.moment2 = value
 
-    def _truncation_condition(self, done):
-        cond0 = self._use_dones
-        cond1 = done
-        cond2 = not self._use_dones
-        cond3 = len(self._current_ep_rewards) > int(5 / (1 - self._gamma))
-        return (cond0 and cond1) or (cond2 and cond3)
+    @property
+    def trace_length(self) -> Optional[int]:
+        if self._use_dones:
+            return None
+        return int(5 / (1 - self._gamma))
 
-    def update(self, r_t, d_t):
+    def _unload_terminating(self) -> List[float]:
+        returns = list()
+        while len(self._current_ep_rewards) > 0:
+            r_t = self._current_ep_rewards.pop()
+            if len(returns) == 0:
+                R_t = r_t
+            else:
+                R_tp1 = returns[-1]
+                R_t = r_t + self._gamma * R_tp1
+            returns.append(R_t)
+        return returns[::-1]
+
+    def _unload_continuing(self) -> List[float]:
+        returns = list()
+        for t in range(2 * self.trace_length):
+            r_t = self._current_ep_rewards[2 * self.trace_length - 1 - t]
+            if len(returns) == 0:
+                R_t = r_t
+            else:
+                R_tp1 = returns[-1]
+                R_t = r_t + self._gamma * R_tp1
+            returns.append(R_t)
+        self._current_ep_rewards = self._current_ep_rewards[self.trace_length:]
+        return returns[::-1][0:self.trace_length]
+
+    def update_from_returns(self, returns: List[float]):
+        ep_steps = len(returns)
+        steps = self._normalizer.steps + ep_steps
+
+        returns = tc.tensor(returns)
+
+        moment1 = self._normalizer.moment1
+        moment1 *= ((steps - ep_steps) / steps)
+        ep_ret_mean = tc.mean(returns)
+        moment1 += (ep_steps / steps) * ep_ret_mean
+
+        moment2 = self._normalizer.moment2
+        moment2 *= ((steps - ep_steps) / steps)
+        ep_ret_var = tc.mean(tc.square(returns))
+        moment2 += (ep_steps / steps) * ep_ret_var
+
+        self._normalizer.steps = steps
+        self._normalizer.moment1 = moment1
+        self._normalizer.moment2 = moment2
+
+    def update(self, r_t: float, d_t: bool) -> None:
         self._current_ep_rewards.append(r_t)
-        if self._truncation_condition(d_t):
-            returns = list()
-            while len(self._current_ep_rewards) > 0:
-                r_t = self._current_ep_rewards.pop()
-                if len(returns) == 0:
-                    R_t = r_t
-                else:
-                    R_tp1 = returns[-1]
-                    R_t = r_t + self._gamma * R_tp1
-                returns.append(R_t)
+        if self._use_dones:
+            if d_t:
+                returns = self._unload_terminating()
+                self.update_from_returns(returns)
+        if not self._use_dones:
+            if len(self._current_ep_rewards) >= 2 * self.trace_length:
+                returns = self._unload_continuing()
+                self.update_from_returns(returns)
 
-            ep_steps = len(returns)
-            steps = self._normalizer.steps + ep_steps
-
-            returns = tc.tensor(returns)
-
-            moment1 = self._normalizer.moment1
-            moment1 *= ((steps - ep_steps) / steps)
-            ep_ret_mean = tc.mean(returns)
-            moment1 += (ep_steps / steps) * ep_ret_mean
-
-            moment2 = self._normalizer.moment2
-            moment2 *= ((steps - ep_steps) / steps)
-            ep_ret_var = tc.mean(tc.square(returns))
-            moment2 += (ep_steps / steps) * ep_ret_var
-
-            self._normalizer.steps = steps
-            self._normalizer.moment1 = moment1
-            self._normalizer.moment2 = moment2
-
-    def forward(self, r_t, shift=False, scale=True):
+    def forward(self, r_t, shift=False, scale=True) -> tc.Tensor:
         if self.steps == 0:
             return tc.zeros_like(r_t)
         return self._normalizer(r_t, shift=shift, scale=scale)
@@ -157,11 +180,11 @@ class NormalizeRewardWrapper(TrainableWrapper):
                 msg = "The key 'extrinsic_raw' must be preserved for logging."
                 raise ValueError(msg)
             if not isinstance(rew, dict):
-                msg = "Can't use non-keyed reward with keyed normalization wrapper."
+                msg = "Got non-keyed reward with keyed normalization wrapper."
                 raise TypeError(msg)
         else:
             if isinstance(rew, dict):
-                msg = "Can't use keyed reward w/ non-keyed normalization wrapper."
+                msg = "Got keyed reward w/ non-keyed normalization wrapper."
                 raise TypeError(msg)
         reward = rew if not isinstance(rew, dict) else rew[self._key]
         reward = tc.tensor(reward).float()
@@ -174,7 +197,9 @@ class NormalizeRewardWrapper(TrainableWrapper):
         return obs, rew, done, info
 
     def learn(
-            self, mb: Mapping[str, tc.Tensor], **kwargs: Mapping[str,
-                                                                 Any]) -> None:
+        self,
+        mb: Mapping[str, tc.Tensor],
+        **kwargs: Mapping[str, Any],
+    ) -> None:
         self._sync_normalizers_global()
         self._sync_normalizers_local()
