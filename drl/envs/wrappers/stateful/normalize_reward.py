@@ -58,22 +58,17 @@ class ReturnAcc(tc.nn.Module):
     def trace_length(self, value: int) -> None:
         self._trace_length = value
 
-    def unload(self) -> List[float]:
-        returns = list()
+    def _unload(self) -> List[float]:
+        returns = [0. for _ in range(2 * self._trace_length + 1)]
         for t in reversed(range(2 * self._trace_length)):
             rd = self._current_ep_rewards[t]
             r_t, d_t = rd.reward, rd.done
             mask = float(1. - d_t) if self._use_dones else 1.
-            if len(returns) == 0:
-                R_t = r_t
-            else:
-                R_tp1 = returns[-1]
-                R_t = r_t + mask * self._gamma * R_tp1
-            returns.append(R_t)
+            returns[t] = r_t + mask * self._gamma * returns[t+1]
         self._current_ep_rewards = self._current_ep_rewards[self.trace_length:]
-        return returns[::-1][0:self.trace_length]
+        return returns[0:self.trace_length]
 
-    def update_from_returns(self, returns: List[float]) -> None:
+    def _update_from_returns(self, returns: List[float]) -> None:
         returns = tc.tensor(returns)
         ep_steps = returns.shape[0]
         steps = self._normalizer.steps + ep_steps
@@ -96,13 +91,13 @@ class ReturnAcc(tc.nn.Module):
         rd = RewardAndDone(reward=r_t, done=d_t)
         self._current_ep_rewards.append(rd)
         if len(self._current_ep_rewards) >= 2 * self._trace_length:
-            returns = self.unload()
-            self.update_from_returns(returns)
+            returns = self._unload()
+            self._update_from_returns(returns)
 
-    def forward(self, r_t, shift=False, scale=True) -> tc.Tensor:
-        if self.steps == 0:
-            return tc.zeros_like(r_t)
-        return self._normalizer(r_t, shift=shift, scale=scale)
+    def forward(self, r_t, shift=False, scale=True) -> float:
+        if self.steps.item() == 0:
+            return 0.
+        return self._normalizer(r_t, shift=shift, scale=scale).item()
 
 
 class NormalizeRewardWrapper(TrainableWrapper):
@@ -125,8 +120,8 @@ class NormalizeRewardWrapper(TrainableWrapper):
             key (Optional[str]): Optional reward key.
         """
         super().__init__(env)
-        self._synced_normalizer = ReturnAcc(gamma, -10, 10, use_dones)
-        self._unsynced_normalizer = ReturnAcc(gamma, -10, 10, use_dones)
+        self._synced_normalizer = ReturnAcc(gamma, -10., 10., use_dones)
+        self._unsynced_normalizer = ReturnAcc(gamma, -10., 10., use_dones)
         self._key = key
         self._world_size = world_size
         self._reward_spec = self._get_reward_spec()
@@ -157,6 +152,17 @@ class NormalizeRewardWrapper(TrainableWrapper):
         self._unsynced_normalizer.moment2 = self._synced_normalizer.moment2
 
     @property
+    def trace_length(self) -> int:
+        assert self._unsynced_normalizer.trace_length == \
+               self._synced_normalizer.trace_length
+        return self._synced_normalizer.trace_length
+
+    @trace_length.setter
+    def trace_length(self, value: int) -> None:
+        self._unsynced_normalizer.trace_length = value
+        self._synced_normalizer.trace_length = value
+
+    @property
     def checkpointables(self) -> Dict[str, Checkpointable]:
         checkpoint_dict = self.env.checkpointables
         checkpoint_dict.update({'reward_normalizer': self._synced_normalizer})
@@ -177,9 +183,9 @@ class NormalizeRewardWrapper(TrainableWrapper):
             if isinstance(rew, dict):
                 msg = "Got keyed reward w/ non-keyed normalization wrapper."
                 raise TypeError(msg)
-        reward = rew if not isinstance(rew, dict) else rew[self._key]
+        reward = rew[self._key] if isinstance(rew, dict) else rew
         reward = tc.tensor(reward).float()
-        normalized = self._synced_normalizer(reward.unsqueeze(0)).item()
+        normalized = self._synced_normalizer(reward.unsqueeze(0))
         self._unsynced_normalizer.update(reward, done)
         if isinstance(rew, dict):
             rew[self._key] = normalized
@@ -189,7 +195,7 @@ class NormalizeRewardWrapper(TrainableWrapper):
 
     def learn(
         self,
-        mb: Mapping[str, tc.Tensor],
+        minibatch: Mapping[str, tc.Tensor],
         **kwargs: Mapping[str, Any],
     ) -> None:
         self._sync_normalizers_global()

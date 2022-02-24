@@ -32,6 +32,7 @@ class LockstepEnv(gym.core.Env):
 
     def step(self, action: int) -> EnvOutput:
         assert action in self._action_space
+        reward = float(self._state + 1) if action == self._state else 0.
         if action == self._state:
             new_state = self._state + 1
         else:
@@ -40,7 +41,7 @@ class LockstepEnv(gym.core.Env):
         self._state = new_state
 
         o_tp1 = self._state
-        r_t = {'extrinsic': 1.0, 'extrinsic_raw': 1.0}
+        r_t = {'extrinsic': reward, 'extrinsic_raw': reward}
         d_t = False
         i_t = {}
         return np.array(o_tp1), r_t, d_t, i_t

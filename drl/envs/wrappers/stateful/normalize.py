@@ -141,7 +141,7 @@ class Normalizer(tc.nn.Module):
             scale (bool): Scale the item by dividing by the standard deviation?
                 Default: True.
             eps (float): Numerical stability constant for standard deviation.
-                Default: 1e-4.
+                Default: 1e-8.
 
         Returns:
             torch.Tensor: Normalized and optionally clipped item.
@@ -150,9 +150,9 @@ class Normalizer(tc.nn.Module):
         mean = m1
         var = m2 - tc.square(m1)
         if shift:
-            item -= mean
+            item = item - mean
         if scale:
-            item *= tc.rsqrt(var + eps)
+            item = item * tc.rsqrt(var + eps)
         if self._clip_low is not None:
             lows = tc.ones_like(item) * self._clip_low
             item = tc.max(lows, item)

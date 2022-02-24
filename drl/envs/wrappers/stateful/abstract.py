@@ -16,12 +16,13 @@ class TrainableWrapper(Wrapper, metaclass=abc.ABCMeta):
     """
     @abc.abstractmethod
     def learn(
-            self, mb: Mapping[str, tc.Tensor], **kwargs: Mapping[str,
-                                                                 Any]) -> None:
+            self,
+            minibatch: Mapping[str, tc.Tensor],
+            **kwargs: Mapping[str, Any]) -> None:
         """
         Args:
-            mb (Mapping[str, torch.Tensor]): Minibatch of experience to learn from.
-            **kwargs (Mapping[str, Any]):
+            minibatch (Mapping[str, torch.Tensor]): Minibatch of experience.
+            **kwargs (Mapping[str, Any]): Keyword args.
 
         Returns:
             None.
