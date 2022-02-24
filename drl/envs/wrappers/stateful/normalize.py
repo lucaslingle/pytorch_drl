@@ -131,7 +131,7 @@ class Normalizer(tc.nn.Module):
             item: tc.Tensor,
             shift: bool = True,
             scale: bool = True,
-            eps: float = 1e-4) -> tc.Tensor:
+            eps: float = 1e-8) -> tc.Tensor:
         """
         Applies normalizer to an item without updating internal statistics.
 

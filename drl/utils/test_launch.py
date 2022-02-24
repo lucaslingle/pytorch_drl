@@ -1,3 +1,4 @@
+from typing import Mapping, Any
 import tempfile
 import os
 
@@ -24,8 +25,7 @@ from drl.agents.preprocessing import ToChannelMajor, OneHotEncode
 from drl.agents.architectures import NatureCNN, MLP
 from drl.agents.heads import SimpleValueHead, CategoricalPolicyHead
 from drl.utils.configuration import ConfigParser
-from drl.utils.test_distributed import (
-    WORLD_SIZE, make_process_group, destroy_process_group)
+from drl.utils.test_distributed import requires_process_group, WORLD_SIZE
 
 # for testing manually made the world_size in the config below match WORLD_SIZE.
 # we can also do this with an f-string,
@@ -269,9 +269,8 @@ def test_get_predictors():
             assert isinstance(v, SimpleValueHead)
 
 
-def local_test_get_net(rank, port):
-    make_process_group(rank, port)
-
+@requires_process_group
+def local_test_get_net(**kwargs: Mapping[str, Any]) -> None:
     env = gym.make('BreakoutNoFrameskip-v4')
     # yapf: disable
     net = get_net(
@@ -318,16 +317,15 @@ def local_test_get_net(rank, port):
         actual=predictions['value_extrinsic'],
         expected=tc.zeros(size=(1, ), dtype=tc.float32))
 
-    destroy_process_group()
-
 
 def test_get_net():
     tc.multiprocessing.spawn(
         local_test_get_net, args=(13000, ), nprocs=WORLD_SIZE, join=True)
 
 
-def local_test_make_learning_system(rank, port):
-    make_process_group(rank, port)
+@requires_process_group
+def local_test_make_learning_system(
+        rank: int, **kwargs: Mapping[str, Any]) -> None:
     broadcast_list = [None, None]
     if rank == 0:
         config_dir = os.path.join(
@@ -378,8 +376,6 @@ def local_test_make_learning_system(rank, port):
     tc.testing.assert_close(
         actual=predictions['value_extrinsic'],
         expected=tc.zeros(size=(1, ), dtype=tc.float32))
-
-    destroy_process_group()
 
 
 def test_make_learning_system():

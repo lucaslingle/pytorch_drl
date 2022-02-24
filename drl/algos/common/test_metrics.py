@@ -1,15 +1,15 @@
+from typing import Mapping, Any
 from collections import deque
 
 import torch as tc
 
 from drl.algos.common.metrics import (
     global_mean, global_means, global_gather, global_gathers, MultiQueue)
-from drl.utils.test_distributed import (
-    WORLD_SIZE, make_process_group, destroy_process_group)
+from drl.utils.test_distributed import requires_process_group, WORLD_SIZE
 
 
-def local_test_global_mean(rank: int, port: int) -> None:
-    make_process_group(rank, port)
+@requires_process_group
+def local_test_global_mean(rank: int, **kwargs: Mapping[str, Any]) -> None:
     local_value = rank * tc.tensor([1., 2., 3.])
     global_value_actual = global_mean(
         local_value=local_value, world_size=WORLD_SIZE, item=False)
@@ -17,16 +17,16 @@ def local_test_global_mean(rank: int, port: int) -> None:
     if rank == 0:
         tc.testing.assert_close(
             actual=global_value_actual, expected=global_value_expected)
-    destroy_process_group()
 
 
 def test_global_mean() -> None:
+    port = 12001
     tc.multiprocessing.spawn(
-        local_test_global_mean, args=(12001, ), nprocs=WORLD_SIZE, join=True)
+        local_test_global_mean, args=(port, ), nprocs=WORLD_SIZE, join=True)
 
 
-def local_test_global_means(rank: int, port: int) -> None:
-    make_process_group(rank, port)
+@requires_process_group
+def local_test_global_means(rank: int, **kwargs: Mapping[str, Any]) -> None:
     local_values = {
         'foo': rank * tc.tensor([1., 2., 3.]),
         'bar': -2 * rank * tc.tensor([1., 2., 3.])
@@ -42,16 +42,16 @@ def local_test_global_means(rank: int, port: int) -> None:
             tc.testing.assert_close(
                 actual=global_values_actual[name],
                 expected=global_values_expected[name])
-    destroy_process_group()
 
 
 def test_global_means() -> None:
+    port = 12002
     tc.multiprocessing.spawn(
-        local_test_global_means, args=(12002, ), nprocs=WORLD_SIZE, join=True)
+        local_test_global_means, args=(port, ), nprocs=WORLD_SIZE, join=True)
 
 
-def local_test_global_gather(rank: int, port: int) -> None:
-    make_process_group(rank, port)
+@requires_process_group
+def local_test_global_gather(rank: int, **kwargs: Mapping[str, Any]) -> None:
     local_list = [rank * tc.tensor([1., 2., 3.])]
     global_list_actual = global_gather(
         local_list=local_list, world_size=WORLD_SIZE)
@@ -66,16 +66,16 @@ def local_test_global_gather(rank: int, port: int) -> None:
         for j in range(WORLD_SIZE):
             tc.testing.assert_close(
                 actual=global_list_actual[j], expected=global_list_expected[j])
-    destroy_process_group()
 
 
 def test_global_gather() -> None:
+    port = 12003
     tc.multiprocessing.spawn(
-        local_test_global_gather, args=(12003, ), nprocs=WORLD_SIZE, join=True)
+        local_test_global_gather, args=(port, ), nprocs=WORLD_SIZE, join=True)
 
 
-def local_test_global_gathers(rank: int, port: int) -> None:
-    make_process_group(rank, port)
+@requires_process_group
+def local_test_global_gathers(rank: int, **kwargs: Mapping[str, Any]) -> None:
     local_lists = {
         'foo': [rank * tc.tensor([1., 2., 3.])],
         'bar': [-2 * rank * tc.tensor([1., 2., 3.])]
@@ -101,12 +101,12 @@ def local_test_global_gathers(rank: int, port: int) -> None:
                 tc.testing.assert_close(
                     actual=global_list_actual[j],
                     expected=global_list_expected[j])
-    destroy_process_group()
 
 
 def test_global_gathers() -> None:
+    port = 12004
     tc.multiprocessing.spawn(
-        local_test_global_gathers, args=(12004, ), nprocs=WORLD_SIZE, join=True)
+        local_test_global_gathers, args=(port, ), nprocs=WORLD_SIZE, join=True)
 
 
 def test_multiqueue_empty():

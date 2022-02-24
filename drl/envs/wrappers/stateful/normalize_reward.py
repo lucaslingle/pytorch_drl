@@ -3,6 +3,7 @@ Reward normalization wrapper.
 """
 
 from typing import Union, Optional, Dict, Any, Mapping, List
+import collections
 
 import torch as tc
 import gym
@@ -13,75 +14,69 @@ from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.algos.common import global_mean
 from drl.utils.types import Checkpointable, Action, EnvOutput
 
+RewardAndDone = collections.namedtuple('RewardAndDone', ['reward', 'done'])
 
-class _ReturnAcc(tc.nn.Module):
+
+class ReturnAcc(tc.nn.Module):
     def __init__(self, gamma, clip_low, clip_high, use_dones):
         super().__init__()
         self._gamma = gamma
         self._use_dones = use_dones
         self._current_ep_rewards = []
         self._normalizer = Normalizer([], clip_low, clip_high)
+        self._trace_length = int(5 / (1 - gamma))
 
     @property
-    def steps(self):
+    def steps(self) -> tc.Tensor:
         return self._normalizer.steps
 
     @steps.setter
-    def steps(self, value):
+    def steps(self, value: tc.Tensor) -> None:
         self._normalizer.steps = value
 
     @property
-    def moment1(self):
+    def moment1(self) -> tc.Tensor:
         return self._normalizer.moment1
 
     @moment1.setter
-    def moment1(self, value):
+    def moment1(self, value: tc.Tensor) -> None:
         self._normalizer.moment1 = value
 
     @property
-    def moment2(self):
+    def moment2(self) -> tc.Tensor:
         return self._normalizer.moment2
 
     @moment2.setter
-    def moment2(self, value):
+    def moment2(self, value: tc.Tensor) -> None:
         self._normalizer.moment2 = value
 
     @property
-    def trace_length(self) -> Optional[int]:
-        if self._use_dones:
-            return None
-        return int(5 / (1 - self._gamma))
+    def trace_length(self) -> int:
+        return self._trace_length
 
-    def _unload_terminating(self) -> List[float]:
+    @trace_length.setter
+    def trace_length(self, value: int) -> None:
+        self._trace_length = value
+
+    def unload(self) -> List[float]:
         returns = list()
-        while len(self._current_ep_rewards) > 0:
-            r_t = self._current_ep_rewards.pop()
+        for t in reversed(range(2 * self._trace_length)):
+            rd = self._current_ep_rewards[t]
+            r_t, d_t = rd.reward, rd.done
+            mask = float(1. - d_t) if self._use_dones else 1.
             if len(returns) == 0:
                 R_t = r_t
             else:
                 R_tp1 = returns[-1]
-                R_t = r_t + self._gamma * R_tp1
-            returns.append(R_t)
-        return returns[::-1]
-
-    def _unload_continuing(self) -> List[float]:
-        returns = list()
-        for t in range(2 * self.trace_length):
-            r_t = self._current_ep_rewards[2 * self.trace_length - 1 - t]
-            if len(returns) == 0:
-                R_t = r_t
-            else:
-                R_tp1 = returns[-1]
-                R_t = r_t + self._gamma * R_tp1
+                R_t = r_t + mask * self._gamma * R_tp1
             returns.append(R_t)
         self._current_ep_rewards = self._current_ep_rewards[self.trace_length:]
         return returns[::-1][0:self.trace_length]
 
-    def update_from_returns(self, returns: List[float]):
-        ep_steps = len(returns)
-        steps = self._normalizer.steps + ep_steps
-
+    def update_from_returns(self, returns: List[float]) -> None:
         returns = tc.tensor(returns)
+        ep_steps = returns.shape[0]
+        steps = self._normalizer.steps + ep_steps
 
         moment1 = self._normalizer.moment1
         moment1 *= ((steps - ep_steps) / steps)
@@ -98,15 +93,11 @@ class _ReturnAcc(tc.nn.Module):
         self._normalizer.moment2 = moment2
 
     def update(self, r_t: float, d_t: bool) -> None:
-        self._current_ep_rewards.append(r_t)
-        if self._use_dones:
-            if d_t:
-                returns = self._unload_terminating()
-                self.update_from_returns(returns)
-        if not self._use_dones:
-            if len(self._current_ep_rewards) >= 2 * self.trace_length:
-                returns = self._unload_continuing()
-                self.update_from_returns(returns)
+        rd = RewardAndDone(reward=r_t, done=d_t)
+        self._current_ep_rewards.append(rd)
+        if len(self._current_ep_rewards) >= 2 * self._trace_length:
+            returns = self.unload()
+            self.update_from_returns(returns)
 
     def forward(self, r_t, shift=False, scale=True) -> tc.Tensor:
         if self.steps == 0:
@@ -134,8 +125,8 @@ class NormalizeRewardWrapper(TrainableWrapper):
             key (Optional[str]): Optional reward key.
         """
         super().__init__(env)
-        self._synced_normalizer = _ReturnAcc(gamma, -10, 10, use_dones)
-        self._unsynced_normalizer = _ReturnAcc(gamma, -10, 10, use_dones)
+        self._synced_normalizer = ReturnAcc(gamma, -10, 10, use_dones)
+        self._unsynced_normalizer = ReturnAcc(gamma, -10, 10, use_dones)
         self._key = key
         self._world_size = world_size
         self._reward_spec = self._get_reward_spec()

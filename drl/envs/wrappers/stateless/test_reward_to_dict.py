@@ -1,3 +1,4 @@
+from typing import Mapping, Any
 import torch as tc
 import gym
 
@@ -8,20 +9,19 @@ from drl.envs.wrappers.stateless.scale_observations import (
     ScaleObservationsWrapper)
 from drl.envs.wrappers.stateful.intrinsic.random_network_distillation import (
     RandomNetworkDistillationWrapper)
-from drl.utils.test_distributed import (
-    WORLD_SIZE, make_process_group, destroy_process_group)
+from drl.utils.test_distributed import requires_process_group, WORLD_SIZE
 
 
-def local_test_reward_to_dict(rank: int, port: int) -> None:
-    make_process_group(rank, port)
-
+@requires_process_group
+def local_test_reward_to_dict(**kwargs: Mapping[str, Any]) -> None:
+    # w/o intrinsic
     env = gym.make('BreakoutNoFrameskip-v4')
-
     wrapped = RewardToDictWrapper(env)
     _ = wrapped.reset()
     o_tp1, r_t, d_t, i_t = wrapped.step(0)
     assert sorted(r_t.keys()) == ['extrinsic', 'extrinsic_raw']
 
+    # w/ intrinsic
     # yapf: disable
     wrapped2 = RandomNetworkDistillationWrapper(
         env=ScaleObservationsWrapper(
@@ -35,14 +35,11 @@ def local_test_reward_to_dict(rank: int, port: int) -> None:
         rnd_optimizer_args={},
         world_size=WORLD_SIZE,
         widening=1,
-        non_learning_steps=128
-    )
+        non_learning_steps=128)
     # yapf: enable
     wrapped2.reset()
     o_tp1, r_t, d_t, i_t = wrapped2.step(0)
     assert sorted(r_t.keys()) == ['extrinsic', 'extrinsic_raw', 'intrinsic_rnd']
-
-    destroy_process_group()
 
 
 def test_reward_to_dict() -> None:

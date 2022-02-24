@@ -1,4 +1,5 @@
 import os
+import functools
 
 import pytest
 import torch as tc
@@ -18,14 +19,23 @@ def destroy_process_group() -> None:
     return tc.distributed.destroy_process_group()
 
 
-def local_vanilla_false_assert(rank, port):
-    make_process_group(rank, port)
-    if rank == 0:
-        assert 2 + 2 == 5
-    destroy_process_group()
+def requires_process_group(func):
+    @functools.wraps(func)
+    def wrapped(rank, port, **kwargs):
+        make_process_group(rank, port)
+        kwargs.update({'rank': rank, 'port': port})
+        func(**kwargs)
+        destroy_process_group()
+
+    return wrapped
 
 
-def test_vanilla_false_assert() -> None:
+@requires_process_group
+def local_vanilla_false_assert():
+    assert 2 + 2 == 5
+
+
+def test_vanilla_false_assert():
     with pytest.raises(ProcessRaisedException):
         tc.multiprocessing.spawn(
             local_vanilla_false_assert,
@@ -34,15 +44,12 @@ def test_vanilla_false_assert() -> None:
             join=True)
 
 
-def local_torch_false_assert(rank: int, port: int) -> None:
-    make_process_group(rank, port)
-    if rank == 0:
-        tc.testing.assert_close(
-            actual=tc.tensor([1.]), expected=tc.tensor([0.]))
-    destroy_process_group()
+@requires_process_group
+def local_torch_false_assert():
+    tc.testing.assert_close(actual=tc.tensor([1.]), expected=tc.tensor([0.]))
 
 
-def test_torch_false_assert() -> None:
+def test_torch_false_assert():
     with pytest.raises(ProcessRaisedException):
         tc.multiprocessing.spawn(
             local_torch_false_assert,
