@@ -64,7 +64,7 @@ class ReturnAcc(tc.nn.Module):
             rd = self._current_ep_rewards[t]
             r_t, d_t = rd.reward, rd.done
             mask = float(1. - d_t) if self._use_dones else 1.
-            returns[t] = r_t + mask * self._gamma * returns[t+1]
+            returns[t] = r_t + mask * self._gamma * returns[t + 1]
         self._current_ep_rewards = self._current_ep_rewards[self.trace_length:]
         return returns[0:self.trace_length]
 

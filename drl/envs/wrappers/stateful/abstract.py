@@ -16,8 +16,7 @@ class TrainableWrapper(Wrapper, metaclass=abc.ABCMeta):
     """
     @abc.abstractmethod
     def learn(
-            self,
-            minibatch: Mapping[str, tc.Tensor],
+            self, minibatch: Mapping[str, tc.Tensor],
             **kwargs: Mapping[str, Any]) -> None:
         """
         Args:

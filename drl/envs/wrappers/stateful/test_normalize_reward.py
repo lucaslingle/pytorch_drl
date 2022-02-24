@@ -20,28 +20,22 @@ def test_return_accumulator_getters_setters() -> None:
     tc.testing.assert_close(acc.steps, tc.tensor(0.))
 
     tc.testing.assert_close(
-        actual=acc.moment1,
-        expected=tc.zeros(size=[], dtype=tc.float32))
+        actual=acc.moment1, expected=tc.zeros(size=[], dtype=tc.float32))
     acc.moment1 = tc.ones(size=[], dtype=tc.float32)
     tc.testing.assert_close(
-        actual=acc.moment1,
-        expected=tc.ones(size=[], dtype=tc.float32))
+        actual=acc.moment1, expected=tc.ones(size=[], dtype=tc.float32))
     acc.moment1 = tc.zeros(size=[], dtype=tc.float32)
     tc.testing.assert_close(
-        actual=acc.moment1,
-        expected=tc.zeros(size=[], dtype=tc.float32))
+        actual=acc.moment1, expected=tc.zeros(size=[], dtype=tc.float32))
 
     tc.testing.assert_close(
-        actual=acc.moment2,
-        expected=tc.zeros(size=[], dtype=tc.float32))
+        actual=acc.moment2, expected=tc.zeros(size=[], dtype=tc.float32))
     acc.moment2 = tc.ones(size=[], dtype=tc.float32)
     tc.testing.assert_close(
-        actual=acc.moment2,
-        expected=tc.ones(size=[], dtype=tc.float32))
+        actual=acc.moment2, expected=tc.ones(size=[], dtype=tc.float32))
     acc.moment2 = tc.zeros(size=[], dtype=tc.float32)
     tc.testing.assert_close(
-        actual=acc.moment2,
-        expected=tc.zeros(size=[], dtype=tc.float32))
+        actual=acc.moment2, expected=tc.zeros(size=[], dtype=tc.float32))
 
     assert acc.trace_length == int(5 / (1 - gamma))
     acc.trace_length = 4
@@ -108,7 +102,7 @@ def test_return_accumulator_forward() -> None:
     actual_normalized = acc(input_reward, shift=True, scale=True)
     expected_m1, expected_m2 = get_expected_moments()
     numer = input_reward - expected_m1
-    denom = (expected_m2 - expected_m1 ** 2) ** 0.5
+    denom = (expected_m2 - expected_m1**2)**0.5
     expected_normalized = numer / denom
     tc.testing.assert_close(
         actual=tc.tensor(actual_normalized),
@@ -116,7 +110,7 @@ def test_return_accumulator_forward() -> None:
 
     actual_normalized = acc(input_reward, shift=False, scale=True)
     numer = input_reward
-    denom = (expected_m2 - expected_m1 ** 2) ** 0.5
+    denom = (expected_m2 - expected_m1**2)**0.5
     expected_normalized = numer / denom
     tc.testing.assert_close(
         actual=tc.tensor(actual_normalized),
@@ -135,24 +129,22 @@ def local_test_normalize_reward_wrapper_step(
     wrapper.trace_length = 4
     for i in range(4):
         _, r_t, _, _ = wrapper.step(i)
-        assert r_t['extrinsic_raw'] == float(i+1)
+        assert r_t['extrinsic_raw'] == float(i + 1)
     for _ in range(4):
         _, r_t, _, _ = wrapper.step(42)
         assert r_t['extrinsic_raw'] == 0.
     wrapper.learn(minibatch={})
 
     _, r_t, _, _ = wrapper.step(4)
-    assert r_t['extrinsic_raw'] == float(4+1)
+    assert r_t['extrinsic_raw'] == float(4 + 1)
 
     assert wrapper._synced_normalizer.steps.item() == 4
     expected_m1, expected_m2 = map(
         lambda x: tc.tensor(x), get_expected_moments())
     tc.testing.assert_close(
-        actual=wrapper._synced_normalizer.moment1,
-        expected=expected_m1)
+        actual=wrapper._synced_normalizer.moment1, expected=expected_m1)
     tc.testing.assert_close(
-        actual=wrapper._synced_normalizer.moment2,
-        expected=expected_m2)
+        actual=wrapper._synced_normalizer.moment2, expected=expected_m2)
 
     actual = tc.tensor(r_t['extrinsic'])
     expected = tc.tensor(5) / tc.sqrt(expected_m2 - tc.square(expected_m1))
@@ -162,7 +154,7 @@ def local_test_normalize_reward_wrapper_step(
 def test_normalize_reward_wrapper_step() -> None:
     tc.multiprocessing.spawn(
         local_test_normalize_reward_wrapper_step,
-        args=(16000,),
+        args=(16000, ),
         nprocs=WORLD_SIZE,
         join=True)
 
