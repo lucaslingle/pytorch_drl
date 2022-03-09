@@ -12,4 +12,4 @@ cd docs
 sphinx-apidoc -o _source ../drl/ '../drl/tests/*'
 make html
 ```
-and navigate to ```file:///<PATH_TO_REPO>/docs/_build/html/index.html``` in a browser to view the HTML-rendered documentation. 
+and navigate to ```file://<PATH_TO_REPO>/docs/_build/html/index.html``` in a browser to view the HTML-rendered documentation. 
