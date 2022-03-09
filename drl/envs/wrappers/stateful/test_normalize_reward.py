@@ -80,7 +80,7 @@ def get_expected_moments() -> Tuple[float, float]:
     return expected_m1, expected_m2
 
 
-def test_return_accumulator_terminal() -> None:
+def test_return_accumulator_update() -> None:
     acc = make_return_acc()
     update_return_acc(acc)
     assert acc.steps == 4
