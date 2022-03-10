@@ -82,33 +82,36 @@ class CreditAssignmentOp(metaclass=abc.ABCMeta):
         self._gamma = gamma
         self._use_dones = use_dones
 
+    def __call__(self, *args, **kwargs):
+        return self.call(*args, **kwargs)
+
     @abc.abstractmethod
-    def __call__(
-            self, seg_len: int, extra_steps: int,
+    def call(
+            self, rollout_len: int, extra_steps: int,
             rewards: tc.Tensor) -> tc.Tensor:
         """
         Assign credit.
 
         Args:
-            seg_len (int): Trajectory segment length for credit assignment.
+            rollout_len (int): Trajectory segment length for credit assignment.
             extra_steps (int): Extra steps for n-step return-based credit
                 assignment. Should equal n-1 when n steps are used.
             rewards (torch.Tensor): Torch tensor of rewards at each timestep,
-                with shape [seg_len + extra_steps].
+                with shape [rollout_len + extra_steps].
             **kwargs: Keyword arguments.
 
         Returns:
             torch.Tensor: Torch tensor with estimated credit to assign
                 (e.g., a tensor of advantages or action-value targets),
-                with shape [seg_len].
+                with shape [rollout_len].
         """
 
 
 class AdvantageEstimator(CreditAssignmentOp, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def __call__(
+    def call(
             self,
-            seg_len: int,
+            rollout_len: int,
             extra_steps: int,
             rewards: tc.Tensor,
             vpreds: tc.Tensor,
@@ -117,27 +120,27 @@ class AdvantageEstimator(CreditAssignmentOp, metaclass=abc.ABCMeta):
         Estimate advantages.
 
         Args:
-            seg_len (int): Trajectory segment length for credit assignment.
+            rollout_len (int): Trajectory segment length for credit assignment.
             extra_steps (int): Extra steps for n-step return-based credit
                 assignment. Should equal n-1 when n steps are used.
             rewards (torch.Tensor): Torch tensor of rewards at each timestep,
-                with shape [seg_len + extra_steps].
+                with shape [rollout_len + extra_steps].
             vpreds (torch.Tensor): Torch tensor of value predictions at each
-                timestep, with shape [seg_len + extra_steps + 1].
+                timestep, with shape [rollout_len + extra_steps + 1].
             dones (torch.Tensor): Torch tensor of done signals at each timestep,
-                with shape [seg_len + extra_steps].
+                with shape [rollout_len + extra_steps].
 
         Returns:
             torch.Tensor: Torch tensor of advantage estimates
-                with shape [seg_len].
+                with shape [rollout_len].
         """
 
 
 class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def __call__(
+    def call(
             self,
-            seg_len: int,
+            rollout_len: int,
             extra_steps: int,
             rewards: tc.Tensor,
             qpreds: tc.Tensor,
@@ -147,22 +150,22 @@ class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
         Estimate action values.
 
         Args:
-            seg_len (int): Trajectory segment length for credit assignment.
+            rollout_len (int): Trajectory segment length for credit assignment.
             extra_steps (int): Extra steps for n-step return-based credit
                 assignment. Should equal n-1 when n steps are used.
             rewards (torch.Tensor): Torch tensor of rewards at each timestep,
-                with shape [seg_len + extra_steps].
+                with shape [rollout_len + extra_steps].
             qpreds (torch.Tensor): Torch tensor of action-value predictions
-                at each timestep, with shape [seg_len + extra_steps + 1].
+                at each timestep, with shape [rollout_len + extra_steps + 1].
             tgt_qpreds (torch.Tensor): Torch tensor of target network
                 action-value predictions at each timestep, with shape
-                [seg_len + extra_steps + 1].
+                [rollout_len + extra_steps + 1].
             dones (torch.Tensor): Torch tensor of done signals at each timestep,
-                with shape [seg_len + extra_steps].
+                with shape [rollout_len + extra_steps].
 
         Returns:
             torch.Tensor: Torch tensor of action-value estimates
-                with shape [seg_len].
+                with shape [rollout_len].
         """
 
 
@@ -189,14 +192,14 @@ class GAE(AdvantageEstimator):
         super().__init__(gamma, use_dones)
         self._lambda = lambda_
 
-    def __call__(
+    def call(
             self,
-            seg_len: int,
+            rollout_len: int,
             extra_steps: int,
             rewards: tc.Tensor,
             vpreds: tc.Tensor,
             dones: tc.Tensor) -> tc.Tensor:
-        T = seg_len
+        T = rollout_len
         n = extra_steps + 1
         advantages = tc.zeros(size=(T + n, ), dtype=tc.float32)
         for t in reversed(range(0, T + n - 1)):  # T+(n-1)-1, ..., 0
@@ -222,16 +225,16 @@ class NStepAdvantageEstimator(AdvantageEstimator):
     def __init__(self, gamma: float, use_dones: bool):
         super().__init__(gamma, use_dones)
 
-    def __call__(
+    def call(
             self,
-            seg_len: int,
+            rollout_len: int,
             extra_steps: int,
             rewards: tc.Tensor,
             vpreds: tc.Tensor,
             dones: tc.Tensor) -> tc.Tensor:
         # r_t + gamma * r_tp1 + ... + gamma^nm1 * r_tpnm1 + gamma^n * V(s_tpn)
         #  extra steps equals n-1 for n-step returns.
-        T = seg_len
+        T = rollout_len
         n = extra_steps + 1
         advantages = tc.zeros(size=(T, ), dtype=tc.float32)
         for t in reversed(range(0, T)):  # T-1, ..., 0
@@ -270,9 +273,9 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
         super().__init__(gamma, use_dones)
         self._double_q = double_q
 
-    def __call__(
+    def call(
             self,
-            seg_len: int,
+            rollout_len: int,
             extra_steps: int,
             rewards: tc.Tensor,
             qpreds: tc.Tensor,
@@ -280,7 +283,7 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
             dones: tc.Tensor) -> tc.Tensor:
         # r_t + gamma * r_tp1 + ... + gamma^nm1 * r_tpnm1 + gamma^n * Q(s_tpn, a_tpn)
         #  extra steps equals n-1 for n-step returns.
-        T = seg_len
+        T = rollout_len
         n = extra_steps + 1
         bellman_backups = tc.zeros(size=(T, ), dtype=tc.float32)
         for t in reversed(range(0, T)):  # T-1, ..., 0

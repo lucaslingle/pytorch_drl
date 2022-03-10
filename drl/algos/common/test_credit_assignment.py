@@ -5,7 +5,7 @@ from drl.algos.common.credit_assignment import (
 
 
 def test_gae():
-    seg_len = 2
+    rollout_len = 2
     extra_steps = 0
     gamma = 0.99
     lambda_ = 0.95
@@ -15,7 +15,7 @@ def test_gae():
     dones_1 = tc.tensor([0., 0.])
     credit_assignment_op_1 = GAE(gamma=gamma, use_dones=True, lambda_=lambda_)
     advantages = credit_assignment_op_1(
-        seg_len=seg_len,
+        rollout_len=rollout_len,
         extra_steps=extra_steps,
         rewards=rewards,
         vpreds=value_estimates,
@@ -30,7 +30,7 @@ def test_gae():
     dones_2 = tc.tensor([1., 0.])
     credit_assignment_op_2 = credit_assignment_op_1
     advantages = credit_assignment_op_2(
-        seg_len=seg_len,
+        rollout_len=rollout_len,
         extra_steps=extra_steps,
         rewards=rewards,
         vpreds=value_estimates,
@@ -47,7 +47,7 @@ def test_gae():
     dones_3 = tc.tensor([1., 0.])
     credit_assignment_op_3 = GAE(gamma=gamma, use_dones=False, lambda_=lambda_)
     advantages = credit_assignment_op_3(
-        seg_len=seg_len,
+        rollout_len=rollout_len,
         extra_steps=extra_steps,
         rewards=rewards,
         vpreds=value_estimates,
@@ -62,7 +62,7 @@ def test_gae():
 
 
 def test_nstep_advantages():
-    seg_len = 2
+    rollout_len = 2
     extra_steps = 2
     gamma = 0.99
     rewards = tc.tensor([1., 2., 3., 4.])
@@ -72,7 +72,7 @@ def test_nstep_advantages():
     credit_assignment_op_1 = NStepAdvantageEstimator(
         gamma=gamma, use_dones=True)
     advantages_1 = credit_assignment_op_1(
-        seg_len=seg_len,
+        rollout_len=rollout_len,
         extra_steps=extra_steps,
         rewards=rewards,
         vpreds=value_estimates,
@@ -88,7 +88,7 @@ def test_nstep_advantages():
     dones_2 = tc.tensor([0., 1., 0., 0.])
     credit_assignment_op_2 = credit_assignment_op_1
     advantages_2 = credit_assignment_op_2(
-        seg_len=seg_len,
+        rollout_len=rollout_len,
         extra_steps=extra_steps,
         rewards=rewards,
         vpreds=value_estimates,
@@ -107,7 +107,7 @@ def test_nstep_advantages():
     credit_assignment_op_3 = NStepAdvantageEstimator(
         gamma=gamma, use_dones=False)
     advantages_3 = credit_assignment_op_3(
-        seg_len=seg_len,
+        rollout_len=rollout_len,
         extra_steps=extra_steps,
         rewards=rewards,
         vpreds=value_estimates,
@@ -117,7 +117,7 @@ def test_nstep_advantages():
 
 def test_simple_discrete_bellman_optimality_op():
     num_actions = 3
-    seg_len = 2
+    rollout_len = 2
     extra_steps = 0
     gamma = 0.99
     rewards = tc.tensor([0., 0.])
@@ -128,7 +128,7 @@ def test_simple_discrete_bellman_optimality_op():
     credit_assignment_op_1 = SimpleDiscreteBellmanOptimalityOperator(
         gamma=gamma, use_dones=True, double_q=False)
     operator_image_actual = credit_assignment_op_1(
-        seg_len=seg_len,
+        rollout_len=rollout_len,
         extra_steps=extra_steps,
         rewards=rewards,
         qpreds=qpreds,
@@ -144,7 +144,7 @@ def test_simple_discrete_bellman_optimality_op():
     credit_assignment_op_2 = SimpleDiscreteBellmanOptimalityOperator(
         gamma=gamma, use_dones=True, double_q=True)
     operator_image_actual = credit_assignment_op_2(
-        seg_len=seg_len,
+        rollout_len=rollout_len,
         extra_steps=extra_steps,
         rewards=rewards,
         qpreds=qpreds,
@@ -161,7 +161,7 @@ def test_simple_discrete_bellman_optimality_op():
     credit_assignment_op_3 = SimpleDiscreteBellmanOptimalityOperator(
         gamma=gamma, use_dones=False, double_q=True)
     operator_image_actual = credit_assignment_op_3(
-        seg_len=seg_len,
+        rollout_len=rollout_len,
         extra_steps=extra_steps,
         rewards=rewards,
         qpreds=qpreds,

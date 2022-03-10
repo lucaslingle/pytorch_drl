@@ -17,7 +17,7 @@ from drl.algos.common.metrics import (
     MultiQueue,
     pretty_print)
 from drl.algos.common.schedules import LinearSchedule
-from drl.algos.common.trajectory import TrajectoryManager
+from drl.algos.common.rollout import RolloutManager
 from drl.algos.common.wrapper_ops import update_trainable_wrappers
 
 __all__ = [
@@ -38,6 +38,6 @@ __all__ = [
     "MultiQueue",
     "pretty_print",
     "LinearSchedule",
-    "TrajectoryManager",
+    "RolloutManager",
     "update_trainable_wrappers",
 ]

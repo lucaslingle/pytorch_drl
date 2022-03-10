@@ -102,29 +102,29 @@ class MetadataManager:
         self._pasts = {key: list() for key in self._keys}
 
 
-class Trajectory:
+class Rollout:
     def __init__(
             self,
             obs_space: gym.spaces.Space,
             ac_space: gym.spaces.Space,
             rew_keys: List[str],
-            seg_len: int,
+            rollout_len: int,
             extra_steps: int):
         """
         Args:
             obs_space (gym.spaces.Space): Observation space.
             ac_space (gym.spaces.Space): Action space.
             rew_keys (List[str]): Reward keys.
-            seg_len (int): Segment length.
-            extra_steps (int): Extra steps for n-step reward based credit assignment.
-                Should equal n-1 when n steps are used.
+            rollout_len (int): Trajectory segment length.
+            extra_steps (int): Extra steps for n-step reward based credit
+                assignment. Should equal n-1 when n steps are used.
         """
         self._obs_space = obs_space
         self._ac_space = ac_space
         self._rew_keys = rew_keys
-        self._seg_len = seg_len
+        self._rollout_len = rollout_len
         self._extra_steps = extra_steps
-        self._timesteps = seg_len + extra_steps
+        self._timesteps = rollout_len + extra_steps
         self._observations = None
         self._actions = None
         self._rewards = None
@@ -211,7 +211,7 @@ class Trajectory:
         }
         self._erase()
         if self._extra_steps > 0:
-            src = slice(self._seg_len, self._seg_len + self._extra_steps)
+            src = slice(self._rollout_len, self._rollout_len + self._extra_steps)
             dest = slice(0, self._extra_steps)
             self._observations[dest] = clone_nested_tensor(
                 results['observations'][src])
@@ -223,43 +223,50 @@ class Trajectory:
         return results
 
 
-class TrajectoryManager:
+class RolloutManager:
     def __init__(
             self,
             env: Union[gym.core.Env, Wrapper],
             rollout_net: Union[Agent, DDP],
-            seg_len: int,
+            rollout_len: int,
             extra_steps: int):
         """
         Args:
-            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper instance.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper
+                instance.
             rollout_net (Union[Agent, torch.nn.parallel.DistributedDataParallel]):
                 `Agent` or DDP-wrapped `Agent` instance. Must have 'policy'
                 as a prediction key.
-            seg_len (int): Trajectory segment length.
-            extra_steps (int): Extra steps for n-step reward based credit assignment.
-                Should equal n-1 when n steps are used.
+            rollout_len (int): Trajectory segment length.
+            extra_steps (int): Extra steps for n-step reward based credit
+                assignment. Should equal n-1 when n steps are used.
         """
-        assert seg_len > 0
+        assert rollout_len > 0
         assert extra_steps >= 0
 
         self._env = env
         self._rollout_net = rollout_net
-        self._seg_len = seg_len
+        self._rollout_len = rollout_len
         self._extra_steps = extra_steps
 
         self._o_t = self._env.reset()
         self._a_t = self._choose_action(self._o_t)
-        self._trajectory = Trajectory(
+        self._rollout = Rollout(
             obs_space=self._env.observation_space,
             ac_space=self._env.action_space,
             rew_keys=self._get_reward_keys(),
-            seg_len=self._seg_len,
+            rollout_len=self._rollout_len,
             extra_steps=self._extra_steps)
+        # yapf: disable
         self._metadata_mgr = MetadataManager(
             defaults={
-                'ep_len': 0, 'ep_ret': 0., 'ep_len_raw': 0, 'ep_ret_raw': 0.
-            })
+                'ep_len': 0,
+                'ep_ret': 0.,
+                'ep_len_raw': 0,
+                'ep_ret_raw': 0.
+            }
+        )
+        # yapf: enable
         _ = self.generate(initial=True)
 
     def _get_reward_keys(self) -> List[str]:
@@ -303,13 +310,14 @@ class TrajectoryManager:
                 return
             start_t, end_t = 0, self._extra_steps
         else:
-            start_t, end_t = self._extra_steps, self._seg_len+self._extra_steps
+            start_t = self._extra_steps
+            end_t = self._rollout_len + self._extra_steps
 
         # generate a trajectory segment.
         self._rollout_net.eval()
         for t in range(start_t, end_t):
             o_tp1, r_t, done_t, info_t = self._step_env(self._a_t)
-            self._trajectory.record(t, self._o_t, self._a_t, r_t, done_t)
+            self._rollout.record(t, self._o_t, self._a_t, r_t, done_t)
             self._metadata_mgr.update_present(
                 deltas={
                     'ep_len': 1,
@@ -341,9 +349,9 @@ class TrajectoryManager:
         # return results with next timestep observation and action included.
         # o_Tp1 is needed for value-based credit assignment.
         # a_Tp1 is included to simplify the implementation elsewhere.
-        self._trajectory.record_nexts(o_Tp1=o_tp1, a_Tp1=a_tp1)
+        self._rollout.record_nexts(o_Tp1=o_tp1, a_Tp1=a_tp1)
         results = {
-            **self._trajectory.report(), 'metadata': self._metadata_mgr.pasts
+            **self._rollout.report(), 'metadata': self._metadata_mgr.pasts
         }
         self._metadata_mgr.past_done()
         return results

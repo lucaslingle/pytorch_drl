@@ -13,14 +13,14 @@ import moviepy.editor as mpy
 
 from drl.envs.wrappers import Wrapper
 from drl.algos.common import (
-    TrajectoryManager,
+    RolloutManager,
     MultiQueue,
     CreditAssignmentOp,
     AdvantageEstimator,
     extract_reward_name)
 from drl.utils.nested import slice_nested_tensor
 from drl.utils.stats import standardize
-from drl.utils.types import NestedTensor
+from drl.utils.types import NestedTensor, Optimizer, Scheduler
 
 
 class Algo(object):
@@ -31,48 +31,72 @@ class Algo(object):
             self,
             rank: int,
             world_size: int,
-            seg_len: int,
+            rollout_len: int,
             extra_steps: int,
             credit_assignment_ops: Mapping[str, CreditAssignmentOp],
-            env: Union[gym.core.Env, Wrapper],
-            policy_net: DDP,
             stats_window_len: int,
+            non_learning_steps: int,
+            max_steps: int,
+            checkpoint_frequency: int,
+            checkpoint_dir: str,
             log_dir: str,
-            media_dir: str) -> None:
+            media_dir: str,
+            global_step: int,
+            env: Union[gym.core.Env, Wrapper],
+            rollout_net: DDP,
+            reward_weights: Optional[Mapping[str, float]] = None) -> None:
         """
         Args:
             rank (int): Process rank.
             world_size (int): Total number of processes.
-            seg_len (int): Trajectory segment length.
+            rollout_len (int): Trajectory segment length.
             extra_steps (int): Extra steps required for credit assignment.
                 Should be set to n-1 if using n-step return-based advantage
                 estimation.
             credit_assignment_ops (Mapping[str, AdvantageEstimator]):
                 Mapping from reward names to AdvantageEstimator instances.
-            env (Union[gym.core.Env, Wrapper]): Environment instance or wrapped
-                environment.
-            policy_net (torch.nn.parallel.DistributedDataParallel): DDP-wrapped
-                `Agent` instance. Must have 'policy' as a prediction key.
             stats_window_len (int): Window size for moving average of episode
                  metadata.
+            non_learning_steps (int): Number of global steps to skip integration
+                learning. Useful in conjunction with wrappers that maintain
+                rolling statistics.
+            max_steps (int): Maximum number of global steps.
+            checkpoint_frequency (int): Checkpoint frequency, measured in
+                global steps.
+            checkpoint_dir (str): Checkpoint directory.
             log_dir (str): Tensorboard logs directory.
             media_dir (str): Media directory.
+            global_step (int): Global step of learning so far.
+            env (Union[gym.core.Env, Wrapper]): Environment instance or wrapped
+                environment.
+            rollout_net (torch.nn.parallel.DistributedDataParallel): DDP-wrapped
+                `Agent` instance. Must have 'policy' as a prediction key.
+            reward_weights (Optional[Mapping[str, float]): Optional reward
+                weights mapping, keyed by reward name. Ignored if
+                env.reward_spec.keys() does not contain any intrinsic rewards.
+                Required if it does. Default: None.
         """
         self._rank = rank
         self._world_size = world_size
-        self._seg_len = seg_len
+        self._rollout_len = rollout_len
         self._extra_steps = extra_steps
         self._credit_assignment_ops = credit_assignment_ops
+        self._global_step = global_step
         self._env = env
-        self._policy_net = policy_net
+        self._rollout_net = rollout_net
         self._stats_world_len = stats_window_len
+        self._checkpoint_frequency = checkpoint_frequency
+        self._non_learning_steps = non_learning_steps
+        self._max_steps = max_steps
+        self._checkpoint_dir = checkpoint_dir
         self._log_dir = log_dir
         self._media_dir = media_dir
+        self._reward_weights = reward_weights
 
-        self._trajectory_mgr = TrajectoryManager(
+        self._trajectory_mgr = RolloutManager(
             env=env,
-            rollout_net=policy_net,
-            seg_len=seg_len,
+            rollout_net=rollout_net,
+            rollout_len=rollout_len,
             extra_steps=extra_steps)
         self._metadata_acc = MultiQueue(maxlen=stats_window_len)
         if self._rank == 0:
@@ -93,13 +117,13 @@ class Algo(object):
         value_predict = [f'value_{k}' for k in reward_keys]
         return policy_predict, value_predict
 
-    def annotate(self, trajectory: Dict[str, NestedTensor],
+    def annotate(self, rollout: Dict[str, NestedTensor],
                  no_grad: bool) -> Dict[str, NestedTensor]:
         """
         Annotates trajectory with predictions.
 
         Args:
-            trajectory (Dict[str, NestedTensor]): Trajectory segment.
+            rollout (Dict[str, NestedTensor]): Trajectory segment.
             no_grad (bool): Disable gradient tape recording?
 
         Returns:
@@ -108,13 +132,12 @@ class Algo(object):
         raise NotImplementedError
 
     def credit_assignment(
-            self, trajectory: Dict[str,
-                                   NestedTensor]) -> Dict[str, NestedTensor]:
+            self, rollout: Dict[str, NestedTensor]) -> Dict[str, NestedTensor]:
         """
         Assigns credit backwards in time.
 
         Args:
-            trajectory (Dict[str, NestedTensor]): Prediction-annotated
+            rollout (Dict[str, NestedTensor]): Prediction-annotated
                  trajectory segment.
 
         Returns:
@@ -146,6 +169,14 @@ class Algo(object):
         Returns:
             None.
         """
+        # todo: find a way to break the PPO training loop into
+        #  collection_logic (which is generic and can be kept),
+        #  subsampling logic,
+        #  optimization logic,
+        #  scheduler update logic,
+        #  tensorboard logging logic (which is generic and can be kept),
+        #  and checkpointing logic (which is generic and can be kept)
+        #  then move the training loop here.
         raise NotImplementedError
 
     def evaluation_loop(self) -> Dict[str, Union[float, tc.Tensor]]:
@@ -171,7 +202,7 @@ class Algo(object):
             o_t = self._env.reset()
             done_t = False
             while not done_t:
-                predictions_t = self._policy_net(
+                predictions_t = self._rollout_net(
                     observations=tc.tensor(o_t).float().unsqueeze(0),
                     predict=['policy'])
                 pi_dist_t = predictions_t['policy']
@@ -206,62 +237,103 @@ class ActorCriticAlgo(Algo):
             self,
             rank: int,
             world_size: int,
-            seg_len: int,
+            rollout_len: int,
             extra_steps: int,
             credit_assignment_ops: Mapping[str, AdvantageEstimator],
-            standardize_adv: bool,
+            stats_window_len: int,
+            non_learning_steps: int,
+            max_steps: int,
+            checkpoint_frequency: int,
+            checkpoint_dir: str,
+            log_dir: str,
+            media_dir: str,
+            global_step: int,
             env: Union[gym.core.Env, Wrapper],
             policy_net: DDP,
+            policy_optimizer: Optimizer,
+            policy_scheduler: Optional[Scheduler],
             value_net: Optional[DDP],
-            stats_window_len: int,
-            log_dir: str,
-            media_dir: str) -> None:
+            value_optimizer: Optional[Optimizer],
+            value_scheduler: Optional[Scheduler],
+            standardize_adv: bool,
+            reward_weights: Optional[Mapping[str, float]] = None) -> None:
         """
         Args:
             rank (int): Process rank.
             world_size (int): Total number of processes.
-            seg_len (int): Trajectory segment length.
+            rollout_len (int): Trajectory segment length.
             extra_steps (int): Extra steps required for credit assignment.
                 Should be set to n-1 if using n-step return-based advantage
                 estimation.
             credit_assignment_ops (Mapping[str, AdvantageEstimator]):
                 Mapping from reward names to AdvantageEstimator instances.
-            standardize_adv (bool): Standardize advantages per trajectory
-                segment?
+            stats_window_len (int): Window size for moving average of episode
+                 metadata.
+            non_learning_steps (int): Number of global steps to skip integration
+                learning. Useful in conjunction with wrappers that maintain
+                rolling statistics.
+            max_steps (int): Maximum number of global steps.
+            checkpoint_frequency (int): Checkpoint frequency, measured in
+                global steps.
+            checkpoint_dir (str): Checkpoint directory.
+            log_dir (str): Tensorboard logs directory.
+            media_dir (str): Media directory.
+            global_step (int): Global step of learning so far.
             env (Union[gym.core.Env, Wrapper]): Environment instance or wrapped
                 environment.
             policy_net (torch.nn.parallel.DistributedDataParallel): DDP-wrapped
                 `Agent` instance. Must have 'policy' as a prediction key.
+            policy_optimizer (torch.optim.Optimizer): Optimizer for policy_net.
+            policy_scheduler (Optional[torch.optim.lr_scheduler._LRScheduler]):
+                Optional learning rate scheduler for policy_optimizer.
             value_net (Optional[torch.nn.parallel.DistributedDataParallel]):
-                Optional DDP-wrapped `Agent` instance.
-            stats_window_len (int): Window size for moving average of episode
-                 metadata.
-            log_dir (str): Tensorboard logs directory.
-            media_dir (str): Media directory.
+                Optional DDP-wrapped `Agent` instance. If not None, must have a
+                'value_{reward_name}' prediction key for each reward_name in
+                env.reward_spec.keys() other than 'extrinsic_raw'.
+            value_optimizer (Optional[torch.optim.Optimizer]): Optional
+                optimizer for value_net. Required if value_net is not None.
+            value_scheduler (Optional[torch.optim.lr_scheduler._LRScheduler]):
+                Optional learning rate scheduler for value_optimizer.
+            standardize_adv (bool): Standardize advantages per trajectory
+                segment?
+            reward_weights (Optional[Mapping[str, float]): Optional reward
+                weights mapping, keyed by reward name. Ignored if
+                env.reward_spec.keys() does not contain any intrinsic rewards.
+                Required if it does. Default: None.
         """
         super().__init__(
             rank=rank,
             world_size=world_size,
-            seg_len=seg_len,
+            rollout_len=rollout_len,
             extra_steps=extra_steps,
             credit_assignment_ops=credit_assignment_ops,
-            env=env,
-            policy_net=policy_net,
             stats_window_len=stats_window_len,
+            non_learning_steps=non_learning_steps,
+            max_steps=max_steps,
+            checkpoint_frequency=checkpoint_frequency,
+            checkpoint_dir=checkpoint_dir,
             log_dir=log_dir,
-            media_dir=media_dir)
+            media_dir=media_dir,
+            global_step=global_step,
+            env=env,
+            rollout_net=policy_net,
+            reward_weights=reward_weights)
 
-        self._credit_assignment_ops = credit_assignment_ops
-        self._standardize_adv = standardize_adv
+        self._policy_net = policy_net
+        self._policy_optimizer = policy_optimizer
+        self._policy_scheduler = policy_scheduler
         self._value_net = value_net
+        self._value_optimizer = value_optimizer
+        self._value_scheduler = value_scheduler
+        self._standardize_adv = standardize_adv
 
-    def annotate(self, trajectory: Dict[str, NestedTensor],
+    def annotate(self, rollout: Dict[str, NestedTensor],
                  no_grad: bool) -> Dict[str, NestedTensor]:
         """
         Annotates trajectory with predictions.
 
         Args:
-            trajectory (Dict[str, NestedTensor]): Trajectory segment.
+            rollout (Dict[str, NestedTensor]): Trajectory segment.
             no_grad (bool): Disable gradient tape recording?
 
         Returns:
@@ -273,40 +345,39 @@ class ActorCriticAlgo(Algo):
             if not self._value_net:
                 policy_predict.extend(value_predict)
             predictions = self._policy_net(
-                trajectory['observations'], predict=policy_predict)
+                rollout['observations'], predict=policy_predict)
             pi = predictions.pop('policy')
             if not self._value_net:
                 vpreds = predictions
             else:
                 vpreds = self._value_net(
-                    trajectory['observations'], predict=value_predict)
+                    rollout['observations'], predict=value_predict)
 
-            # shallow copy of trajectory dict, point to initial/new values.
-            trajectory_new = {
-                'observations': trajectory['observations'],
-                'actions': trajectory['actions'],
-                'logprobs': pi.log_prob(trajectory['actions']),
+            # shallow copy of rollout dict, point to initial/new values.
+            rollout_new = {
+                'observations': rollout['observations'],
+                'actions': rollout['actions'],
+                'logprobs': pi.log_prob(rollout['actions']),
                 'entropies': pi.entropy()
             }
-            trajectory_new = slice_nested_tensor(
-                trajectory_new, slice(0, self._seg_len))
-            trajectory_new.update({
-                'rewards': trajectory['rewards'],
-                'dones': trajectory['dones'],
+            rollout_new = slice_nested_tensor(
+                rollout_new, slice(0, self._rollout_len))
+            rollout_new.update({
+                'rewards': rollout['rewards'],
+                'dones': rollout['dones'],
                 'vpreds': {extract_reward_name(k): vpreds[k] for k in vpreds}
             })
-            return trajectory_new
+            return rollout_new
 
     @tc.no_grad()
     def credit_assignment(
-            self, trajectory: Dict[str,
-                                   NestedTensor]) -> Dict[str, NestedTensor]:
+            self, rollout: Dict[str, NestedTensor]) -> Dict[str, NestedTensor]:
         """
         Computes advantage estimates and state-value targets.
 
         Args:
-            trajectory (Dict[str, NestedTensor]): Prediction-annotated
-                 trajectory segment.
+            rollout (Dict[str, NestedTensor]): Prediction-annotated
+                trajectory segment.
 
         Returns:
             Dict[str, NestedTensor]: Prediction-annotated
@@ -315,22 +386,22 @@ class ActorCriticAlgo(Algo):
         advantages, td_lambda_returns = dict(), dict()
         for k in self._get_reward_keys(omit_raw=True):
             advantages_k = self._credit_assignment_ops[k](
-                seg_len=self._seg_len,
+                rollout_len=self._rollout_len,
                 extra_steps=self._extra_steps,
-                rewards=trajectory['rewards'][k],
-                vpreds=trajectory['vpreds'][k],
-                dones=trajectory['dones'])
-            vpreds_k = trajectory['vpreds'][k][slice(0, self._seg_len)]
+                rewards=rollout['rewards'][k],
+                vpreds=rollout['vpreds'][k],
+                dones=rollout['dones'])
+            vpreds_k = rollout['vpreds'][k][slice(0, self._rollout_len)]
             td_lambda_returns[k] = advantages_k + vpreds_k
             if self._standardize_adv:
                 advantages_k = standardize(advantages_k)
             advantages[k] = advantages_k
-        trajectory.update({
+        rollout.update({
             'advantages': advantages,
             'td_lambda_returns': td_lambda_returns,
         })
-        trajectory = slice_nested_tensor(trajectory, slice(0, self._seg_len))
-        return trajectory
+        rollout = slice_nested_tensor(rollout, slice(0, self._rollout_len))
+        return rollout
 
     def compute_losses_and_metrics(
             self, minibatch: Dict[str, NestedTensor],

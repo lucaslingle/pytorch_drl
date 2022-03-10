@@ -1,8 +1,8 @@
 import torch as tc
 import gym
 
-from drl.algos.common.trajectory import (
-    torch_dtype, MetadataManager, Trajectory, TrajectoryManager)
+from drl.algos.common.rollout import (
+    torch_dtype, MetadataManager, Rollout, RolloutManager)
 from drl.envs.wrappers import RewardToDictWrapper
 from drl.envs.testing import CyclicEnv
 from drl.agents.preprocessing import OneHotEncode
@@ -107,22 +107,22 @@ def make_env(wrap=True):
     return env
 
 
-SEG_LEN = 7
+ROLLOUT_LEN = 7
 EXTRA_STEPS = 2
 
 
-def make_trajectory(env):
-    return Trajectory(
+def make_rollout(env):
+    return Rollout(
         obs_space=env.observation_space,
         ac_space=env.action_space,
         rew_keys=env.reward_spec.keys,
-        seg_len=SEG_LEN,
+        rollout_len=ROLLOUT_LEN,
         extra_steps=EXTRA_STEPS)
 
 
-def test_trajectory_record():
+def test_rollout_record():
     env = make_env(wrap=True)
-    traj = make_trajectory(env)
+    traj = make_rollout(env)
     o_t = env.reset()
     a_t = tc.randint(env.action_space.n, size=(1, )).item()
     o_tp1, r_t, d_t, i_t = env.step(a_t)
@@ -139,12 +139,12 @@ def test_trajectory_record():
         actual=traj._dones[0], expected=tc.tensor(d_t, dtype=tc.float32))
 
 
-def test_trajectory_report():
+def test_rollout_report():
     env = CyclicEnv()
-    traj = make_trajectory(env)
+    traj = make_rollout(env)
     o_t = env.reset()
 
-    for t in range(SEG_LEN + EXTRA_STEPS):
+    for t in range(ROLLOUT_LEN + EXTRA_STEPS):
         a_t = 0
         o_tp1, r_t, d_t, i_t = env.step(a_t)
         traj.record(t=t, o_t=o_t, a_t=a_t, r_t=r_t, d_t=d_t)
@@ -153,9 +153,9 @@ def test_trajectory_report():
     report = traj.report()
     tc.testing.assert_close(
         actual=report['observations'],
-        expected=tc.arange(SEG_LEN + EXTRA_STEPS + 1))
+        expected=tc.arange(ROLLOUT_LEN + EXTRA_STEPS + 1))
 
-    for t in range(EXTRA_STEPS, SEG_LEN + EXTRA_STEPS):
+    for t in range(EXTRA_STEPS, ROLLOUT_LEN + EXTRA_STEPS):
         a_t = 0
         o_tp1, r_t, d_t, i_t = env.step(a_t)
         traj.record(t=t, o_t=o_t, a_t=a_t, r_t=r_t, d_t=d_t)
@@ -167,8 +167,8 @@ def test_trajectory_report():
         expected=tc.tensor([7, 8, 9, 10, 11, 12, 13, 14, 15, 16]))
 
 
-def make_trajectory_mgr():
-    return TrajectoryManager(
+def make_rollout_mgr():
+    return RolloutManager(
         env=CyclicEnv(),
         rollout_net=Agent(
             preprocessing=[OneHotEncode(depth=100)],
@@ -183,27 +183,25 @@ def make_trajectory_mgr():
                         w_init=get_initializer(('zeros_', {})),
                         b_init=get_initializer(('zeros_', {})))
             }),
-        seg_len=SEG_LEN,
+        rollout_len=ROLLOUT_LEN,
         extra_steps=EXTRA_STEPS)
 
 
-def test_trajectory_mgr_generate():
-    tm = make_trajectory_mgr()
-    traj_report = tm.generate()
-    metadata = traj_report.pop('metadata')
+def test_rollout_mgr_generate():
+    rmgr = make_rollout_mgr()
+    rollout_report = rmgr.generate()
+    metadata = rollout_report.pop('metadata')
     assert metadata == {
         'ep_len': [],
         'ep_ret': [],
         'ep_len_raw': [],
         'ep_ret_raw': [],
     }
-    print(traj_report)
-    print(traj_report['observations'])
     tc.testing.assert_close(
-        actual=traj_report['observations'],
-        expected=tc.arange(SEG_LEN + EXTRA_STEPS + 1))
+        actual=rollout_report['observations'],
+        expected=tc.arange(ROLLOUT_LEN + EXTRA_STEPS + 1))
 
-    traj_report2 = tm.generate()
+    rollout_report2 = rmgr.generate()
     tc.testing.assert_close(
-        actual=traj_report2['observations'],
+        actual=rollout_report2['observations'],
         expected=tc.tensor([7, 8, 9, 10, 11, 12, 13, 14, 15, 16]))

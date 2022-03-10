@@ -6,7 +6,13 @@ distributed:
 algo:
     cls_name: PPO
     cls_args:
-        seg_len: 256
+        rollout_len: 256
+        extra_steps: 0
+        stats_window_len: 100
+        checkpoint_frequency: 25600
+        non_learning_steps: 0
+        max_steps: 10000000
+        standardize_adv: True
         opt_epochs: 3
         learner_batch_size: 64
         clip_param_init: 0.2
@@ -17,13 +23,7 @@ algo:
         vf_loss_cls: MSELoss
         vf_loss_clipping: False
         vf_simple_weighting: True
-        extra_steps: 0
-        standardize_adv: True
         use_pcgrad: False
-        stats_window_len: 100
-        checkpoint_frequency: 25600
-        non_learning_steps: 0
-        max_steps: 10000000
 credit_assignment:
     extrinsic:
         cls_name: GAE

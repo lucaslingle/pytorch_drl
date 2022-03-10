@@ -34,8 +34,25 @@ class PPO(ActorCriticAlgo):
             self,
             rank: int,
             world_size: int,
-            seg_len: int,
+            rollout_len: int,
             extra_steps: int,
+            credit_assignment_ops: Mapping[str, AdvantageEstimator],
+            stats_window_len: int,
+            non_learning_steps: int,
+            max_steps: int,
+            checkpoint_frequency: int,
+            checkpoint_dir: str,
+            log_dir: str,
+            media_dir: str,
+            global_step: int,
+            env: Union[gym.core.Env, Wrapper],
+            policy_net: DDP,
+            policy_optimizer: Optimizer,
+            policy_scheduler: Optional[Scheduler],
+            value_net: Optional[DDP],
+            value_optimizer: Optional[Optimizer],
+            value_scheduler: Optional[Scheduler],
+            standardize_adv: bool,
             opt_epochs: int,
             learner_batch_size: int,
             clip_param_init: float,
@@ -46,33 +63,47 @@ class PPO(ActorCriticAlgo):
             vf_loss_coef: float,
             vf_loss_clipping: bool,
             vf_simple_weighting: bool,
-            credit_assignment_ops: Mapping[str, AdvantageEstimator],
-            standardize_adv: bool,
             use_pcgrad: bool,
-            stats_window_len: int,
-            checkpoint_frequency: int,
-            non_learning_steps: int,
-            max_steps: int,
-            global_step: int,
-            env: Union[gym.core.Env, Wrapper],
-            policy_net: DDP,
-            policy_optimizer: Optimizer,
-            policy_scheduler: Optional[Scheduler],
-            value_net: Optional[DDP],
-            value_optimizer: Optional[Optimizer],
-            value_scheduler: Optional[Scheduler],
-            log_dir: str,
-            checkpoint_dir: str,
-            media_dir: str,
             reward_weights: Optional[Mapping[str, float]] = None) -> None:
         """
         Args:
             rank (int): Process rank.
             world_size (int): Total number of processes.
-            seg_len (int): Trajectory segment length.
+            rollout_len (int): Trajectory segment length.
             extra_steps (int): Extra steps required for credit assignment.
                 Should be set to n-1 if using n-step return-based advantage
                 estimation.
+            credit_assignment_ops (Mapping[str, AdvantageEstimator]):
+                Mapping from reward names to AdvantageEstimator instances.
+            stats_window_len (int): Window size for moving average of episode
+                 metadata.
+            non_learning_steps (int): Number of global steps to skip integration
+                learning. Useful in conjunction with wrappers that maintain
+                rolling statistics.
+            max_steps (int): Maximum number of global steps.
+            checkpoint_frequency (int): Checkpoint frequency, measured in
+                global steps.
+            checkpoint_dir (str): Checkpoint directory.
+            log_dir (str): Tensorboard logs directory.
+            media_dir (str): Media directory.
+            global_step (int): Global step of learning so far.
+            env (Union[gym.core.Env, Wrapper]): Environment instance or wrapped
+                environment.
+            policy_net (torch.nn.parallel.DistributedDataParallel): DDP-wrapped
+                `Agent` instance. Must have 'policy' as a prediction key.
+            policy_optimizer (torch.optim.Optimizer): Optimizer for policy_net.
+            policy_scheduler (Optional[torch.optim.lr_scheduler._LRScheduler]):
+                Optional learning rate scheduler for policy_optimizer.
+            value_net (Optional[torch.nn.parallel.DistributedDataParallel]):
+                Optional DDP-wrapped `Agent` instance. If not None, must have a
+                'value_{reward_name}' prediction key for each reward_name in
+                env.reward_spec.keys() other than 'extrinsic_raw'.
+            value_optimizer (Optional[torch.optim.Optimizer]): Optional
+                optimizer for value_net. Required if value_net is not None.
+            value_scheduler (Optional[torch.optim.lr_scheduler._LRScheduler]):
+                Optional learning rate scheduler for value_optimizer.
+            standardize_adv (bool): Standardize advantages per trajectory
+                segment?
             opt_epochs (int): Optimization epochs per policy improvement phase
                 in PPO.
             learner_batch_size (int): Batch size per learner process.
@@ -92,39 +123,8 @@ class PPO(ActorCriticAlgo):
             vf_simple_weighting (bool): If true, use equal weighting of all
                 value function losses. Ignored if env.reward_spec.keys() does
                 not contain any intrinsic rewards.
-            credit_assignment_ops (Mapping[str, AdvantageEstimator]):
-                Mapping from reward names to AdvantageEstimator instances.
-            standardize_adv (bool): Standardize advantages per trajectory
-                segment?
             use_pcgrad (bool): Use the PCGrad algorithm from Yu et al., 2020?
                 Only allowed if policy and value architecture is shared.
-            stats_window_len (int): Window size for moving average of episode
-                 metadata.
-            checkpoint_frequency (int): Checkpoint frequency, measured in
-                global steps.
-            non_learning_steps (int): Number of global steps to skip integration
-                learning. Useful in conjunction with wrappers that maintain
-                rolling statistics.
-            max_steps (int): Maximum number of global steps.
-            global_step (int): Global step of learning so far.
-            env (Union[gym.core.Env, Wrapper]): Environment instance or wrapped
-                environment.
-            policy_net (torch.nn.parallel.DistributedDataParallel): DDP-wrapped
-                `Agent` instance. Must have 'policy' as a prediction key.
-            policy_optimizer (torch.optim.Optimizer): Optimizer for policy_net.
-            policy_scheduler (Optional[torch.optim.lr_scheduler._LRScheduler]):
-                Optional learning rate scheduler for policy_optimizer.
-            value_net (Optional[torch.nn.parallel.DistributedDataParallel]):
-                Optional DDP-wrapped `Agent` instance. If not None, must have a
-                'value_{reward_name}' prediction key for each reward_name in
-                env.reward_spec.keys() other than 'extrinsic_raw'.
-            value_optimizer (Optional[torch.optim.Optimizer]): Optional
-                optimizer for value_net. Required if value_net is not None.
-            value_scheduler (Optional[torch.optim.lr_scheduler._LRScheduler]):
-                Optional learning rate scheduler for value_optimizer.
-            checkpoint_dir (str): Checkpoint directory.
-            log_dir (str): Tensorboard logs directory.
-            media_dir (str): Media directory.
             reward_weights (Optional[Mapping[str, float]): Optional reward
                 weights mapping, keyed by reward name. Ignored if
                 env.reward_spec.keys() does not contain any intrinsic rewards.
@@ -133,16 +133,26 @@ class PPO(ActorCriticAlgo):
         super().__init__(
             rank=rank,
             world_size=world_size,
-            seg_len=seg_len,
+            rollout_len=rollout_len,
             extra_steps=extra_steps,
             credit_assignment_ops=credit_assignment_ops,
-            standardize_adv=standardize_adv,
+            stats_window_len=stats_window_len,
+            non_learning_steps=non_learning_steps,
+            max_steps=max_steps,
+            checkpoint_frequency=checkpoint_frequency,
+            checkpoint_dir=checkpoint_dir,
+            log_dir=log_dir,
+            media_dir=media_dir,
+            global_step=global_step,
             env=env,
             policy_net=policy_net,
+            policy_optimizer=policy_optimizer,
+            policy_scheduler=policy_scheduler,
             value_net=value_net,
-            stats_window_len=stats_window_len,
-            log_dir=log_dir,
-            media_dir=media_dir)
+            value_optimizer=value_optimizer,
+            value_scheduler=value_scheduler,
+            standardize_adv=standardize_adv,
+            reward_weights=reward_weights)
 
         self._opt_epochs = opt_epochs
         self._learner_batch_size = learner_batch_size
@@ -155,18 +165,6 @@ class PPO(ActorCriticAlgo):
         self._vf_loss_clipping = vf_loss_clipping
         self._vf_simple_weighting = vf_simple_weighting
         self._use_pcgrad = use_pcgrad
-        self._reward_weights = reward_weights
-
-        self._non_learning_steps = non_learning_steps
-        self._max_steps = max_steps
-        self._checkpoint_frequency = checkpoint_frequency
-        self._checkpoint_dir = checkpoint_dir
-
-        self._global_step = global_step
-        self._policy_optimizer = policy_optimizer
-        self._policy_scheduler = policy_scheduler
-        self._value_optimizer = value_optimizer
-        self._value_scheduler = value_scheduler
 
     def _get_reward_weights(self) -> Mapping[str, float]:
         reward_weights = {'extrinsic': 1.0}
@@ -249,19 +247,18 @@ class PPO(ActorCriticAlgo):
     def training_loop(self) -> None:
         while self._global_step < self._max_steps:
             # generate trajectory.
-            trajectory = self._trajectory_mgr.generate()
-            metadata = trajectory.pop('metadata')
-            trajectory = self.annotate(trajectory, no_grad=True)
-            trajectory = self.credit_assignment(trajectory)
-            self._global_step += self._world_size * self._seg_len
+            rollout = self._rollout_mgr.generate()
+            metadata = rollout.pop('metadata')
+            rollout = self.annotate(rollout, no_grad=True)
+            rollout = self.credit_assignment(rollout)
+            self._global_step += self._world_size * self._rollout_len
 
             # update policy.
             for opt_epoch in range(self._opt_epochs):
-                indices = np.random.permutation(self._seg_len)
-                for i in range(0, self._seg_len, self._learner_batch_size):
+                indices = np.random.permutation(self._rollout_len)
+                for i in range(0, self._rollout_len, self._learner_batch_size):
                     minibatch_indices = indices[i:i + self._learner_batch_size]
-                    minibatch = slice_nested_tensor(
-                        trajectory, minibatch_indices)
+                    minibatch = slice_nested_tensor(rollout, minibatch_indices)
                     update_trainable_wrappers(self._env, minibatch)
                     if self._global_step <= self._non_learning_steps:
                         continue
@@ -281,7 +278,7 @@ class PPO(ActorCriticAlgo):
                             retain_graph=False)
 
                 metrics = self.compute_losses_and_metrics(
-                    minibatch=trajectory, no_grad=True)
+                    minibatch=rollout, no_grad=True)
                 global_metrics = global_means(
                     local_values=metrics,
                     world_size=self._world_size,

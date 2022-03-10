@@ -39,7 +39,7 @@ distributed:
 algo:
     cls_name: PPO
     cls_args:
-        seg_len: 256
+        rollout_len: 256
         opt_epochs: 3
         learner_batch_size: 64
         clip_param_init: 0.2
