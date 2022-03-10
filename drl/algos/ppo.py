@@ -1,4 +1,4 @@
-from typing import Mapping, Union, Optional, Dict, Tuple, List
+from typing import Mapping, Union, Optional, Dict, Tuple
 from contextlib import ExitStack
 
 import torch as tc
@@ -6,10 +6,9 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import numpy as np
 import gym
 
-from drl.algos.abstract import Algo
+from drl.algos.abstract import ActorCriticAlgo
 from drl.algos.common import (
     AdvantageEstimator,
-    extract_reward_name,
     get_loss,
     global_means,
     global_gathers,
@@ -20,11 +19,10 @@ from drl.algos.common import (
 from drl.envs.wrappers import Wrapper
 from drl.utils.checkpointing import save_checkpoints
 from drl.utils.nested import slice_nested_tensor
-from drl.utils.stats import standardize
 from drl.utils.types import NestedTensor, Optimizer, Scheduler
 
 
-class PPO(Algo):
+class PPO(ActorCriticAlgo):
     """
     Proximal Policy Optimization (clip variant).
 
@@ -138,8 +136,10 @@ class PPO(Algo):
             seg_len=seg_len,
             extra_steps=extra_steps,
             credit_assignment_ops=credit_assignment_ops,
+            standardize_adv=standardize_adv,
             env=env,
-            rollout_net=policy_net,
+            policy_net=policy_net,
+            value_net=value_net,
             stats_window_len=stats_window_len,
             log_dir=log_dir,
             media_dir=media_dir)
@@ -154,8 +154,6 @@ class PPO(Algo):
         self._vf_loss_coef = vf_loss_coef
         self._vf_loss_clipping = vf_loss_clipping
         self._vf_simple_weighting = vf_simple_weighting
-        self._credit_assignment_ops = credit_assignment_ops
-        self._standardize_adv = standardize_adv
         self._use_pcgrad = use_pcgrad
         self._reward_weights = reward_weights
 
@@ -165,83 +163,10 @@ class PPO(Algo):
         self._checkpoint_dir = checkpoint_dir
 
         self._global_step = global_step
-        self._policy_net = policy_net
         self._policy_optimizer = policy_optimizer
         self._policy_scheduler = policy_scheduler
-        self._value_net = value_net
         self._value_optimizer = value_optimizer
         self._value_scheduler = value_scheduler
-
-    def _get_reward_keys(self, omit_raw: bool = True) -> List[str]:
-        reward_spec = self._env.reward_spec
-        assert reward_spec is not None
-        reward_keys = reward_spec.keys
-        if omit_raw:
-            reward_keys = [k for k in reward_keys if not k.endswith('_raw')]
-            assert len(reward_keys) > 0
-        return reward_keys
-
-    def _get_prediction_keys(self) -> Tuple[List[str], List[str]]:
-        reward_keys = self._get_reward_keys(omit_raw=True)
-        policy_predict = ['policy']
-        value_predict = [f'value_{k}' for k in reward_keys]
-        return policy_predict, value_predict
-
-    def annotate(self, trajectory: Dict[str, NestedTensor],
-                 no_grad: bool) -> Dict[str, NestedTensor]:
-        with tc.no_grad() if no_grad else ExitStack():
-            # make policy and value predictions.
-            policy_predict, value_predict = self._get_prediction_keys()
-            if not self._value_net:
-                policy_predict.extend(value_predict)
-            predictions = self._policy_net(
-                trajectory['observations'], predict=policy_predict)
-            pi = predictions.pop('policy')
-            if not self._value_net:
-                vpreds = predictions
-            else:
-                vpreds = self._value_net(
-                    trajectory['observations'], predict=value_predict)
-
-            # shallow copy of trajectory dict, point to initial/new values.
-            trajectory_new = {
-                'observations': trajectory['observations'],
-                'actions': trajectory['actions'],
-                'logprobs': pi.log_prob(trajectory['actions']),
-                'entropies': pi.entropy()
-            }
-            trajectory_new = slice_nested_tensor(
-                trajectory_new, slice(0, self._seg_len))
-            trajectory_new.update({
-                'rewards': trajectory['rewards'],
-                'dones': trajectory['dones'],
-                'vpreds': {extract_reward_name(k): vpreds[k] for k in vpreds}
-            })
-            return trajectory_new
-
-    @tc.no_grad()
-    def credit_assignment(
-            self, trajectory: Dict[str,
-                                   NestedTensor]) -> Dict[str, NestedTensor]:
-        advantages, td_lambda_returns = dict(), dict()
-        for k in self._get_reward_keys(omit_raw=True):
-            advantages_k = self._credit_assignment_ops[k].estimate_advantages(
-                seg_len=self._seg_len,
-                extra_steps=self._extra_steps,
-                rewards=trajectory['rewards'][k],
-                vpreds=trajectory['vpreds'][k],
-                dones=trajectory['dones'])
-            vpreds_k = trajectory['vpreds'][k][slice(0, self._seg_len)]
-            td_lambda_returns[k] = advantages_k + vpreds_k
-            if self._standardize_adv:
-                advantages_k = standardize(advantages_k)
-            advantages[k] = advantages_k
-        trajectory.update({
-            'advantages': advantages,
-            'td_lambda_returns': td_lambda_returns,
-        })
-        trajectory = slice_nested_tensor(trajectory, slice(0, self._seg_len))
-        return trajectory
 
     def _get_reward_weights(self) -> Mapping[str, float]:
         reward_weights = {'extrinsic': 1.0}

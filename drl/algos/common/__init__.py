@@ -1,6 +1,7 @@
 from drl.algos.common.credit_assignment import (
     extract_reward_name,
     get_credit_assignment_ops,
+    CreditAssignmentOp,
     AdvantageEstimator,
     BellmanOperator,
     GAE,
@@ -22,6 +23,7 @@ from drl.algos.common.wrapper_ops import update_trainable_wrappers
 __all__ = [
     "extract_reward_name",
     "get_credit_assignment_ops",
+    "CreditAssignmentOp",
     "AdvantageEstimator",
     "BellmanOperator",
     "GAE",

@@ -14,7 +14,7 @@ def test_gae():
 
     dones_1 = tc.tensor([0., 0.])
     credit_assignment_op_1 = GAE(gamma=gamma, use_dones=True, lambda_=lambda_)
-    advantages = credit_assignment_op_1.estimate_advantages(
+    advantages = credit_assignment_op_1(
         seg_len=seg_len,
         extra_steps=extra_steps,
         rewards=rewards,
@@ -29,7 +29,7 @@ def test_gae():
 
     dones_2 = tc.tensor([1., 0.])
     credit_assignment_op_2 = credit_assignment_op_1
-    advantages = credit_assignment_op_2.estimate_advantages(
+    advantages = credit_assignment_op_2(
         seg_len=seg_len,
         extra_steps=extra_steps,
         rewards=rewards,
@@ -46,7 +46,7 @@ def test_gae():
 
     dones_3 = tc.tensor([1., 0.])
     credit_assignment_op_3 = GAE(gamma=gamma, use_dones=False, lambda_=lambda_)
-    advantages = credit_assignment_op_3.estimate_advantages(
+    advantages = credit_assignment_op_3(
         seg_len=seg_len,
         extra_steps=extra_steps,
         rewards=rewards,
@@ -71,7 +71,7 @@ def test_nstep_advantages():
     dones_1 = tc.tensor([0., 0., 0., 0., 0.])
     credit_assignment_op_1 = NStepAdvantageEstimator(
         gamma=gamma, use_dones=True)
-    advantages_1 = credit_assignment_op_1.estimate_advantages(
+    advantages_1 = credit_assignment_op_1(
         seg_len=seg_len,
         extra_steps=extra_steps,
         rewards=rewards,
@@ -87,7 +87,7 @@ def test_nstep_advantages():
 
     dones_2 = tc.tensor([0., 1., 0., 0.])
     credit_assignment_op_2 = credit_assignment_op_1
-    advantages_2 = credit_assignment_op_2.estimate_advantages(
+    advantages_2 = credit_assignment_op_2(
         seg_len=seg_len,
         extra_steps=extra_steps,
         rewards=rewards,
@@ -106,7 +106,7 @@ def test_nstep_advantages():
     dones_3 = dones_2
     credit_assignment_op_3 = NStepAdvantageEstimator(
         gamma=gamma, use_dones=False)
-    advantages_3 = credit_assignment_op_3.estimate_advantages(
+    advantages_3 = credit_assignment_op_3(
         seg_len=seg_len,
         extra_steps=extra_steps,
         rewards=rewards,
@@ -127,7 +127,7 @@ def test_simple_discrete_bellman_optimality_op():
 
     credit_assignment_op_1 = SimpleDiscreteBellmanOptimalityOperator(
         gamma=gamma, use_dones=True, double_q=False)
-    operator_image_actual = credit_assignment_op_1.estimate_action_values(
+    operator_image_actual = credit_assignment_op_1(
         seg_len=seg_len,
         extra_steps=extra_steps,
         rewards=rewards,
@@ -143,7 +143,7 @@ def test_simple_discrete_bellman_optimality_op():
 
     credit_assignment_op_2 = SimpleDiscreteBellmanOptimalityOperator(
         gamma=gamma, use_dones=True, double_q=True)
-    operator_image_actual = credit_assignment_op_2.estimate_action_values(
+    operator_image_actual = credit_assignment_op_2(
         seg_len=seg_len,
         extra_steps=extra_steps,
         rewards=rewards,
@@ -160,7 +160,7 @@ def test_simple_discrete_bellman_optimality_op():
     dones_3 = tc.tensor([1., 0.])
     credit_assignment_op_3 = SimpleDiscreteBellmanOptimalityOperator(
         gamma=gamma, use_dones=False, double_q=True)
-    operator_image_actual = credit_assignment_op_3.estimate_action_values(
+    operator_image_actual = credit_assignment_op_3(
         seg_len=seg_len,
         extra_steps=extra_steps,
         rewards=rewards,

@@ -82,10 +82,31 @@ class CreditAssignmentOp(metaclass=abc.ABCMeta):
         self._gamma = gamma
         self._use_dones = use_dones
 
+    @abc.abstractmethod
+    def __call__(
+            self, seg_len: int, extra_steps: int,
+            rewards: tc.Tensor) -> tc.Tensor:
+        """
+        Assign credit.
+
+        Args:
+            seg_len (int): Trajectory segment length for credit assignment.
+            extra_steps (int): Extra steps for n-step return-based credit
+                assignment. Should equal n-1 when n steps are used.
+            rewards (torch.Tensor): Torch tensor of rewards at each timestep,
+                with shape [seg_len + extra_steps].
+            **kwargs: Keyword arguments.
+
+        Returns:
+            torch.Tensor: Torch tensor with estimated credit to assign
+                (e.g., a tensor of advantages or action-value targets),
+                with shape [seg_len].
+        """
+
 
 class AdvantageEstimator(CreditAssignmentOp, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def estimate_advantages(
+    def __call__(
             self,
             seg_len: int,
             extra_steps: int,
@@ -114,7 +135,7 @@ class AdvantageEstimator(CreditAssignmentOp, metaclass=abc.ABCMeta):
 
 class BellmanOperator(CreditAssignmentOp, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def estimate_action_values(
+    def __call__(
             self,
             seg_len: int,
             extra_steps: int,
@@ -168,7 +189,7 @@ class GAE(AdvantageEstimator):
         super().__init__(gamma, use_dones)
         self._lambda = lambda_
 
-    def estimate_advantages(
+    def __call__(
             self,
             seg_len: int,
             extra_steps: int,
@@ -201,7 +222,7 @@ class NStepAdvantageEstimator(AdvantageEstimator):
     def __init__(self, gamma: float, use_dones: bool):
         super().__init__(gamma, use_dones)
 
-    def estimate_advantages(
+    def __call__(
             self,
             seg_len: int,
             extra_steps: int,
@@ -249,7 +270,7 @@ class SimpleDiscreteBellmanOptimalityOperator(BellmanOperator):
         super().__init__(gamma, use_dones)
         self._double_q = double_q
 
-    def estimate_action_values(
+    def __call__(
             self,
             seg_len: int,
             extra_steps: int,
