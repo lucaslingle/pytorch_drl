@@ -57,7 +57,7 @@ class Algo(object):
                 Mapping from reward names to AdvantageEstimator instances.
             stats_window_len (int): Window size for moving average of episode
                  metadata.
-            non_learning_steps (int): Number of global steps to skip integration
+            non_learning_steps (int): Number of global steps to skip agent
                 learning. Useful in conjunction with wrappers that maintain
                 rolling statistics.
             max_steps (int): Maximum number of global steps.
@@ -93,7 +93,7 @@ class Algo(object):
         self._media_dir = media_dir
         self._reward_weights = reward_weights
 
-        self._trajectory_mgr = RolloutManager(
+        self._rollout_mgr = RolloutManager(
             env=env,
             rollout_net=rollout_net,
             rollout_len=rollout_len,
@@ -157,7 +157,7 @@ class Algo(object):
             no_grad (bool): Disable gradient tape recording?
 
         Returns:
-            Dict[str, tc.Tensor]: Dictionary mapping from names
+            Dict[str, torch.Tensor]: Dictionary mapping from names
             to metrics.
         """
         raise NotImplementedError
@@ -184,7 +184,7 @@ class Algo(object):
         Evaluation loop.
 
         Returns:
-            Dict[str, Union[float, tc.Tensor]]: Dictionary mapping from names
+            Dict[str, Union[float, torch.Tensor]]: Dictionary mapping from names
             to metrics.
         """
         raise NotImplementedError
@@ -269,7 +269,7 @@ class ActorCriticAlgo(Algo):
                 Mapping from reward names to AdvantageEstimator instances.
             stats_window_len (int): Window size for moving average of episode
                  metadata.
-            non_learning_steps (int): Number of global steps to skip integration
+            non_learning_steps (int): Number of global steps to skip agent
                 learning. Useful in conjunction with wrappers that maintain
                 rolling statistics.
             max_steps (int): Maximum number of global steps.
@@ -414,7 +414,7 @@ class ActorCriticAlgo(Algo):
             no_grad (bool): Disable gradient tape recording?
 
         Returns:
-            Dict[str, tc.Tensor]: Dictionary mapping from names
+            Dict[str, torch.Tensor]: Dictionary mapping from names
             to metrics.
         """
         raise NotImplementedError
@@ -433,7 +433,7 @@ class ActorCriticAlgo(Algo):
         Evaluation loop.
 
         Returns:
-            Dict[str, Union[float, tc.Tensor]]: Dictionary mapping from names
+            Dict[str, Union[float, torch.Tensor]]: Dictionary mapping from names
             to metrics.
         """
         raise NotImplementedError

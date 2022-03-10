@@ -77,7 +77,7 @@ class PPO(ActorCriticAlgo):
                 Mapping from reward names to AdvantageEstimator instances.
             stats_window_len (int): Window size for moving average of episode
                  metadata.
-            non_learning_steps (int): Number of global steps to skip integration
+            non_learning_steps (int): Number of global steps to skip agent
                 learning. Useful in conjunction with wrappers that maintain
                 rolling statistics.
             max_steps (int): Maximum number of global steps.
@@ -178,7 +178,7 @@ class PPO(ActorCriticAlgo):
             self, minibatch: Dict[str, NestedTensor],
             no_grad: bool) -> Dict[str, tc.Tensor]:
         with tc.no_grad() if no_grad else ExitStack():
-            minibatch_new = self.annotate(trajectory=minibatch, no_grad=no_grad)
+            minibatch_new = self.annotate(rollout=minibatch, no_grad=no_grad)
             entropy_dict = ppo_policy_entropy_bonus(
                 entropies=minibatch_new['entropies'],
                 ent_coef=self._ent_coef.value(self._global_step))

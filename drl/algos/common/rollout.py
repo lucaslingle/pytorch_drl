@@ -211,7 +211,8 @@ class Rollout:
         }
         self._erase()
         if self._extra_steps > 0:
-            src = slice(self._rollout_len, self._rollout_len + self._extra_steps)
+            src = slice(
+                self._rollout_len, self._rollout_len + self._extra_steps)
             dest = slice(0, self._extra_steps)
             self._observations[dest] = clone_nested_tensor(
                 results['observations'][src])
