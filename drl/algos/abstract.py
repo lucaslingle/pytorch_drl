@@ -172,8 +172,8 @@ class Algo(object):
 
     def collect(self) -> Tuple[NestedTensor, Dict[str, Any]]:
         """
-        Collect a rollout, annotate it with predictions,
-        and perform credit assignment.
+        Generates a rollout, annotates it with predictions,
+        and performs credit assignment.
 
         Returns:
             Tuple[NestedTensor, Dict[str, Any]]: Rollout and metadata.
@@ -187,7 +187,7 @@ class Algo(object):
 
     def optimize(self, rollout: NestedTensor) -> None:
         """
-        Train on collected experience, logs to training metrics to tensorboard,
+        Trains on collected experience, logs training metrics to tensorboard,
         and updates learning rate schedulers, if any.
 
         Returns:
@@ -201,7 +201,7 @@ class Algo(object):
         and saves checkpoints as appropriate.
 
         Args:
-            metadata (Dist[str, Any]): Task performance metadata.
+            metadata (Dict[str, Any]): Task performance metadata.
 
         Returns:
             None.

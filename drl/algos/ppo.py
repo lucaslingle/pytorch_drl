@@ -3,7 +3,6 @@ from contextlib import ExitStack
 
 import torch as tc
 from torch.nn.parallel import DistributedDataParallel as DDP
-import numpy as np
 import gym
 
 from drl.algos.abstract import ActorCriticAlgo
@@ -15,7 +14,8 @@ from drl.algos.common import (
     update_trainable_wrappers,
     apply_pcgrad,
     pretty_print,
-    LinearSchedule)
+    LinearSchedule,
+    IndependentSampler)
 from drl.envs.wrappers import Wrapper
 from drl.utils.checkpointing import save_checkpoints
 from drl.utils.nested import slice_nested_tensor
@@ -166,6 +166,9 @@ class PPO(ActorCriticAlgo):
         self._vf_simple_weighting = vf_simple_weighting
         self._use_pcgrad = use_pcgrad
 
+        self._sampler = IndependentSampler(
+            rollout_len=rollout_len, batch_size=learner_batch_size)
+
     def compute_losses_and_metrics(
             self, minibatch: Dict[str, NestedTensor],
             no_grad: bool) -> Dict[str, tc.Tensor]:
@@ -237,11 +240,9 @@ class PPO(ActorCriticAlgo):
         optimizer.step()
 
     def optimize(self, rollout: NestedTensor) -> None:
-        # update policy and value net(s).
         for opt_epoch in range(self._opt_epochs):
-            indices = np.random.permutation(self._rollout_len)
-            for i in range(0, self._rollout_len, self._learner_batch_size):
-                minibatch_indices = indices[i:i + self._learner_batch_size]
+            self._sampler.resample()
+            for minibatch_indices in self._sampler:
                 minibatch = slice_nested_tensor(rollout, minibatch_indices)
                 update_trainable_wrappers(self._env, minibatch)
                 if self._global_step <= self._non_learning_steps:
@@ -280,7 +281,6 @@ class PPO(ActorCriticAlgo):
             self._value_scheduler.step()
 
     def persist(self, metadata: Dict[str, Any]) -> None:
-        # save everything.
         global_metadata = global_gathers(
             local_lists=metadata, world_size=self._world_size)
         self._metadata_acc.update(global_metadata)
