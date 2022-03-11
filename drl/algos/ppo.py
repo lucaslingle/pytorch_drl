@@ -1,4 +1,4 @@
-from typing import Mapping, Union, Optional, Dict, Tuple
+from typing import Mapping, Union, Optional, Dict, Tuple, Any
 from contextlib import ExitStack
 
 import torch as tc
@@ -166,14 +166,6 @@ class PPO(ActorCriticAlgo):
         self._vf_simple_weighting = vf_simple_weighting
         self._use_pcgrad = use_pcgrad
 
-    def _get_reward_weights(self) -> Mapping[str, float]:
-        reward_weights = {'extrinsic': 1.0}
-        if self._reward_weights is not None:
-            reward_weights.update(self._reward_weights)
-        assert set(reward_weights.keys()) == \
-               set(self._get_reward_keys(omit_raw=True))
-        return reward_weights
-
     def compute_losses_and_metrics(
             self, minibatch: Dict[str, NestedTensor],
             no_grad: bool) -> Dict[str, tc.Tensor]:
@@ -244,87 +236,84 @@ class PPO(ActorCriticAlgo):
                 normalize=False)
         optimizer.step()
 
-    def training_loop(self) -> None:
-        while self._global_step < self._max_steps:
-            # generate trajectory.
-            rollout = self._rollout_mgr.generate()
-            metadata = rollout.pop('metadata')
-            rollout = self.annotate(rollout, no_grad=True)
-            rollout = self.credit_assignment(rollout)
-            self._global_step += self._world_size * self._rollout_len
+    def collect(self) -> Tuple[NestedTensor, Dict[str, Any]]:
+        # generate trajectory.
+        rollout = self._rollout_mgr.generate()
+        metadata = rollout.pop('metadata')
+        rollout = self.annotate(rollout, no_grad=True)
+        rollout = self.credit_assignment(rollout)
+        self._global_step += self._world_size * self._rollout_len
+        return rollout, metadata
 
-            # update policy.
-            for opt_epoch in range(self._opt_epochs):
-                indices = np.random.permutation(self._rollout_len)
-                for i in range(0, self._rollout_len, self._learner_batch_size):
-                    minibatch_indices = indices[i:i + self._learner_batch_size]
-                    minibatch = slice_nested_tensor(rollout, minibatch_indices)
-                    update_trainable_wrappers(self._env, minibatch)
-                    if self._global_step <= self._non_learning_steps:
-                        continue
-                    losses = self.compute_losses_and_metrics(
-                        minibatch=minibatch, no_grad=False)
-                    policy_losses, value_losses = self._extract_losses(losses)
+    def optimize(self, rollout: NestedTensor) -> None:
+        # update policy and value net(s).
+        for opt_epoch in range(self._opt_epochs):
+            indices = np.random.permutation(self._rollout_len)
+            for i in range(0, self._rollout_len, self._learner_batch_size):
+                minibatch_indices = indices[i:i + self._learner_batch_size]
+                minibatch = slice_nested_tensor(rollout, minibatch_indices)
+                update_trainable_wrappers(self._env, minibatch)
+                if self._global_step <= self._non_learning_steps:
+                    continue
+                losses = self.compute_losses_and_metrics(
+                    minibatch=minibatch, no_grad=False)
+                policy_losses, value_losses = self._extract_losses(losses)
+                self._optimize_losses(
+                    net=self._policy_net,
+                    optimizer=self._policy_optimizer,
+                    losses=policy_losses,
+                    retain_graph=self._value_net is not None)
+                if self._value_net:
                     self._optimize_losses(
-                        net=self._policy_net,
-                        optimizer=self._policy_optimizer,
-                        losses=policy_losses,
-                        retain_graph=self._value_net is not None)
-                    if self._value_net:
-                        self._optimize_losses(
-                            net=self._value_net,
-                            optimizer=self._value_optimizer,
-                            losses=value_losses,
-                            retain_graph=False)
+                        net=self._value_net,
+                        optimizer=self._value_optimizer,
+                        losses=value_losses,
+                        retain_graph=False)
 
-                metrics = self.compute_losses_and_metrics(
-                    minibatch=rollout, no_grad=True)
-                global_metrics = global_means(
-                    local_values=metrics,
-                    world_size=self._world_size,
-                    item=True)
-                if self._rank == 0:
-                    print(f"Opt epoch: {opt_epoch}")
-                    pretty_print(global_metrics)
-                    for name in global_metrics:
-                        self._writer.add_scalar(
-                            tag=f"epoch_{opt_epoch}/{name}",
-                            scalar_value=global_metrics[name],
-                            global_step=self._global_step)
-
-            if self._policy_scheduler:
-                self._policy_scheduler.step()
-            if self._value_scheduler:
-                self._value_scheduler.step()
-
-            # save everything.
-            global_metadata = global_gathers(
-                local_lists=metadata, world_size=self._world_size)
-            self._metadata_acc.update(global_metadata)
+            metrics = self.compute_losses_and_metrics(
+                minibatch=rollout, no_grad=True)
+            global_metrics = global_means(
+                local_values=metrics, world_size=self._world_size, item=True)
             if self._rank == 0:
-                pretty_print(self._metadata_acc)
-                for name in global_metadata:
+                print(f"Opt epoch: {opt_epoch}")
+                pretty_print(global_metrics)
+                for name in global_metrics:
                     self._writer.add_scalar(
-                        tag=f"metadata/{name}",
-                        scalar_value=self._metadata_acc.mean(name),
+                        tag=f"epoch_{opt_epoch}/{name}",
+                        scalar_value=global_metrics[name],
                         global_step=self._global_step)
 
-                if self._global_step % self._checkpoint_frequency == 0:
-                    save_checkpoints(
-                        checkpoint_dir=self._checkpoint_dir,
-                        checkpointables={
-                            'policy_net': self._policy_net,
-                            'policy_optimizer': self._policy_optimizer,
-                            'policy_scheduler': self._policy_scheduler,
-                            'value_net': self._value_net,
-                            'value_optimizer': self._value_optimizer,
-                            'value_scheduler': self._value_scheduler,
-                            **self._env.checkpointables
-                        },
-                        steps=self._global_step)
+        if self._policy_scheduler:
+            self._policy_scheduler.step()
+        if self._value_scheduler:
+            self._value_scheduler.step()
 
-    def evaluation_loop(self):
-        raise NotImplementedError
+    def persist(self, metadata: Dict[str, Any]) -> None:
+        # save everything.
+        global_metadata = global_gathers(
+            local_lists=metadata, world_size=self._world_size)
+        self._metadata_acc.update(global_metadata)
+        if self._rank == 0:
+            pretty_print(self._metadata_acc)
+            for name in global_metadata:
+                self._writer.add_scalar(
+                    tag=f"metadata/{name}",
+                    scalar_value=self._metadata_acc.mean(name),
+                    global_step=self._global_step)
+
+            if self._global_step % self._checkpoint_frequency == 0:
+                save_checkpoints(
+                    checkpoint_dir=self._checkpoint_dir,
+                    checkpointables={
+                        'policy_net': self._policy_net,
+                        'policy_optimizer': self._policy_optimizer,
+                        'policy_scheduler': self._policy_scheduler,
+                        'value_net': self._value_net,
+                        'value_optimizer': self._value_optimizer,
+                        'value_scheduler': self._value_scheduler,
+                        **self._env.checkpointables
+                    },
+                    steps=self._global_step)
 
 
 def ppo_policy_entropy_bonus(entropies: tc.Tensor,

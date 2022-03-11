@@ -1,4 +1,4 @@
-from typing import Mapping, Dict, Union, Optional, Tuple, List
+from typing import Mapping, Dict, Union, Optional, Tuple, List, Any
 from contextlib import ExitStack
 import collections
 import uuid
@@ -117,6 +117,14 @@ class Algo(object):
         value_predict = [f'value_{k}' for k in reward_keys]
         return policy_predict, value_predict
 
+    def _get_reward_weights(self) -> Mapping[str, float]:
+        reward_weights = {'extrinsic': 1.0}
+        if self._reward_weights is not None:
+            reward_weights.update(self._reward_weights)
+        assert set(reward_weights.keys()) == \
+               set(self._get_reward_keys(omit_raw=True))
+        return reward_weights
+
     def annotate(self, rollout: Dict[str, NestedTensor],
                  no_grad: bool) -> Dict[str, NestedTensor]:
         """
@@ -162,22 +170,50 @@ class Algo(object):
         """
         raise NotImplementedError
 
-    def training_loop(self) -> None:
+    def collect(self) -> Tuple[NestedTensor, Dict[str, Any]]:
         """
-        Training loop.
+        Collect a rollout, annotate it with predictions,
+        and perform credit assignment.
+
+        Returns:
+            Tuple[NestedTensor, Dict[str, Any]]: Rollout and metadata.
+        """
+        raise NotImplementedError
+
+    def optimize(self, rollout: NestedTensor) -> None:
+        """
+        Train on collected experience, logs to training metrics to tensorboard,
+        and updates learning rate schedulers, if any.
 
         Returns:
             None.
         """
-        # todo: find a way to break the PPO training loop into
-        #  collection_logic (which is generic and can be kept),
-        #  subsampling logic,
-        #  optimization logic,
-        #  scheduler update logic,
-        #  tensorboard logging logic (which is generic and can be kept),
-        #  and checkpointing logic (which is generic and can be kept)
-        #  then move the training loop here.
         raise NotImplementedError
+
+    def persist(self, metadata: Dict[str, Any]) -> None:
+        """
+        Writes task performance metadata to tensorboard
+        and saves checkpoints as appropriate.
+
+        Args:
+            metadata (Dist[str, Any]): Task performance metadata.
+
+        Returns:
+            None.
+        """
+        raise NotImplementedError
+
+    def training_loop(self) -> None:
+        """
+        Training loop over the collect, optimize and persist methods.
+
+        Returns:
+            None.
+        """
+        while self._global_step < self._max_steps:
+            rollout, metadata = self.collect()
+            self.optimize(rollout)
+            self.persist(metadata)
 
     def evaluation_loop(self) -> Dict[str, Union[float, tc.Tensor]]:
         """
@@ -402,38 +438,3 @@ class ActorCriticAlgo(Algo):
         })
         rollout = slice_nested_tensor(rollout, slice(0, self._rollout_len))
         return rollout
-
-    def compute_losses_and_metrics(
-            self, minibatch: Dict[str, NestedTensor],
-            no_grad: bool) -> Dict[str, tc.Tensor]:
-        """
-        Computes losses and metrics.
-
-        Args:
-            minibatch (Dict[str, NestedTensor]): Minibatch of experience.
-            no_grad (bool): Disable gradient tape recording?
-
-        Returns:
-            Dict[str, torch.Tensor]: Dictionary mapping from names
-            to metrics.
-        """
-        raise NotImplementedError
-
-    def training_loop(self) -> None:
-        """
-        Training loop.
-
-        Returns:
-            None.
-        """
-        raise NotImplementedError
-
-    def evaluation_loop(self) -> Dict[str, Union[float, tc.Tensor]]:
-        """
-        Evaluation loop.
-
-        Returns:
-            Dict[str, Union[float, torch.Tensor]]: Dictionary mapping from names
-            to metrics.
-        """
-        raise NotImplementedError

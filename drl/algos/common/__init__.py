@@ -16,6 +16,8 @@ from drl.algos.common.metrics import (
     global_gathers,
     MultiQueue,
     pretty_print)
+from drl.algos.common.samplers import (
+    IndicesIterator, Sampler, IndependentSampler, TBPTTSampler)
 from drl.algos.common.schedules import LinearSchedule
 from drl.algos.common.rollout import RolloutManager
 from drl.algos.common.wrapper_ops import update_trainable_wrappers
@@ -37,6 +39,10 @@ __all__ = [
     "global_gathers",
     "MultiQueue",
     "pretty_print",
+    "Sampler",
+    "IndicesIterator",
+    "IndependentSampler",
+    "TBPTTSampler",
     "LinearSchedule",
     "RolloutManager",
     "update_trainable_wrappers",
