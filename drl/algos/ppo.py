@@ -236,15 +236,6 @@ class PPO(ActorCriticAlgo):
                 normalize=False)
         optimizer.step()
 
-    def collect(self) -> Tuple[NestedTensor, Dict[str, Any]]:
-        # generate trajectory.
-        rollout = self._rollout_mgr.generate()
-        metadata = rollout.pop('metadata')
-        rollout = self.annotate(rollout, no_grad=True)
-        rollout = self.credit_assignment(rollout)
-        self._global_step += self._world_size * self._rollout_len
-        return rollout, metadata
-
     def optimize(self, rollout: NestedTensor) -> None:
         # update policy and value net(s).
         for opt_epoch in range(self._opt_epochs):

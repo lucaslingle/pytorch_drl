@@ -178,7 +178,12 @@ class Algo(object):
         Returns:
             Tuple[NestedTensor, Dict[str, Any]]: Rollout and metadata.
         """
-        raise NotImplementedError
+        rollout = self._rollout_mgr.generate()
+        metadata = rollout.pop('metadata')
+        rollout = self.annotate(rollout, no_grad=True)
+        rollout = self.credit_assignment(rollout)
+        self._global_step += self._world_size * self._rollout_len
+        return rollout, metadata
 
     def optimize(self, rollout: NestedTensor) -> None:
         """
