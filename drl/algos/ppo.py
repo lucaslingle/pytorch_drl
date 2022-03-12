@@ -186,7 +186,7 @@ class PPO(ActorCriticAlgo):
             value_dict = ppo_vf_loss(
                 vpreds_new=minibatch_new['vpreds'],
                 vpreds_old=minibatch['vpreds'],
-                td_lambda_returns=minibatch['td_lambda_returns'],
+                vtargs=minibatch['vtargs'],
                 clip_param=self._clip_param.value(self._global_step),
                 vf_loss_criterion=self._vf_loss_criterion,
                 vf_loss_clipping=self._vf_loss_clipping,
@@ -370,7 +370,7 @@ def ppo_policy_surrogate_objective(
 def ppo_vf_loss(
         vpreds_new: Mapping[str, tc.Tensor],
         vpreds_old: Mapping[str, tc.Tensor],
-        td_lambda_returns: Mapping[str, tc.Tensor],
+        vtargs: Mapping[str, tc.Tensor],
         clip_param: float,
         vf_loss_criterion: tc.nn.modules.loss._Loss,
         vf_loss_clipping: bool,
@@ -384,8 +384,8 @@ def ppo_vf_loss(
             reward names to new value predictions.
         vpreds_old (Mapping[str, torch.Tensor]): Dictionary mapping from
             reward names to old value predictions.
-        td_lambda_returns (Mapping[str, torch.Tensor]): Dictionary mapping from
-             reward names to TD(lambda) returns.
+        vtargs (Mapping[str, torch.Tensor]): Dictionary mapping from
+             reward names to value targets.
         clip_param (float): PPO clip parameter epsilon.
         vf_loss_criterion (torch.nn.modules.loss._Loss): Value loss criterion.
             We expect that the reduction is 'none'.
@@ -403,15 +403,13 @@ def ppo_vf_loss(
         if vf_loss_clipping:
             vpreds_new_clipped_k = vpreds_old[k] + tc.clip(
                 vpreds_new[k] - vpreds_old[k], -clip_param, clip_param)
-            vsurr1 = vf_loss_criterion(
-                input=vpreds_new[k], target=td_lambda_returns[k])
+            vsurr1 = vf_loss_criterion(input=vpreds_new[k], target=vtargs[k])
             vsurr2 = vf_loss_criterion(
-                input=vpreds_new_clipped_k, target=td_lambda_returns[k])
+                input=vpreds_new_clipped_k, target=vtargs[k])
             vf_loss_for_rew = tc.mean(tc.max(vsurr1, vsurr2))
         else:
             vf_loss_for_rew = tc.mean(
-                vf_loss_criterion(
-                    input=vpreds_new[k], target=td_lambda_returns[k]))
+                vf_loss_criterion(input=vpreds_new[k], target=vtargs[k]))
         if vf_simple_weighting:
             vf_loss += vf_loss_for_rew
         else:

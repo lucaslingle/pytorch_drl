@@ -44,7 +44,7 @@ def test_ppo_policy_surrogate_objective():
 def test_ppo_vf_loss():
     vpreds_new = tc.tensor([1.05, 2.4, 1.2, -1.05, -2.4, -1.2])
     vpreds_old = tc.tensor([1.0, 2.0, 1.0, -1.0, -2.0, -1.0])
-    td_lam_rets = tc.tensor([1.5, 1.5, 1.5, -1.5, -1.5, -1.5])
+    vtargs = tc.tensor([1.5, 1.5, 1.5, -1.5, -1.5, -1.5])
     #clipped = tc.tensor([False, False, True, False, False, True])
     expected_noclip = tc.tensor([
         (1.05 - 1.5)**2,
@@ -66,7 +66,7 @@ def test_ppo_vf_loss():
     value_dict_noclip = ppo_vf_loss(
         vpreds_new={'extrinsic': vpreds_new},
         vpreds_old={'extrinsic': vpreds_old},
-        td_lambda_returns={'extrinsic': td_lam_rets},
+        vtargs={'extrinsic': vtargs},
         clip_param=0.10,
         vf_loss_criterion=tc.nn.MSELoss(reduction='none'),
         vf_loss_clipping=False,
@@ -78,7 +78,7 @@ def test_ppo_vf_loss():
     value_dict_clip = ppo_vf_loss(
         vpreds_new={'extrinsic': vpreds_new},
         vpreds_old={'extrinsic': vpreds_old},
-        td_lambda_returns={'extrinsic': td_lam_rets},
+        vtargs={'extrinsic': vtargs},
         clip_param=0.10,
         vf_loss_criterion=tc.nn.MSELoss(reduction='none'),
         vf_loss_clipping=True,

@@ -424,7 +424,7 @@ class ActorCriticAlgo(Algo):
             Dict[str, NestedTensor]: Prediction-annotated
                  trajectory segment with results of credit assignment.
         """
-        advantages, td_lambda_returns = dict(), dict()
+        advantages, vtargs = dict(), dict()
         for k in self._get_reward_keys(omit_raw=True):
             advantages_k = self._credit_assignment_ops[k](
                 rollout_len=self._rollout_len,
@@ -433,13 +433,13 @@ class ActorCriticAlgo(Algo):
                 vpreds=rollout['vpreds'][k],
                 dones=rollout['dones'])
             vpreds_k = rollout['vpreds'][k][slice(0, self._rollout_len)]
-            td_lambda_returns[k] = advantages_k + vpreds_k
+            vtargs[k] = advantages_k + vpreds_k
             if self._standardize_adv:
                 advantages_k = standardize(advantages_k)
             advantages[k] = advantages_k
         rollout.update({
             'advantages': advantages,
-            'td_lambda_returns': td_lambda_returns,
+            'vtargs': vtargs,
         })
         rollout = slice_nested_tensor(rollout, slice(0, self._rollout_len))
         return rollout
