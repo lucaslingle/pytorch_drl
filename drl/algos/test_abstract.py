@@ -89,15 +89,17 @@ def local_test_algo(rank: int, port: int, monkeypatch) -> None:
             rollout = slice_nested_tensor(
                 rollout, slice(0, args['rollout_len']))
             rollout.update({
-                'vpreds': tc.zeros(
-                    size=[args['rollout_len'] + args['extra_steps'] + 1],
-                    dtype=tc.float32),
-                'logprobs': tc.zeros(
-                    size=[args['rollout_len']], dtype=tc.float32),
-                'entropies': tc.ones(
-                    size=[args['rollout_len']], dtype=tc.float32)
+                'vpreds':
+                    tc.zeros(
+                        size=[args['rollout_len'] + args['extra_steps'] + 1],
+                        dtype=tc.float32),
+                'logprobs':
+                    tc.zeros(size=[args['rollout_len']], dtype=tc.float32),
+                'entropies':
+                    tc.ones(size=[args['rollout_len']], dtype=tc.float32)
             })
             return rollout
+
     monkeypatch.setattr(algo, 'annotate', mock_algo_annotate)
     rollout = algo.annotate(rollout=rollout, no_grad=True)
 
@@ -111,12 +113,13 @@ def local_test_algo(rank: int, port: int, monkeypatch) -> None:
             rollout = slice_nested_tensor(
                 rollout, slice(0, args['rollout_len']))
             rollout.update({
-                'advantages': tc.zeros(
-                    size=[args['rollout_len']], dtype=tc.float32),
+                'advantages':
+                    tc.zeros(size=[args['rollout_len']], dtype=tc.float32),
                 'vtargs': tc.zeros(
                     size=[args['rollout_len']], dtype=tc.float32)
             })
             return rollout
+
     monkeypatch.setattr(algo, 'credit_assignment', mock_algo_credit_assignment)
     rollout = algo.credit_assignment(rollout=rollout)
 
@@ -127,13 +130,12 @@ def local_test_algo(rank: int, port: int, monkeypatch) -> None:
 
     def mock_algo_compute_losses_and_metrics(minibatch, no_grad):
         with tc.no_grad() if no_grad else ExitStack():
-            return {
-                'policy_loss': tc.tensor(1.0),
-                'value_loss': tc.tensor(2.0)
-            }
-    monkeypatch.setattr(algo,
-                        'compute_losses_and_metrics',
-                        mock_algo_compute_losses_and_metrics)
+            return {'policy_loss': tc.tensor(1.0), 'value_loss': tc.tensor(2.0)}
+
+    monkeypatch.setattr(
+        algo,
+        'compute_losses_and_metrics',
+        mock_algo_compute_losses_and_metrics)
 
     # use mocked annotate and credit_assignment to test 'collect' method...
     rollout, metadata = algo.collect()
@@ -158,12 +160,14 @@ def local_test_algo(rank: int, port: int, monkeypatch) -> None:
 
     def mock_algo_optimize(rollout):
         return None
+
     monkeypatch.setattr(algo, 'optimize', mock_algo_optimize)
 
     # verify that persist is still unimplemented by algo cls
     # then mock it.
     def mock_algo_persist(metadata):
         return None
+
     monkeypatch.setattr(algo, 'persist', mock_algo_persist)
 
     # use mocked annotate, credit_assignment (used by collect),
@@ -184,8 +188,8 @@ def make_actor_critic_args(rank: int) -> Dict[str, Any]:
     basic_algo_args = make_algo_args(rank)
     basic_algo_args.update({
         'policy_net': basic_algo_args['rollout_net'],
-        'policy_optimizer': tc.optim.Adam(
-            basic_algo_args['rollout_net'].parameters(), lr=1e-3),
+        'policy_optimizer':
+            tc.optim.Adam(basic_algo_args['rollout_net'].parameters(), lr=1e-3),
         'policy_scheduler': None,
         'value_net': None,
         'value_optimizer': None,
@@ -246,31 +250,33 @@ def local_test_actor_critic_algo(rank: int, port: int, monkeypatch) -> None:
         'vtargs'
     }
 
-    standalone_policy_net = DDP(Agent(
-        preprocessing=[OneHotEncode(depth=100)],
-        architecture=Identity(input_shape=[100], w_init=None, b_init=None),
-        predictors={
-            'policy': CategoricalPolicyHead(
-                num_features=100,
-                num_actions=10,
-                head_architecture_cls=Linear,
-                head_architecture_cls_args={},
-                w_init=get_initializer(('zeros_', {})),
-                b_init=get_initializer(('zeros_', {})))
-        }
-    ))
-    standalone_value_net = DDP(Agent(
-        preprocessing=[OneHotEncode(depth=100)],
-        architecture=Identity(input_shape=[100], w_init=None, b_init=None),
-        predictors={
-            'value_extrinsic': SimpleValueHead(
-                num_features=100,
-                head_architecture_cls=Linear,
-                head_architecture_cls_args={},
-                w_init=get_initializer(('zeros_', {})),
-                b_init=get_initializer(('zeros_', {})))
-        }
-    ))
+    standalone_policy_net = DDP(
+        Agent(
+            preprocessing=[OneHotEncode(depth=100)],
+            architecture=Identity(input_shape=[100], w_init=None, b_init=None),
+            predictors={
+                'policy':
+                    CategoricalPolicyHead(
+                        num_features=100,
+                        num_actions=10,
+                        head_architecture_cls=Linear,
+                        head_architecture_cls_args={},
+                        w_init=get_initializer(('zeros_', {})),
+                        b_init=get_initializer(('zeros_', {})))
+            }))
+    standalone_value_net = DDP(
+        Agent(
+            preprocessing=[OneHotEncode(depth=100)],
+            architecture=Identity(input_shape=[100], w_init=None, b_init=None),
+            predictors={
+                'value_extrinsic':
+                    SimpleValueHead(
+                        num_features=100,
+                        head_architecture_cls=Linear,
+                        head_architecture_cls_args={},
+                        w_init=get_initializer(('zeros_', {})),
+                        b_init=get_initializer(('zeros_', {})))
+            }))
     args['policy_net'] = standalone_policy_net
     args['value_net'] = standalone_value_net
     algo = ActorCriticAlgo(**args)
@@ -305,12 +311,14 @@ def local_test_actor_critic_algo(rank: int, port: int, monkeypatch) -> None:
 
     def mock_algo_optimize(rollout):
         return None
+
     monkeypatch.setattr(algo, 'optimize', mock_algo_optimize)
 
     # verify that persist is still unimplemented by algo cls
     # then mock it.
     def mock_algo_persist(metadata):
         return None
+
     monkeypatch.setattr(algo, 'persist', mock_algo_persist)
 
     # use mocked annotate, credit_assignment (used by collect),
