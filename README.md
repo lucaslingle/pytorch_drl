@@ -1,4 +1,7 @@
 # pytorch_drl
+
+[![CircleCI](https://circleci.com/gh/lucaslingle/pytorch_drl.svg?style=shield)](https://circleci.com/gh/lucaslingle/pytorch_drl)
+
 Implementation of Deep Reinforcement Learning algorithms in PyTorch, with support for distributed data collection and data-parallel training.
 
 (In progress...)
