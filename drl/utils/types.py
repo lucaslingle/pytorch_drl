@@ -14,7 +14,14 @@ Checkpointable = Union[Module, Optimizer, Scheduler]
 
 CreditAssignmentSpec = Mapping[str, Mapping[str, Union[str, Mapping[str, Any]]]]
 
-ActionType = Union[int, np.ndarray]
-ObservationType = np.ndarray
-RewardType = Union[float, Mapping[str, float]]
-EnvStepOutput = Tuple[ObservationType, RewardType, bool, Mapping[str, Any]]
+Action = Union[int, np.ndarray]
+Observation = np.ndarray
+ScalarReward = float
+DictReward = Mapping[str, float]
+Reward = Union[ScalarReward, DictReward]
+EnvOutput = Tuple[Observation, Reward, bool, Mapping[str, Any]]
+
+FlatGrad = np.ndarray
+
+NestedTensor = Union[tc.Tensor, 'NestedTensor']
+Indices = Union[np.ndarray, slice]

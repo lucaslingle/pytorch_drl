@@ -9,7 +9,7 @@ import numpy as np
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
-from drl.utils.typing import ActionType, EnvStepOutput
+from drl.utils.types import Action, EnvOutput
 
 
 class MaxAndSkipWrapper(Wrapper):
@@ -47,7 +47,7 @@ class MaxAndSkipWrapper(Wrapper):
             msg = "Number of frames to skip must be greater than zero."
             raise ValueError(msg)
 
-    def step(self, action: ActionType) -> EnvStepOutput:
+    def step(self, action: Action) -> EnvOutput:
         total_reward = 0.
         for k in range(self._num_skip):
             obs, reward, done, info = self.env.step(action)

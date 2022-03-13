@@ -22,6 +22,8 @@ def get_initializer(
     name, args = init_spec
     if name == 'normc_':
         return normc_
+    if name == 'eye':
+        return eye_
     module = importlib.import_module('torch.nn.init')
     initializer = getattr(module, name)
     return functools.partial(initializer, **args)
@@ -54,3 +56,23 @@ def normc_(weight_tensor: tc.Tensor, gain: float = 1.0) -> None:
     out *= gain
     with tc.no_grad():
         weight_tensor.copy_(tc.tensor(out, requires_grad=False))
+
+
+def eye_(weight_tensor: tc.Tensor) -> None:
+    """
+    Initializes the j-th output neuron's weights to e_j,
+    the j-th standard basis vector. Only works with 2D square weights.
+
+    Args:
+        weight_tensor (torch.Tensor): Weight tensor to initialize.
+
+    Returns:
+        None
+    """
+    num_dims = len(list(weight_tensor.shape))
+    assert num_dims == 2
+    assert weight_tensor.shape[0] == weight_tensor.shape[1]
+    output_dim = weight_tensor.shape[0]
+    eye = np.eye(output_dim)
+    with tc.no_grad():
+        weight_tensor.copy_(tc.tensor(eye, requires_grad=False))

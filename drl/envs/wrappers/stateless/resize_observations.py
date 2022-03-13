@@ -9,7 +9,7 @@ import gym
 import cv2
 
 from drl.envs.wrappers.stateless.abstract import Wrapper, ObservationWrapper
-from drl.utils.typing import ObservationType
+from drl.utils.types import Observation
 
 
 class ResizeObservationsWrapper(ObservationWrapper):
@@ -38,7 +38,7 @@ class ResizeObservationsWrapper(ObservationWrapper):
         self._run_checks()
         self._set_observation_space()
 
-    def _run_checks(self):
+    def _run_checks(self) -> None:
         starting_space = self.observation_space
         cond1 = starting_space.dtype == np.uint8
         cond2 = len(starting_space.shape) == 3
@@ -47,13 +47,13 @@ class ResizeObservationsWrapper(ObservationWrapper):
         if not cond2:
             raise ValueError("Required starting space shape to have length 3.")
 
-    def _set_observation_space(self):
+    def _set_observation_space(self) -> None:
         num_colors = 1 if self._grayscale else 3
         shape = (self._height, self._width, num_colors)
         new_space = gym.spaces.Box(low=0, high=255, shape=shape, dtype=np.uint8)
         self.observation_space = new_space
 
-    def observation(self, obs: ObservationType) -> ObservationType:
+    def observation(self, obs: Observation) -> Observation:
         frame = obs
         target_shape = (self._width, self._height)
         if self._grayscale:

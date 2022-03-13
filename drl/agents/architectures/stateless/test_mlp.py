@@ -35,9 +35,7 @@ def test_mlp_2layer():
     assert mlp2.output_dim == output_dim
     tc.testing.assert_close(
         actual=mlp2(img_batch),
-        expected=tc.zeros(size=[batch_size, output_dim], dtype=tc.float32),
-        rtol=1e-4,
-        atol=1e-4)
+        expected=tc.zeros(size=[batch_size, output_dim], dtype=tc.float32))
 
 
 def test_mlp_3layer():
@@ -52,6 +50,4 @@ def test_mlp_3layer():
     assert mlp3.output_dim == output_dim
     tc.testing.assert_close(
         actual=mlp3(img_batch),
-        expected=tc.zeros(size=[batch_size, output_dim], dtype=tc.float32),
-        rtol=1e-4,
-        atol=1e-4)
+        expected=tc.zeros(size=[batch_size, output_dim], dtype=tc.float32))

@@ -16,6 +16,7 @@ from drl.envs.wrappers.stateful.normalize import Normalizer
 from drl.agents.preprocessing import ToChannelMajor
 from drl.algos.common import global_mean
 from drl.utils.optimization import get_optimizer
+from drl.utils.types import Checkpointable, Action, EnvOutput
 
 
 class _RNDNetwork(tc.nn.Module):
@@ -132,10 +133,10 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         self._run_checks()
 
     @property
-    def reward_name(self):
+    def reward_name(self) -> str:
         return self._reward_name
 
-    def _run_checks(self):
+    def _run_checks(self) -> None:
         space = self.env.observation_space
         cond1 = str(space.dtype) == "float32"
         cond2 = list(space.shape)[0:2] == self._data_shape[0:2]
@@ -146,7 +147,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             msg = f"Attempted to wrap env with unsupported shape {space.shape}."
             raise ValueError(msg)
 
-    def _get_reward_spec(self):
+    def _get_reward_spec(self) -> RewardSpec:
         parent_reward_spec = self.env.reward_spec
         if parent_reward_spec is None:
             reward_keys = ["extrinsic_raw", "extrinsic", self._reward_name]
@@ -155,7 +156,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             reward_keys.append(self._reward_name)
         return RewardSpec(keys=reward_keys)
 
-    def _sync_normalizers_global(self):
+    def _sync_normalizers_global(self) -> None:
         self._synced_normalizer.steps = global_mean(
             local_value=self._unsynced_normalizer.steps,
             world_size=self._world_size)
@@ -166,13 +167,13 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             local_value=self._unsynced_normalizer.moment2,
             world_size=self._world_size)
 
-    def _sync_normalizers_local(self):
+    def _sync_normalizers_local(self) -> None:
         self._unsynced_normalizer.steps = self._synced_normalizer.steps
         self._unsynced_normalizer.moment1 = self._synced_normalizer.moment1
         self._unsynced_normalizer.moment2 = self._synced_normalizer.moment2
 
     @property
-    def checkpointables(self):
+    def checkpointables(self) -> Dict[str, Checkpointable]:
         checkpoint_dict = self.env.checkpointables
         checkpoint_dict.update({
             "rnd_observation_normalizer": self._synced_normalizer,
@@ -182,7 +183,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
         })
         return checkpoint_dict
 
-    def step(self, ac):
+    def step(self, ac: Action) -> EnvOutput:
         if self._unsynced_normalizer.steps < self._synced_normalizer.steps:
             self._sync_normalizers_local()
         obs, rew, done, info = self.env.step(ac)
@@ -199,7 +200,7 @@ class RandomNetworkDistillationWrapper(TrainableWrapper):
             rewards_dict.update({"extrinsic_raw": rew, "extrinsic": rew})
         return obs, rewards_dict, done, info
 
-    def _random_drop(self, obs_batch):
+    def _random_drop(self, obs_batch: tc.Tensor) -> tc.Tensor:
         keepfrac = min(self._world_size / 32, 1)
         keepnum = int(keepfrac * obs_batch.shape[0])
         idxs = np.random.permutation(obs_batch.shape[0])

@@ -3,13 +3,15 @@
 The config file has several components. We detail their usage below. 
 
 ### Distributed communication:
-  - The script currently only supports single-machine training without GPUs. (This is subject to change, however.)
-  - The script currently does not support vectorized environments. (This is subject to change, however.) 
-  - To use Torch DDP with more than one parallel process, you can set ```world_size``` to the number of environments you want to run.
-  - If using GPUs, be sure to ```backend``` parameter to ```nccl```, and set the ```world_size``` to the number of GPUs available. 
+  - The script currently supports data parallel training, but does not yet support GPUs.
+  - GPU support will be added in the future. See the [project wiki](https://github.com/lucaslingle/pytorch_drl/wiki) for details. 
+  - The script currently does not support vectorized environments. 
+  - To use Torch DDP with more than one parallel process, set ```world_size``` to the number of processes you want to run.
+  - In our initial experiements, we observed higher throughput using the gloo backend than using MPI. We currently only support the gloo backend. 
+  - Applicable in the future: if using GPUs, be sure to ```backend``` parameter to ```nccl```, and set the ```world_size``` to the number of GPUs available. 
 ### Algorithm:
   - The class names of available algorithms can be found in the submodules of ```drl/algos/```.
-  - Currently supported class names are: ```DQN, PPO```.
+  - Currently supported class names are: ```PPO```.
   - Depending on the algorithm, different parameter names and their values must be supplied. To see example config files for each implemented algorithm, refer to the ```models_dir``` subdirectories in this repo.
   - If any intrinsic rewards are used (discussed later), we require a field ```reward_weights``` to be included. Its value should be a dictionary of positive floats, keyed by reward name.
 ### Environment:

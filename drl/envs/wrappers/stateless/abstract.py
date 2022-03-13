@@ -7,8 +7,7 @@ import abc
 
 import gym
 
-from drl.utils.typing import (
-    Checkpointable, ActionType, ObservationType, RewardType, EnvStepOutput)
+from drl.utils.types import Checkpointable, Action, Observation, Reward, EnvOutput
 
 
 class RewardSpec:
@@ -140,12 +139,12 @@ class Wrapper(metaclass=abc.ABCMeta):
         """
         self._metadata = value
 
-    def step(self, action: ActionType) -> EnvStepOutput:
+    def step(self, action: Action) -> EnvOutput:
         """
         Steps the wrapped version of the environment.
 
         Args:
-            action (ActionType): Action.
+            action (Action): Action to take.
 
         Returns:
             EnvStepOutput:
@@ -154,7 +153,7 @@ class Wrapper(metaclass=abc.ABCMeta):
         """
         return self.env.step(action)
 
-    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
+    def reset(self, **kwargs: Mapping[str, Any]) -> Observation:
         """
         Resets the wrapped version of the environment. The RNG state is not reset.
 
@@ -162,22 +161,22 @@ class Wrapper(metaclass=abc.ABCMeta):
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
-            ObservationType: Initial observation.
+            Observation: Initial observation.
         """
         return self.env.reset(**kwargs)
 
     def render(self,
                mode: str = "human",
-               **kwargs: Mapping[str, Any]) -> Union[ObservationType, bool]:
+               **kwargs: Mapping[str, Any]) -> Union[Observation, bool]:
         """
         Renders the environment.
 
         Args:
-            mode: str: Mode for rendering. Typically one of 'rgb_array', 'human'.
+            mode (str): Mode for rendering. Typically one of 'rgb_array', 'human'.
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
-            Union[ObservationType, bool]: RGB array or bool indicating
+            Union[Observation, bool]: RGB array or bool indicating
                 rendering success.
         """
         return self.env.render(mode, **kwargs)
@@ -238,19 +237,19 @@ class Wrapper(metaclass=abc.ABCMeta):
 
 class ObservationWrapper(Wrapper, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def observation(self, observation: ObservationType) -> ObservationType:
+    def observation(self, observation: Observation) -> Observation:
         """
         Abstract method for observation transformation function.
 
         Args:
-            observation (ObservationType): Observation.
+            observation (Observation): Observation.
 
         Returns:
-            ObservationType: Transformed observation.
+            Observation: Transformed observation.
         """
         raise NotImplementedError
 
-    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
+    def reset(self, **kwargs: Mapping[str, Any]) -> Observation:
         """
         Resets the wrapped version of the environment.
         The RNG state is not reset.
@@ -259,19 +258,19 @@ class ObservationWrapper(Wrapper, metaclass=abc.ABCMeta):
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
-            ObservationType: Transformed initial observation.
+            Observation: Transformed initial observation.
         """
         return self.observation(self.env.reset(**kwargs))
 
-    def step(self, action: ActionType) -> EnvStepOutput:
+    def step(self, action: Action) -> EnvOutput:
         """
         Steps the wrapped version of the environment.
 
         Args:
-            action (ActionType): Action.
+            action (Action): Action to take.
 
         Returns:
-            EnvStepOutput: Tuple containing transformed next observation,
+            EnvOutput: Tuple containing transformed next observation,
                 current reward(s), indicator if next state is terminal,
                 and info dictionary.
         """
@@ -281,27 +280,27 @@ class ObservationWrapper(Wrapper, metaclass=abc.ABCMeta):
 
 class ActionWrapper(Wrapper, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def action(self, action: ActionType) -> ActionType:
+    def action(self, action: Action) -> Action:
         """
         Abstract method for action transformation function.
 
         Args:
-            action (ActionType): Action.
+            action (Action): Action to take.
 
         Returns:
-            ActionType: Transformed action.
+            Action: Transformed action.
         """
         raise NotImplementedError
 
-    def step(self, action: ActionType) -> EnvStepOutput:
+    def step(self, action: Action) -> EnvOutput:
         """
         Steps the wrapped version of the environment, by transforming the action.
 
         Args:
-            action (ActionType): Action.
+            action (Action): Action to take.
 
         Returns:
-            EnvStepOutput: Tuple containing next observation, current reward(s),
+            EnvOutput: Tuple containing next observation, current reward(s),
                 indicator if next state is terminal, and info dictionary.
         """
         return self.env.step(self.action(action))
@@ -309,27 +308,27 @@ class ActionWrapper(Wrapper, metaclass=abc.ABCMeta):
 
 class RewardWrapper(Wrapper, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def reward(self, reward: RewardType) -> RewardType:
+    def reward(self, reward: Reward) -> Reward:
         """
         Abstract method for reward transformation function.
 
         Args:
-            reward (RewardType): A reward to be transformed.
+            reward (Reward): A reward to be transformed.
 
         Returns:
-            RewardType: Transformed reward.
+            Reward: Transformed reward.
         """
         raise NotImplementedError
 
-    def step(self, action: ActionType) -> EnvStepOutput:
+    def step(self, action: Action) -> EnvOutput:
         """
         Steps the wrapped version of the environment.
 
         Args:
-            action (ActionType): Action.
+            action (Action): Action.
 
         Returns:
-            EnvStepOutput: Tuple containing next observation, transformed
+            EnvOutput: Tuple containing next observation, transformed
                 current reward(s), indicator if next state is terminal,
                 and info dictionary.
         """

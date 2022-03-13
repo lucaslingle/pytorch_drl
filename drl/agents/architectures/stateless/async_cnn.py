@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Optional, Callable, List
 
 import torch as tc
 
@@ -13,22 +13,21 @@ class AsyncCNN(StatelessArchitecture):
     def __init__(
             self,
             img_channels: int,
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
-    ):
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]]):
         """
         Args:
             img_channels (int): Image channels.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
         """
         super().__init__(w_init, b_init)
         self._img_channels = img_channels
         self._num_features = 256
         self._network = tc.nn.Sequential(
-            tc.nn.Conv2d(img_channels, 16, kernel_size=(8,8), stride=(4,4)),
+            tc.nn.Conv2d(img_channels, 16, kernel_size=(8, 8), stride=(4, 4)),
             tc.nn.ReLU(),
-            tc.nn.Conv2d(16, 32, kernel_size=(4,4), stride=(2,2)),
+            tc.nn.Conv2d(16, 32, kernel_size=(4, 4), stride=(2, 2)),
             tc.nn.ReLU(),
             tc.nn.Flatten(),
             tc.nn.Linear(2592, self._num_features),

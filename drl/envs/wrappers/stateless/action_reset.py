@@ -7,7 +7,7 @@ from typing import Union, List, Any, Mapping
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
-from drl.utils.typing import ObservationType
+from drl.utils.types import Action, Observation
 
 
 class ActionResetWrapper(Wrapper):
@@ -17,11 +17,11 @@ class ActionResetWrapper(Wrapper):
     """
     def __init__(
             self, env: Union[gym.core.Env, Wrapper],
-            action_sequence: List[int]):
+            action_sequence: List[Action]):
         """
         Args:
             env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
-            action_sequence (List[int]): List of actions to perform.
+            action_sequence (List[Action]): List of actions to perform.
         """
         super().__init__(env)
         self._action_sequence = action_sequence
@@ -30,7 +30,7 @@ class ActionResetWrapper(Wrapper):
     def action_sequence(self):
         return self._action_sequence
 
-    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
+    def reset(self, **kwargs: Mapping[str, Any]) -> Observation:
         """
         Resets environment and takes actions listed in `self.action_sequence`.
         """

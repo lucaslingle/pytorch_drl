@@ -1,5 +1,3 @@
 from drl.agents.integration.agent import Agent
 
-__all__ = [
-    "Agent"
-]
+__all__ = ["Agent"]

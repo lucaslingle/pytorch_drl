@@ -1,6 +1,5 @@
 from drl.envs.wrappers.stateless.abstract import (
-    RewardSpec, Wrapper, ObservationWrapper, ActionWrapper, RewardWrapper
-)
+    RewardSpec, Wrapper, ObservationWrapper, ActionWrapper, RewardWrapper)
 from drl.envs.wrappers.stateless.action_reset import ActionResetWrapper
 from drl.envs.wrappers.stateless.clip_reward import ClipRewardWrapper
 from drl.envs.wrappers.stateless.episodic_life import EpisodicLifeWrapper
@@ -14,10 +13,12 @@ from drl.envs.wrappers.stateless.reward_to_dict import RewardToDictWrapper
 from drl.envs.wrappers.stateless.sticky_actions import StickyActionsWrapper
 from drl.envs.wrappers.stateless.atari import AtariWrapper, DeepmindWrapper
 
-
 __all__ = [
-    "RewardSpec", "Wrapper",
-    "ObservationWrapper", "ActionWrapper", "RewardWrapper",
+    "RewardSpec",
+    "Wrapper",
+    "ObservationWrapper",
+    "ActionWrapper",
+    "RewardWrapper",
     "ActionResetWrapper",
     "ClipRewardWrapper",
     "EpisodicLifeWrapper",

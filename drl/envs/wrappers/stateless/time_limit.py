@@ -7,7 +7,7 @@ from typing import Union, Mapping, Any
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
-from drl.utils.typing import ActionType, EnvStepOutput, ObservationType
+from drl.utils.types import Action, Observation, EnvOutput
 
 
 class TimeLimitWrapper(Wrapper):
@@ -22,7 +22,7 @@ class TimeLimitWrapper(Wrapper):
         self._max_episode_steps = max_episode_steps
         self._elapsed_steps = None
 
-    def step(self, action: ActionType) -> EnvStepOutput:
+    def step(self, action: Action) -> EnvOutput:
         if self._elapsed_steps is None:
             msg = "Cannot call env.step() before calling reset()"
             raise RuntimeError(msg)
@@ -33,6 +33,6 @@ class TimeLimitWrapper(Wrapper):
             done = True
         return observation, reward, done, info
 
-    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
+    def reset(self, **kwargs: Mapping[str, Any]) -> Observation:
         self._elapsed_steps = 0
         return self.env.reset(**kwargs)

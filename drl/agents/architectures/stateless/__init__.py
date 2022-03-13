@@ -1,6 +1,5 @@
 from drl.agents.architectures.stateless.abstract import (
-    StatelessArchitecture, HeadEligibleArchitecture
-)
+    StatelessArchitecture, HeadEligibleArchitecture)
 from drl.agents.architectures.stateless.async_cnn import AsyncCNN
 from drl.agents.architectures.stateless.dueling import DuelingArchitecture
 from drl.agents.architectures.stateless.identity import Identity

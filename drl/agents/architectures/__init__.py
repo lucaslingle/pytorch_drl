@@ -7,9 +7,8 @@ from drl.agents.architectures.stateless import (
     Identity,
     Linear,
     MLP,
-    NatureCNN
-)
-
+    NatureCNN)
+from drl.agents.architectures.stateful import StatefulArchitecture
 
 __all__ = [
     "Architecture",
@@ -20,5 +19,6 @@ __all__ = [
     "Identity",
     "Linear",
     "MLP",
-    "NatureCNN"
+    "NatureCNN",
+    "StatefulArchitecture"
 ]

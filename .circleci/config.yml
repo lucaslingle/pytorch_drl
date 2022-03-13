@@ -20,11 +20,16 @@ jobs:
           name: "Run unit tests"
           command: |
             mkdir test-results
-            pytest --junitxml=test-results/junit.xml
+            coverage run --concurrency=multiprocessing --rcfile=.coveragerc -m pytest --junitxml=test-results/junit.xml
+            coverage combine
+            coverage report
+            coverage html
       - store_test_results:
           path: test-results
       - store_artifacts:
           path: test-results
+      - store_artifacts:
+          path: htmlcov
 
 workflows:
   build-workflow:

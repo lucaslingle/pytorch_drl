@@ -7,9 +7,7 @@ from drl.envs.wrappers import Wrapper
 
 
 def update_trainable_wrappers(
-        env: Union[gym.core.Env, Wrapper],
-        mb: Mapping[str, tc.Tensor]
-) -> None:
+        env: Union[gym.core.Env, Wrapper], mb: Mapping[str, tc.Tensor]) -> None:
     """
     Updates/trains wrappers with state.
 

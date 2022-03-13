@@ -37,7 +37,7 @@ class AtariWrapper(ws.Wrapper):
         self._use_frameskip = use_frameskip
         self.env = self._build()
 
-    def _build(self):
+    def _build(self) -> ws.Wrapper:
         env = self.env
         if self._max_episode_frames is not None:
             env = ws.TimeLimitWrapper(
@@ -50,7 +50,9 @@ class AtariWrapper(ws.Wrapper):
                 noop_max=acs.MAX_RESET_NOOPS)
         if self._use_sticky_actions:
             env = ws.StickyActionsWrapper(
-                env=self.env, stick_prob=acs.STICK_PROB)
+                env=self.env,
+                stick_prob=acs.STICK_PROB,
+                noop_action=acs.NOOP_ACTION)
         if self._use_frameskip:
             env = ws.MaxAndSkipWrapper(
                 env=env,

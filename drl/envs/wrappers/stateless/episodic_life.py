@@ -7,7 +7,7 @@ from typing import Union, Callable, Mapping, Any
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
-from drl.utils.typing import ActionType, EnvStepOutput, ObservationType
+from drl.utils.types import Action, Observation, EnvOutput
 
 
 class EpisodicLifeWrapper(Wrapper):
@@ -18,7 +18,7 @@ class EpisodicLifeWrapper(Wrapper):
             self,
             env: Union[gym.core.Env, Wrapper],
             lives_fn: Callable[[Union[gym.core.Env, Wrapper]], int],
-            noop_action: ActionType):
+            noop_action: Action):
         """
         Args:
             env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
@@ -32,14 +32,14 @@ class EpisodicLifeWrapper(Wrapper):
         self._lives_fn = lives_fn
         self._noop_action = noop_action
 
-    def step(self, action: ActionType) -> EnvStepOutput:
+    def step(self, action: Action) -> EnvOutput:
         obs, reward, self._was_real_done, info = self.env.step(action)
         lives = self._lives_fn(self.env)
         done = self._was_real_done or (0 < lives < self._lives)
         self._lives = lives
         return obs, reward, done, info
 
-    def reset(self, **kwargs: Mapping[str, Any]) -> ObservationType:
+    def reset(self, **kwargs: Mapping[str, Any]) -> Observation:
         """
         Resets only when lives are exhausted.
         """

@@ -8,7 +8,7 @@ import numpy as np
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper, ObservationWrapper
-from drl.utils.typing import ObservationType
+from drl.utils.types import Observation
 
 
 class ScaleObservationsWrapper(ObservationWrapper):
@@ -22,7 +22,7 @@ class ScaleObservationsWrapper(ObservationWrapper):
         self._scale_factor = scale_factor
         self._set_observation_space()
 
-    def _set_observation_space(self):
+    def _set_observation_space(self) -> None:
         space = self.observation_space
         low = space.low * self._scale_factor
         high = space.high * self._scale_factor
@@ -31,5 +31,5 @@ class ScaleObservationsWrapper(ObservationWrapper):
             low=low, high=high, shape=shape, dtype=np.float32)
         self.observation_space = new_space
 
-    def observation(self, obs: ObservationType) -> ObservationType:
+    def observation(self, obs: Observation) -> Observation:
         return self._scale_factor * obs.astype(np.float32)

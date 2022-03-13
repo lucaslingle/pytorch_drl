@@ -13,8 +13,7 @@ class Agent(tc.nn.Module):
             preprocessing: List[Preprocessing],
             architecture: StatelessArchitecture,
             predictors: Mapping[str, Head],
-            detach_input: bool = True
-    ):
+            detach_input: bool = True):
         """
         Args:
             preprocessing (List[Preprocessing]): List of `Preprocessing` instances.
@@ -52,10 +51,10 @@ class Agent(tc.nn.Module):
         return self._predictors.keys()
 
     def forward(
-            self,
-            observations: tc.Tensor,
-            predict: List[str],
-            **kwargs: Mapping[str, Any]
+        self,
+        observations: tc.Tensor,
+        predict: List[str],
+        **kwargs: Mapping[str, Any]
     ) -> Mapping[str, Union[tc.Tensor, tc.distributions.Distribution]]:
         """
         Args:

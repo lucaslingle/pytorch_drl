@@ -19,6 +19,4 @@ def test_async_cnn():
     assert async_cnn.output_dim == feature_dim
     tc.testing.assert_close(
         actual=async_cnn(img_batch),
-        expected=tc.zeros(size=[batch_size, feature_dim], dtype=tc.float32),
-        rtol=1e-4,
-        atol=1e-4)
+        expected=tc.zeros(size=[batch_size, feature_dim], dtype=tc.float32))

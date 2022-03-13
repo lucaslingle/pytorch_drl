@@ -3,7 +3,7 @@ import importlib
 
 import torch as tc
 
-from drl.utils.typing import Module, Optimizer, Scheduler
+from drl.utils.types import Module, Optimizer, Scheduler
 
 
 def get_optimizer(
@@ -83,7 +83,9 @@ def get_weight_decay_param_groups(
             no_decay.append(param)
         else:
             apply_decay.append(param)
+    # yapf: disable
     return [
         {'params': apply_decay, 'weight_decay': wd},
         {'params': no_decay, 'weight_decay': 0.0}
     ]
+    # yapf: enable

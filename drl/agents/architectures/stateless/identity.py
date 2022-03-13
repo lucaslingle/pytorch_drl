@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Optional, Callable, List
 
 import torch as tc
 import numpy as np
@@ -13,14 +13,13 @@ class Identity(StatelessArchitecture):
     def __init__(
             self,
             input_shape: List[int],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None]
-    ):
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]]):
         """
         Args:
             input_dim (List[int]): Input shape.
-            w_init (Callable[[tc.Tensor], None]): Weight initializer.
-            b_init (Callable[[tc.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[tc.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[tc.Tensor], None]]): Bias initializer.
         """
         super().__init__(w_init, b_init)
         self._input_shape = input_shape
