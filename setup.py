@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="pytorch_drl",
     py_modules=["drl"],
-    version="0.0.3",
+    version="0.0.4",
     description="Pytorch library implementing Deep RL algorithms.",
     author="Lucas D. Lingle",
     install_requires=[

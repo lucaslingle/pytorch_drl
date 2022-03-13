@@ -1,5 +1,3 @@
-# todo: come up with better tests
-
 from typing import Dict, Any
 import tempfile
 import os
