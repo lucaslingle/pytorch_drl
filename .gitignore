@@ -4,6 +4,7 @@ models_dir/*/*/checkpoints
 models_dir/*/*/tensorboard_logs
 models_dir/*/*/*/checkpoints
 models_dir/*/*/*/tensorboard_logs
+test-results
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

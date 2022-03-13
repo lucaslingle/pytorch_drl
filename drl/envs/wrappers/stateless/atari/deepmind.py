@@ -1,27 +1,31 @@
+from typing import Union
+
+import gym
+
 import drl.envs.wrappers.stateless as ws
 import drl.envs.wrappers.stateless.atari.constants as acs
 
 
 class DeepmindWrapper(ws.Wrapper):
+    """
+    Deepmind-style Atari wrapper.
+    """
     def __init__(
             self,
-            env,
-            episode_life=True,
-            clip_rewards=True,
-            scale=True,
-            frame_stack=True,
-            lazy=True
-    ):
+            env: Union[gym.core.Env, ws.Wrapper],
+            episode_life: bool = True,
+            clip_rewards: bool = True,
+            scale: bool = True,
+            frame_stack: bool = True,
+            lazy: bool = False):
         """
-        Configure environment for DeepMind-style Atari.
-
         Args:
-            env (Env): OpenAI gym environment instance.
-            episode_life (bool): Use EpisodicLifeWrapper?
-            clip_rewards (bool): Use ClipRewardWrapper?
-            scale (bool): Use ScaleObservationsWrapper?
-            frame_stack (bool): Use FrameStackWrapper?
-            lazy (bool): Use LazyFrames in FrameStackWrapper?
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
+            episode_life (bool): Use EpisodicLifeWrapper? Default: True.
+            clip_rewards (bool): Use ClipRewardWrapper? Default: True.
+            scale (bool): Use ScaleObservationsWrapper? Default: True.
+            frame_stack (bool): Use FrameStackWrapper? Default: True.
+            lazy (bool): Use LazyFrames in FrameStackWrapper? Default: False.
         """
         super().__init__(env)
         self._episode_life = episode_life
@@ -31,9 +35,11 @@ class DeepmindWrapper(ws.Wrapper):
         self._lazy = lazy
         self.env = self._build()
 
-    def _build(self):
-        env = ws.ResizeWrapper(
-            env=self.env, width=acs.TARGET_WIDTH, height=acs.TARGET_HEIGHT,
+    def _build(self) -> ws.Wrapper:
+        env = ws.ResizeObservationsWrapper(
+            env=self.env,
+            width=acs.TARGET_WIDTH,
+            height=acs.TARGET_HEIGHT,
             grayscale=acs.USE_GRAYSCALE)
 
         if self._episode_life:
@@ -44,7 +50,9 @@ class DeepmindWrapper(ws.Wrapper):
                 env=env, action_sequence=acs.ACTION_RESET_SEQUENCE)
         if self._clip_rewards:
             env = ws.ClipRewardWrapper(
-                env=env, low=acs.REWARD_CLIP_LOW, high=acs.REWARD_CLIP_HIGH,
+                env=env,
+                low=acs.REWARD_CLIP_LOW,
+                high=acs.REWARD_CLIP_HIGH,
                 key='extrinsic')
         if self._scale:
             env = ws.ScaleObservationsWrapper(

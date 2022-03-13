@@ -1,4 +1,8 @@
-from typing import Mapping, Any, Type, Callable
+"""
+Value prediction heads.
+"""
+
+from typing import Mapping, Any, Type, Callable, Optional
 import abc
 
 import torch as tc
@@ -22,10 +26,9 @@ class SimpleValueHead(ValueHead):
             num_features: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -47,10 +50,8 @@ class SimpleValueHead(ValueHead):
             **head_architecture_cls_args)
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.Tensor:
+            self, features: tc.Tensor, **kwargs: Mapping[str,
+                                                         Any]) -> tc.Tensor:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape [batch_size, num_features].

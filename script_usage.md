@@ -4,7 +4,7 @@
 
 The script structures all runs into experiment groups. 
 To create a new experiment group, you should create a subdirectory of ```models_dir```, 
-and create a file ```config.yaml``` in that subdirectory. 
+and create a file ```config.yml``` in that subdirectory. 
 See the [config usage](config_usage.md) document for futher details. 
 
 ### Training

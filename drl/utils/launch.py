@@ -3,7 +3,7 @@ Optional launch utility -
     for use with provided script and specified config file format.
 """
 
-from typing import List, Any, Mapping, Union, Type, Tuple, Optional
+from typing import List, Any, Mapping, Union, Type, Tuple
 import random
 import importlib
 
@@ -14,37 +14,35 @@ import gym
 
 from drl.utils.configuration import ConfigParser
 from drl.envs.wrappers import Wrapper
-from drl.agents.preprocessing.abstract import Preprocessing
-from drl.agents.architectures import Architecture
-from drl.agents.architectures.stateless.abstract import StatelessArchitecture
-from drl.agents.architectures.stateful.abstract import StatefulArchitecture
+from drl.agents.preprocessing import Preprocessing
+from drl.agents.architectures import (
+    Architecture, StatelessArchitecture, StatefulArchitecture)
 from drl.utils.initializers import get_initializer
 from drl.agents.heads import (
     Head,
     DiscreteActionValueHead,
     EpsilonGreedyCategoricalPolicyHead,
     DiscretePolicyHead,
-    ContinuousPolicyHead
-)
+    ContinuousPolicyHead)
 from drl.agents.integration.agent import Agent
+from drl.algos.common import get_credit_assignment_ops
 from drl.utils.optimization import get_optimizer, get_scheduler
 from drl.utils.checkpointing import maybe_load_checkpoints
-from drl.utils.types import Optimizer, Scheduler
 
 
-def get_process_seed(rank: int, config: ConfigParser) -> int:
+def get_process_seed(rank: int, experiment_seed: int) -> int:
     """
     Computes a process-specific RNG seed to ensure experiential diversity
     and per-machine experimental reproducibility.
 
     Args:
         rank (int): Process rank.
-        config (`ConfigParser`): Configuration object.
+        experiment_seed (int): Experiment seed.
 
     Returns:
         int: Process seed.
     """
-    return config['seed'] + 10000 * rank
+    return 10000 * rank + experiment_seed
 
 
 def set_seed(process_seed: int) -> None:
@@ -58,15 +56,14 @@ def set_seed(process_seed: int) -> None:
         None.
     """
     tc.manual_seed(process_seed)
-    np.random.seed(process_seed % 2 ** 32)
-    random.seed(process_seed % 2 ** 32)
+    np.random.seed(process_seed % 2**32)
+    random.seed(process_seed % 2**32)
 
 
 def get_wrapper(
         env: Union[gym.core.Env, Wrapper],
         cls_name: str,
-        cls_args: Mapping[str, Any]
-) -> Wrapper:
+        cls_args: Mapping[str, Any]) -> Wrapper:
     """
     Args:
         env (Union[gym.core.Env, `Wrapper`]): OpenAI gym environment or
@@ -84,15 +81,14 @@ def get_wrapper(
 
 def get_wrappers(
         env: Union[gym.core.Env, Wrapper],
-        **wrappers_spec: Mapping[str, Mapping[str, Any]]
-) -> Wrapper:
+        wrappers_spec: Mapping[str, Mapping[str, Any]]) -> Wrapper:
     """
     Args:
-        env (Union[gym.core.Env, `Wrapper`]): OpenAI gym environment or `Wrapper` thereof.
-        **wrappers_spec (Mapping[str, Mapping[str, Any]]): Dictionary of all wrappers to apply.
-            Python dictionaries are not inherently ordered, but here the
-            ordering is assumed to be correct, since in our script pyyaml
-            builds it by parsing the file sequentially.
+        env (Union[gym.core.Env, `Wrapper`]): OpenAI gym environment or
+            `Wrapper` thereof.
+        wrappers_spec (Mapping[str, Mapping[str, Any]]): Dictionary of all
+            wrappers to apply, in order. This requires Python 3.6+ to work
+            correctly.
 
     Returns:
         Union[gym.core.Env, Wrapper]: Wrapped environment.
@@ -103,17 +99,16 @@ def get_wrappers(
 
 
 def get_env(
-        env_config: Mapping[str, Any], process_seed: int, mode: str
-) -> Union[gym.core.Env, Wrapper]:
+        env_id: str,
+        env_wrappers: Mapping[str, Mapping[str, Any]],
+        process_seed: int,
+        mode: str) -> Union[gym.core.Env, Wrapper]:
     """
     Args:
-        env_config (Mapping[str, Any]): Mapping containing keys 'id' and 'wrappers'.
-            The 'id' key should map to a string corresponding
-            to the name of an OpenAI gym environment.
-            The 'wrappers' key should map to a dictionary with two keys,
-            'train' and 'evaluate'. Each of these will be a dictionary keyed by
-            wrapper class names and with wrapper class constructor
-            arguments as values.
+        env_id (str): OpenAI gym environment name.
+        env_wrappers (Mapping[str, Mapping[str, Any]]): Dictionary mapping from
+            'train' and 'evaluate' to dictionaries conforming to the
+            specification of `wrappers_spec` in the get_wrappers docstring.
         process_seed (int): Random number generator seed for this process.
         mode (str): A string affecting the behavior of wrappers.
             If not 'train', the 'evaluate' wrapper specification is used.
@@ -121,20 +116,18 @@ def get_env(
     Returns:
         Union[gym.core.Env, Wrapper]: OpenAI gym or wrapped environment.
     """
-    env = gym.make(env_config.get('id'))
+    env = gym.make(env_id)
     env.seed(process_seed)
-    wrapper_config = env_config.get('wrappers')
     if mode == 'train':
-        mode_wrappers = wrapper_config.get('train')
+        mode_wrappers = env_wrappers.get('train')
     else:
-        mode_wrappers = wrapper_config.get('evaluate')
-    env = get_wrappers(env, **mode_wrappers)
+        mode_wrappers = env_wrappers.get('evaluate')
+    env = get_wrappers(env=env, wrappers_spec=mode_wrappers)
     return env
 
 
 def get_preprocessing(
-        cls_name: str, cls_args: Mapping[str, Any]
-) -> Preprocessing:
+        cls_name: str, cls_args: Mapping[str, Any]) -> Preprocessing:
     """
     Args:
         cls_name (str): Name of a derived class of Preprocessing.
@@ -150,11 +143,11 @@ def get_preprocessing(
 
 
 def get_preprocessings(
-        **preprocessing_spec: Mapping[str, Mapping[str, Any]]
-) -> List[Preprocessing]:
+    preprocessings_spec: Mapping[str, Mapping[str,
+                                              Any]]) -> List[Preprocessing]:
     """
     Args:
-        **preprocessing_spec (Mapping[str, Mapping[str, Any]]): Variable-length
+        preprocessings_spec (Mapping[str, Mapping[str, Any]]): Variable-length
             dictionary of items. Each item is keyed by a class name, which
             should be a derived class of Preprocessing. Each value, is a
             dictionary of arguments passed to the constructor of that class.
@@ -163,16 +156,13 @@ def get_preprocessings(
         List[Preprocessing]: List of instantiated preprocessing subclasses.
     """
     preprocessing_stack = list()
-    for cls_name, cls_args in preprocessing_spec.items():
-        preprocessing = get_preprocessing(
-            cls_name=cls_name, cls_args=cls_args)
+    for cls_name, cls_args in preprocessings_spec.items():
+        preprocessing = get_preprocessing(cls_name=cls_name, cls_args=cls_args)
         preprocessing_stack.append(preprocessing)
     return preprocessing_stack
 
 
-def get_architecture_cls(
-        cls_name: str
-) -> Union[Type[StatelessArchitecture], Type[StatefulArchitecture]]:
+def get_architecture_cls(cls_name: str) -> Union[Architecture]:
     """
     Args:
         cls_name (str): Class name.
@@ -190,8 +180,7 @@ def get_architecture(
         cls_name: str,
         cls_args: Mapping[str, Any],
         w_init_spec: Tuple[str, Mapping[str, Any]],
-        b_init_spec: Tuple[str, Mapping[str, Any]]
-) -> Architecture:
+        b_init_spec: Tuple[str, Mapping[str, Any]]) -> Architecture:
     """
     Args:
         cls_name (str): Name of a derived class of Architecture.
@@ -220,8 +209,7 @@ def get_predictor(
         head_architecture_cls_name: str,
         head_architecture_cls_args: Mapping[str, Any],
         w_init_spec: Tuple[str, Mapping[str, Any]],
-        b_init_spec: Tuple[str, Mapping[str, Any]]
-) -> Head:
+        b_init_spec: Tuple[str, Mapping[str, Any]]) -> Head:
     """
     Args:
         cls_name (str): Head class name.
@@ -250,8 +238,8 @@ def get_predictor(
 
     args = {
         **cls_args,
-        'head_architecture_cls': get_architecture_cls(
-            head_architecture_cls_name),
+        'head_architecture_cls':
+            get_architecture_cls(head_architecture_cls_name),
         'head_architecture_cls_args': head_architecture_cls_args,
         'w_init': get_initializer(w_init_spec),
         'b_init': get_initializer(b_init_spec)
@@ -261,20 +249,16 @@ def get_predictor(
 
 def get_predictors(
         env: Union[gym.core.Env, Wrapper],
-        **predictors_spec: Mapping[str, Mapping[str, Any]]) -> Mapping[str, Head]:
+        predictors_spec: Mapping[str, Mapping[str, Any]]) -> Mapping[str, Head]:
     """
     Args:
-        env (Union[gym.core.Env, Wrapper]): OpenAI gym environment instance or
-            wrapped environment.
-        **predictors_spec (Mapping[str, Mapping[str, Any]]): Variable-length
-            dictionary of predictor keys and specs. Each spec is a dictionary,
-            with keys 'cls_name' and 'cls_args'. The 'cls_name' key maps to a
-            value that is the name of a derived class of `Head`.
-            The 'cls_args' key maps to a dictionary of arguments to be passed to
-            that class' constructor.
+        env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
+        predictors_spec (Mapping[str, Mapping[str, Any]]): Dictionary mapping
+            from prediction key to dictionary of arguments conforming to the
+            signature of the `get_predictor` function.
 
     Returns:
-        Mapping[str, Head]: Dictionary of predictors keyed by name.
+        Mapping[str, Head]: Dictionary mapping from prediction keys to heads.
     """
     predictors = dict()
     for key, spec in predictors_spec.items():
@@ -283,7 +267,8 @@ def get_predictors(
             if isinstance(env.action_space, gym.spaces.Discrete):
                 spec['cls_args'].update({'num_actions': env.action_space.n})
             elif isinstance(env.action_space, gym.spaces.Box):
-                spec['cls_args'].update({'action_dim': env.action_space.shape[0]})
+                spec['cls_args'].update(
+                    {'action_dim': env.action_space.shape[0]})
             else:
                 msg = "Unknown action space."
                 raise TypeError(msg)
@@ -299,75 +284,33 @@ def get_predictors(
 
 
 def get_net(
-        net_config: Mapping[str, Any],
-        env: Union[gym.core.Env, Wrapper]
-) -> DDP:
+        env: Union[gym.core.Env, Wrapper],
+        preprocessing_spec: Mapping[str, Any],
+        architecture_spec: Mapping[str, Any],
+        predictors_spec: Mapping[str, Any]) -> DDP:
     """
     Args:
-        net_config (Mapping[str, Any]): Dictionary with three keys: 'preprocessing',
-            'architecture', and 'predictors'. Each key maps to a dictionary
-            conforming to the specifications in `get_preprocessings`,
-            `get_architecture`, and `get_predictors`.
-        env (Union[gym.core.Env, Wrapper]): OpenAI gym environment or wrapper thereof.
+        env (Union[gym.core.Env, Wrapper]): OpenAI gym env or wrapper thereof.
+        preprocessing_spec (Mapping[str, Any]): Dictionary mapping conforming to
+            the specification described in `get_preprocessings` docstring.
+        architecture_spec (Mapping[str, Any]): Dictionary mapping containing
+            the args for `get_architecture`.
+        predictors_spec (Mapping[str, Any]): Dictionary mapping conforming to
+            the specification described in `get_predictors` docstring.
 
     Returns:
         torch.nn.parallel.DistributedDataParallel: A DDP-wrapped Agent instance.
     """
-    preprocessing = get_preprocessings(**net_config.get('preprocessing'))
-    architecture = get_architecture(**net_config.get('architecture'))
-    predictors = get_predictors(env, **net_config.get('predictors'))
+    preprocessing = get_preprocessings(preprocessing_spec)
+    architecture = get_architecture(**architecture_spec)
+    predictors = get_predictors(env, predictors_spec)
     if not isinstance(architecture, StatelessArchitecture):
         msg = "architecture must be instance of StatelessArchitecture."
         raise TypeError(msg)
     return DDP(Agent(preprocessing, architecture, predictors))
 
 
-def get_opt(
-        opt_config: Mapping[str, Any],
-        agent: Union[DDP]
-) -> Optimizer:
-    """
-    Args:
-        opt_config (Mapping[str, Any]): Dictionary with keys 'cls_name' and
-            'cls_args'. The key 'cls_name' should map to a string corresponding
-            to the name of a derived class of torch.optim.Optimizer. The key
-            'cls_args' should map to a dictionary of arguments for the corresponding
-            class constructor.
-        agent (torch.nn.parallel.DistributedDataParallel): DDP-wrapped `Agent` instance.
-
-    Returns:
-        torch.optim.Optimizer: An instantiated optimizer wrapping the parameters
-            of the DDP-wrapped agent.
-    """
-    optimizer = get_optimizer(model=agent, **opt_config)
-    return optimizer
-
-
-def get_sched(
-        sched_config: Mapping[str, Any],
-        optimizer: Optimizer
-) -> Optional[Scheduler]:
-    """
-    Args:
-        sched_config (Mapping[str, Any]): Dictionary with keys 'cls_name' and
-            'cls_args'. The key 'cls_name' should map to a string corresponding
-            to the name of a derived class of torch.optim.lr_scheduler._LRScheduler.
-            The key 'cls_args' should map to a dictionary of arguments for
-            the corresponding class constructor. If 'cls_name' is None, no scheduler is returned.
-        optimizer (torch.optim.Optimizer): Optimizer instance.
-
-    Returns:
-        Optional[torch.optim.lr_scheduler._LRScheduler]: An instantiated scheduler,
-            or None.
-    """
-    scheduler = get_scheduler(optimizer=optimizer, **sched_config)
-    return scheduler
-
-
-def make_learning_system(
-        rank: int,
-        config: ConfigParser
-) -> Mapping[str, Union[int, Union[gym.core.Env, Wrapper], Optional[DDP], Optional[Optimizer], Optional[Scheduler]]]:
+def make_learning_system(rank: int, config: ConfigParser) -> Mapping[str, Any]:
     """
     Provides a simple, flexible, and reproducible launch framework
         for the drl library.
@@ -379,17 +322,24 @@ def make_learning_system(
         config (ConfigParser): Configuration object.
 
     Returns:
-        Mapping[str, Union[int, Union[gym.core.Env, Wrapper], Optional[DDP], Optional[Optimizer], Optional[Scheduler]]:
-            Dictionary with environment, networks, optimizers, schedulers,
-            and global step of the learning process thus far.
+        Mapping[str, Any]: Dictionary with environment, networks, optimizers,
+            schedulers, and global step of the learning process thus far.
     """
     mode = config.get('mode')
 
-    process_seed = get_process_seed(rank, config)
+    experiment_seed = config.get('seed')
+    process_seed = get_process_seed(rank=rank, experiment_seed=experiment_seed)
     set_seed(process_seed)
 
     env_config = config.get('env')
-    env = get_env(env_config, process_seed, mode)
+    env = get_env(
+        env_id=env_config.get('id'),
+        env_wrappers=env_config.get('wrappers'),
+        process_seed=process_seed,
+        mode=mode)
+
+    credit_assignment_spec = config.get('credit_assignment')
+    credit_assignment_ops = get_credit_assignment_ops(credit_assignment_spec)
 
     learners_config = config.get('networks')
     learning_system = dict()
@@ -398,17 +348,23 @@ def make_learning_system(
         for suffix in learner_config:
             if suffix == 'net':
                 net_config = learner_config.get(suffix)
-                net = get_net(net_config, env)
-                learning_system[f'{prefix}_net'] = net
+                learning_system[f'{prefix}_net'] = get_net(
+                    env=env,
+                    preprocessing_spec=net_config.get('preprocessing'),
+                    architecture_spec=net_config.get('architecture'),
+                    predictors_spec=net_config.get('predictors'))
             elif suffix == 'optimizer':
-                opt_config = learner_config.get(suffix)
-                opt = get_opt(opt_config, learning_system[f'{prefix}_net'])
-                learning_system[f'{prefix}_optimizer'] = opt
+                optimizer_config = learner_config.get(suffix)
+                learning_system[f'{prefix}_optimizer'] = get_optimizer(
+                    model=learning_system[f'{prefix}_net'],
+                    cls_name=optimizer_config.get('cls_name'),
+                    cls_args=optimizer_config.get('cls_args'))
             elif suffix == 'scheduler':
-                sched_config = learner_config.get(suffix)
-                sched = get_sched(
-                    sched_config, learning_system[f'{prefix}_optimizer'])
-                learning_system[f'{prefix}_scheduler'] = sched
+                scheduler_config = learner_config.get(suffix)
+                learning_system[f'{prefix}_scheduler'] = get_scheduler(
+                    optimizer=learning_system[f'{prefix}_optimizer'],
+                    cls_name=scheduler_config.get('cls_name'),
+                    cls_args=scheduler_config.get('cls_args'))
             elif suffix == 'use_shared_architecture':
                 learning_system[f'{prefix}_net'] = None
                 learning_system[f'{prefix}_optimizer'] = None
@@ -418,11 +374,17 @@ def make_learning_system(
                 msg = f'Unrecognized suffix {suffix} in config file.'
                 raise ValueError(msg)
 
-    checkpoint_dict = {k: v for k,v in learning_system.items()}
+    checkpoint_dict = {k: v for k, v in learning_system.items()}
     checkpoint_dict.update(env.checkpointables)
     global_step = maybe_load_checkpoints(
         checkpoint_dir=config.get('checkpoint_dir'),
         checkpointables=checkpoint_dict,
         map_location='cpu',
         steps=None)
-    return {'global_step': global_step, 'env': env, **learning_system}
+
+    return {
+        'global_step': global_step,
+        'env': env,
+        'credit_assignment_ops': credit_assignment_ops,
+        **learning_system
+    }

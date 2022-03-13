@@ -10,20 +10,17 @@ from drl.envs.wrappers.stateless import (
     FrameStackWrapper,
     MaxAndSkipWrapper,
     NoopResetWrapper,
-    ResizeWrapper,
+    ResizeObservationsWrapper,
+    RewardToDictWrapper,
     ScaleObservationsWrapper,
     TimeLimitWrapper,
-    ToTensorWrapper,
     AtariWrapper,
-    DeepmindWrapper
-)
+    DeepmindWrapper)
 from drl.envs.wrappers.stateful import (
     TrainableWrapper,
     Normalizer,
     NormalizeRewardWrapper,
-    RandomNetworkDistillationWrapper
-)
-
+    RandomNetworkDistillationWrapper)
 
 __all__ = [
     "RewardSpec",
@@ -37,10 +34,10 @@ __all__ = [
     "FrameStackWrapper",
     "MaxAndSkipWrapper",
     "NoopResetWrapper",
-    "ResizeWrapper",
+    "ResizeObservationsWrapper",
+    "RewardToDictWrapper",
     "ScaleObservationsWrapper",
     "TimeLimitWrapper",
-    "ToTensorWrapper",
     "AtariWrapper",
     "DeepmindWrapper",
     "TrainableWrapper",

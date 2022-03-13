@@ -10,6 +10,7 @@ from drl.utils.configuration import ConfigParser
 from drl.utils.launch import make_learning_system
 
 
+# yapf: disable
 def create_argparser():
     parser = argparse.ArgumentParser(
         description='Deep RL algorithms, using Torch DDP.')
@@ -48,6 +49,7 @@ def get_config(args):
     )
     config.read(config_path, verbose=True)
     return config
+# yapf: enable
 
 
 def get_algo_cls(cls_name):
@@ -99,20 +101,16 @@ def evaluate(rank, config):
 
 def video(rank, config):
     algo = setup(rank, config)
-    _ = algo.render_loop()
+    _ = algo.video_loop()
     cleanup()
 
 
 if __name__ == '__main__':
     args = create_argparser().parse_args()
     config = get_config(args)
-    ops = {
-        'train': train,
-        'evaluate': evaluate,
-        'video': video
-    }
+    ops = {'train': train, 'evaluate': evaluate, 'video': video}
     tc.multiprocessing.spawn(
         ops[args.mode],
-        args=(config,),
+        args=(config, ),
         nprocs=config['distributed']['world_size'],
         join=True)

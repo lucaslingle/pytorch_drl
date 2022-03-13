@@ -1,12 +1,17 @@
-from typing import Mapping, Any, Type, Callable
+"""
+Policy heads.
+"""
+
+from typing import Mapping, Any, Type, Callable, Optional
 import abc
 
 import torch as tc
 
 from drl.agents.heads.action_value_heads import (
-    Head, DiscreteActionValueHead,
-    SimpleDiscreteActionValueHead, DistributionalDiscreteActionValueHead
-)
+    Head,
+    DiscreteActionValueHead,
+    SimpleDiscreteActionValueHead,
+    DistributionalDiscreteActionValueHead)
 from drl.agents.architectures.stateless.abstract import HeadEligibleArchitecture
 from drl.agents.preprocessing.tabular import one_hot
 
@@ -34,7 +39,7 @@ class DiscretePolicyHead(PolicyHead, metaclass=abc.ABCMeta):
             num_features (int): Number of features.
             num_actions (int): Number of actions.
         """
-        super().__init__(num_features)
+        PolicyHead.__init__(self, num_features)
         self._num_actions = num_actions
 
 
@@ -48,7 +53,7 @@ class ContinuousPolicyHead(PolicyHead, metaclass=abc.ABCMeta):
             num_features (int): Number of features.
             action_dim (int): Action dimensionality.
         """
-        super().__init__(num_features)
+        PolicyHead.__init__(self, num_features)
         self._action_dim = action_dim
 
 
@@ -62,10 +67,9 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
             num_actions: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -75,11 +79,11 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
                 HeadEligibleArchitecture.
             head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
                 for head architecture.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
-        super().__init__(num_features, num_actions)
+        DiscretePolicyHead.__init__(self, num_features, num_actions)
         self._policy_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=num_actions,
@@ -88,18 +92,17 @@ class CategoricalPolicyHead(DiscretePolicyHead, metaclass=abc.ABCMeta):
             **head_architecture_cls_args)
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.distributions.Categorical:
+            self, features: tc.Tensor,
+            **kwargs: Mapping[str, Any]) -> tc.distributions.Categorical:
         """
         Args:
-            features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
+            features (torch.Tensor): Torch tensor with shape
+                [batch_size, num_features].
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
-            torch.distributions.Categorical: Torch categorical distribution
-                with batch shape [batch_size], and element shape [num_actions].
+            torch.distributions.Categorical: Torch distribution
+                with batch shape [batch_size], and event shape [].
         """
         logits = self._policy_head(features)
         dist = tc.distributions.Categorical(logits=logits)
@@ -116,10 +119,9 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
             action_dim: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -129,11 +131,11 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
                 HeadEligibleArchitecture.
             head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
                 for head architecture.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
-        super().__init__(num_features, action_dim)
+        ContinuousPolicyHead.__init__(self, num_features, action_dim)
         self._policy_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=action_dim * 2,
@@ -142,22 +144,22 @@ class DiagonalGaussianPolicyHead(ContinuousPolicyHead, metaclass=abc.ABCMeta):
             **head_architecture_cls_args)
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.distributions.Normal:
+            self, features: tc.Tensor,
+            **kwargs: Mapping[str, Any]) -> tc.distributions.Independent:
         """
         Args:
-            features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
+            features (torch.Tensor): Torch tensor with shape
+                [batch_size, num_features].
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
-            torch.distributions.Normal: Torch normal distribution with
-                batch shape [batch_size], and element shape [action_dim].
+            torch.distributions.Independent: Torch distribution with
+                batch shape [batch_size], and event shape [action_dim].
         """
         vec = self._policy_head(features)
         mu, logsigma = tc.chunk(vec, 2, dim=-1)
         dist = tc.distributions.Normal(loc=mu, scale=tc.exp(logsigma))
+        dist = tc.distributions.Independent(dist, reinterpreted_batch_ndims=1)
         return dist
 
 
@@ -169,16 +171,15 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
     def __init__(
             self,
             action_value_head: DiscreteActionValueHead,
-            **kwargs: Mapping[str, Any]
-    ):
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             action_value_head (DiscreteActionValueHead):
                 DiscreteActionValueHead instance.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
-        num_features = action_value_head.input_dim
-        num_actions = action_value_head.output_dim
+        num_features = action_value_head.num_features
+        num_actions = action_value_head.num_actions
         super().__init__(num_features, num_actions)
         self._action_value_head = action_value_head
         self._epsilon = None
@@ -193,13 +194,12 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
         self._epsilon = value
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.distributions.Categorical:
+            self, features: tc.Tensor,
+            **kwargs: Mapping[str, Any]) -> tc.distributions.Categorical:
         """
         Args:
-            features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
+            features (torch.Tensor): Torch tensor with shape
+                [batch_size, num_features].
             **kwargs (Mapping[str, Any]): Keyword arguments.
 
         Returns:
@@ -208,7 +208,8 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
         """
         if isinstance(self._action_value_head, SimpleDiscreteActionValueHead):
             q_values = self._action_value_head(features)
-        elif isinstance(self._action_value_head, DistributionalDiscreteActionValueHead):
+        elif isinstance(self._action_value_head,
+                        DistributionalDiscreteActionValueHead):
             q_logits = self._action_value_head(features)
             q_values = self._action_value_head.logits_to_mean(q_logits)
         else:
@@ -219,6 +220,7 @@ class EpsilonGreedyCategoricalPolicyHead(DiscretePolicyHead):
         greedy_policy = one_hot(greedy_action, depth=num_actions)
         uniform_policy = tc.ones_like(q_values)
         uniform_policy /= uniform_policy.sum(dim=-1, keepdim=True)
-        probs = (1.-self.epsilon) * greedy_policy + self.epsilon * uniform_policy
+        probs = (1 - self.epsilon) * greedy_policy + \
+            self.epsilon * uniform_policy
         dist = tc.distributions.Categorical(probs=probs)
         return dist

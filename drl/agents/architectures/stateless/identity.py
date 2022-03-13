@@ -1,4 +1,4 @@
-from typing import Callable, Mapping, Any
+from typing import Optional, Callable, List
 
 import torch as tc
 import numpy as np
@@ -12,30 +12,27 @@ class Identity(StatelessArchitecture):
     """
     def __init__(
             self,
-            input_shape: int,
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            input_shape: List[int],
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]]):
         """
         Args:
-            input_dim: Input shape.
-            w_init: Weight initializer.
-            b_init: Bias initializer.
-            **kwargs: Keyword arguments.
+            input_dim (List[int]): Input shape.
+            w_init (Optional[Callable[[tc.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[tc.Tensor], None]]): Bias initializer.
         """
         super().__init__(w_init, b_init)
         self._input_shape = input_shape
 
     @property
-    def input_shape(self):
+    def input_shape(self) -> List[int]:
         return self._input_shape
 
     @property
-    def output_dim(self):
+    def output_dim(self) -> int:
         return np.prod(self._input_shape)
 
     def forward(self, x, **kwargs):
-        assert x.shape[1:] == self.input_shape
+        assert list(x.shape[1:]) == self.input_shape
         features = x.reshape(-1, self.output_dim)
         return features

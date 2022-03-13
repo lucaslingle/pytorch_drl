@@ -2,7 +2,8 @@
 Config util.
 """
 
-from typing import Optional, Dict, Tuple, Any, Iterable
+from typing import Optional, Dict, Any, ItemsView
+import copy
 
 import yaml
 
@@ -18,8 +19,81 @@ class ConfigParser(dict):
                 defaults['env.id'].
         """
         super().__init__()
-        self._defaults = defaults if defaults else dict()
-        self._config = None
+        self._defaults = self.parse_defaults(defaults if defaults else dict())
+        self._config = copy.deepcopy(self._defaults)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns:
+
+           Dict[str, Any]: Dictionary of configuration keys and values.
+        """
+        return self._config
+
+    def make_nested(self, key: str, value: Any) -> Dict[str, Any]:
+        """
+        Transforms a key of the form 'a.b.c ... x.y.z' and a value into a
+        dictionary of the form
+            {'a': {'b': {'c': ... {'x': {'y': {'z': value}}} ... }}}.
+
+        Args:
+            key (str): Key.
+            value (Any): Value.
+
+        Returns:
+            Dict[str, Any]
+        """
+        key_prefix, _, key_suffix = key.partition('.')
+        if len(key_suffix) == 0:
+            return {key_prefix: value}
+        return {key_prefix: self.make_nested(key_suffix, value)}
+
+    def parse_defaults(self, defaults: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Parse a defaults dictionary, possibly having some defaults specified
+        by keys with the format 'a.b.c ... x.y.z', indicating nesting.
+
+        Args:
+            defaults (Dict[str, Any]): Dictionary of defaults.
+
+        Returns:
+            Dict[str, Any]: Dictionary of parsed results.
+        """
+        nonnested_defaults = {k: v for k, v in defaults.items() if '.' not in k}
+        nested_defaults = {k: v for k, v in defaults.items() if '.' in k}
+        results = nonnested_defaults
+        for k in nested_defaults:
+            nested = self.make_nested(k, nested_defaults[k])
+            results = self.merge(defaults=results, provided=nested)
+        return results
+
+    def merge(self, defaults: Dict[str, Any],
+              provided: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Merges a dictionary of provided and default values.
+        Required to properly combine nested dictionaries.
+
+        Args:
+            defaults (Dict[str, Any]): Dict of default values.
+            provided (Dict[str, Any]): Dict of provided non-default values.
+
+        Returns:
+            Dict[str, Any]: Dictionary with merged results.
+        """
+        keyspace = set(defaults.keys()).union(set(provided.keys()))
+        results = dict()
+        for key in keyspace:
+            if key not in defaults:
+                results[key] = provided[key]
+            elif key not in provided:
+                results[key] = defaults[key]
+            else:
+                if isinstance(defaults[key], dict) and isinstance(provided[key],
+                                                                  dict):
+                    results[key] = self.merge(defaults[key], provided[key])
+                else:
+                    results[key] = provided[key]
+        return results
 
     def read(self, config_path: str, verbose: bool = False) -> None:
         """
@@ -33,23 +107,9 @@ class ConfigParser(dict):
         Returns:
             None.
         """
-        config = {k: v for k,v in self._defaults.items() if '.' not in k}
-        nested_defaults = {k: v for k, v in self._defaults.items() if '.' in k}
-
-        # read in a yaml file.
         with open(config_path, 'rb') as f:
-            config.update(yaml.safe_load(f))
-
-        # support for nested defaults, makes syntax easier elsewhere.
-        for k in nested_defaults:
-            key_sequence = k.split('.')
-            subconfig = config
-            for key in key_sequence[0:-1]:
-                subconfig = subconfig[key]
-            if not hasattr(subconfig, key_sequence[-1]):
-                subconfig[key_sequence[-1]] = nested_defaults[k]
-
-        self._config = config
+            self._config = self.merge(
+                defaults=self._defaults, provided=yaml.safe_load(f))
         if verbose:
             for k in self._config:
                 print(f"{k}: {self._config[k]}")
@@ -76,9 +136,9 @@ class ConfigParser(dict):
         Returns:
             Any: item value.
         """
-        return self._config[item]
+        return self.__getitem__(item)
 
-    def items(self) -> Iterable[Tuple[str, Any]]:
+    def items(self) -> ItemsView[str, Any]:
         """
         Gets the items in the config.
 

@@ -1,4 +1,8 @@
-from typing import Mapping, Any, Type, Callable
+"""
+Action-value prediction heads.
+"""
+
+from typing import Mapping, Any, Type, Callable, Optional
 import abc
 
 import torch as tc
@@ -35,7 +39,7 @@ class DistributionalActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
             vmax (float): Maximum return value.
             num_bins (int): Number of bins for distributional value learning.
         """
-        super().__init__()
+        ActionValueHead.__init__(self)
         self._vmin = vmin
         self._vmax = vmax
         self._num_bins = num_bins
@@ -43,7 +47,8 @@ class DistributionalActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     def returns_to_bin_ids(self, returns):
         returns = tc.clip(returns, self._vmin, self._vmax)
         bin_width = (self._vmax - self._vmin) / self._num_bins
-        bin_edges = self._vmin + bin_width * tc.arange(self._num_bins+1).float()
+        bin_edges = self._vmin + bin_width * tc.arange(self._num_bins +
+                                                       1).float()
         indices = tc.bucketize(returns, bin_edges)
         return indices
 
@@ -52,13 +57,23 @@ class DiscreteActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     """
     Abstract class for discrete-action action-value prediction heads.
     """
-    def __init__(self, num_actions: int):
+    def __init__(self, num_features: int, num_actions: int):
         """
         Args:
+            num_features (int):  Number of input features.
             num_actions (int): Number of actions.
         """
-        super().__init__()
+        ActionValueHead.__init__(self)
+        self._num_features = num_features
         self._num_actions = num_actions
+
+    @property
+    def num_features(self):
+        return self._num_features
+
+    @property
+    def num_actions(self):
+        return self._num_actions
 
 
 class ContinuousActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
@@ -67,8 +82,8 @@ class ContinuousActionValueHead(ActionValueHead, metaclass=abc.ABCMeta):
     """
 
 
-class SimpleDiscreteActionValueHead(
-    SimpleActionValueHead, DiscreteActionValueHead):
+class SimpleDiscreteActionValueHead(SimpleActionValueHead,
+                                    DiscreteActionValueHead):
     """
     Simple discrete-action action-value prediction head.
 
@@ -84,10 +99,9 @@ class SimpleDiscreteActionValueHead(
             num_actions: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -97,12 +111,12 @@ class SimpleDiscreteActionValueHead(
                 HeadEligibleArchitecture.
             head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
                 for head architecture.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         SimpleActionValueHead.__init__(self)
-        DiscreteActionValueHead.__init__(self, num_actions)
+        DiscreteActionValueHead.__init__(self, num_features, num_actions)
         self._action_value_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=num_actions,
@@ -111,10 +125,8 @@ class SimpleDiscreteActionValueHead(
             **head_architecture_cls_args)
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.Tensor:
+            self, features: tc.Tensor, **kwargs: Mapping[str,
+                                                         Any]) -> tc.Tensor:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
@@ -128,8 +140,8 @@ class SimpleDiscreteActionValueHead(
         return qpreds
 
 
-class SimpleContinuousActionValueHead(
-    SimpleActionValueHead, ContinuousActionValueHead):
+class SimpleContinuousActionValueHead(SimpleActionValueHead,
+                                      ContinuousActionValueHead):
     """
     Simple continuous-action action-value prediction head.
 
@@ -142,10 +154,9 @@ class SimpleContinuousActionValueHead(
             num_features: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
-            **kwargs: Mapping[str, Any]
-    ):
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -154,8 +165,8 @@ class SimpleContinuousActionValueHead(
                 HeadEligibleArchitecture.
             head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
                 for head architecture.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         SimpleActionValueHead.__init__(self)
@@ -168,10 +179,8 @@ class SimpleContinuousActionValueHead(
             **head_architecture_cls_args)
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.Tensor:
+            self, features: tc.Tensor, **kwargs: Mapping[str,
+                                                         Any]) -> tc.Tensor:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape [batch_size, num_features].
@@ -185,8 +194,8 @@ class SimpleContinuousActionValueHead(
         return qpred
 
 
-class DistributionalDiscreteActionValueHead(
-    DistributionalActionValueHead, DiscreteActionValueHead):
+class DistributionalDiscreteActionValueHead(DistributionalActionValueHead,
+                                            DiscreteActionValueHead):
     """
     Distributional discrete-action action-value prediction head.
 
@@ -200,13 +209,12 @@ class DistributionalDiscreteActionValueHead(
             num_actions: int,
             head_architecture_cls: Type[HeadEligibleArchitecture],
             head_architecture_cls_args: Mapping[str, Any],
-            w_init: Callable[[tc.Tensor], None],
-            b_init: Callable[[tc.Tensor], None],
+            w_init: Optional[Callable[[tc.Tensor], None]],
+            b_init: Optional[Callable[[tc.Tensor], None]],
             vmin: float,
             vmax: float,
             num_bins: int,
-            **kwargs: Mapping[str, Any]
-    ):
+            **kwargs: Mapping[str, Any]):
         """
         Args:
             num_features (int): Number of input features.
@@ -216,15 +224,15 @@ class DistributionalDiscreteActionValueHead(
                 HeadEligibleArchitecture.
             head_architecture_cls_args (Mapping[str, Any]): Keyword arguments
                 for head architecture.
-            w_init (Callable[[torch.Tensor], None]): Weight initializer.
-            b_init (Callable[[torch.Tensor], None]): Bias initializer.
+            w_init (Optional[Callable[[torch.Tensor], None]]): Weight initializer.
+            b_init (Optional[Callable[[torch.Tensor], None]]): Bias initializer.
             vmin (float): Minimum return value.
             vmax (float): Maximum return value.
             num_bins (int): Number of bins for distributional value learning.
             **kwargs (Mapping[str, Any]): Keyword arguments.
         """
         DistributionalActionValueHead.__init__(self, vmin, vmax, num_bins)
-        DiscreteActionValueHead.__init__(self, num_actions)
+        DiscreteActionValueHead.__init__(self, num_features, num_actions)
         self._action_value_head = head_architecture_cls(
             input_dim=num_features,
             output_dim=num_actions * num_bins,
@@ -246,15 +254,13 @@ class DistributionalDiscreteActionValueHead(
         bin_midpoints = self._vmin + 0.5 * bin_width + \
             bin_width * tc.arange(self._num_bins).float()
         bin_midpoints = bin_midpoints.view(1, 1, self._num_bins)
-        value_dists = tc.nn.functional.softmax(dim=-1)(q_value_logits)
+        value_dists = tc.nn.functional.softmax(input=q_value_logits, dim=-1)
         q_value_means = (value_dists * bin_midpoints).sum(dim=-1)
         return q_value_means
 
     def forward(
-            self,
-            features: tc.Tensor,
-            **kwargs: Mapping[str, Any]
-    ) -> tc.Tensor:
+            self, features: tc.Tensor, **kwargs: Mapping[str,
+                                                         Any]) -> tc.Tensor:
         """
         Args:
             features (torch.Tensor): Torch tensor with shape [batch_size, num_features].

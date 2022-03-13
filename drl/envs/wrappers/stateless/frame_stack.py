@@ -1,17 +1,32 @@
+"""
+Frame stack wrapper.
+"""
+
+from typing import Union, Mapping, Any
 from collections import deque
 
 import numpy as np
 import gym
 
 from drl.envs.wrappers.stateless.abstract import Wrapper
+from drl.utils.types import Observation, Action, EnvOutput
 
 
 class FrameStackWrapper(Wrapper):
-    def __init__(self, env, num_stack, lazy=True):
+    """
+    Frame stacking wrapper. Stacks frames from wrapped env together,
+    with the intention of achieving Markov property for the observations.
+    """
+    def __init__(
+            self,
+            env: Union[gym.core.Env, Wrapper],
+            num_stack: int,
+            lazy: bool = False):
         """
         Args:
-            env (Env): OpenAI gym environment instance.
+            env (Union[gym.core.Env, Wrapper]): OpenAI gym env or Wrapper thereof.
             num_stack (int): Number of frames to stack.
+            lazy (bool): Use lazy frames? Default: False.
         """
         super().__init__(env)
         self._num_frames = num_stack
@@ -19,26 +34,26 @@ class FrameStackWrapper(Wrapper):
         self._frames = deque(maxlen=self._num_frames)
         self._set_observation_space()
 
-    def _set_observation_space(self):
+    def _set_observation_space(self) -> None:
         start_shape = self.env.observation_space.shape
         stacked_shape = (*start_shape[:-1], start_shape[-1] * self._num_frames)
         dtype = self.env.observation_space.dtype
         self.observation_space = gym.spaces.Box(
             low=0, high=255, shape=stacked_shape, dtype=dtype)
 
-    def _get_obs(self):
+    def _get_obs(self) -> Union[Observation, 'LazyFrames']:
         assert len(self._frames) == self._num_frames
         if not self._lazy:
             return np.concatenate(list(self._frames), axis=-1)
         return LazyFrames(list(self._frames))
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs: Mapping[str, Any]) -> Observation:
         obs = self.env.reset()
         for _ in range(self._num_frames):
             self._frames.append(obs)
         return self._get_obs()
 
-    def step(self, action):
+    def step(self, action: Action) -> EnvOutput:
         obs, rew, done, info = self.env.step(action)
         self._frames.append(obs)
         return self._get_obs(), rew, done, info

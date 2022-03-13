@@ -48,11 +48,16 @@ cd pytorch_drl
 pip install -e .
 ```
 
-## Overview
+## Usage
 
 ### Structure
 
-This repo comes in two parts: a python package and a script. 
+This repo comes in two parts: a python package and a script.
+
+### Package
+
+Support for readthedocs integration will be added in the future.  
+To generate the documentation as HTML locally, you can follow the instructions [here](docs/render.md).
 
 ### Script
 

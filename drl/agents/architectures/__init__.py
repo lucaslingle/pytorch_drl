@@ -4,11 +4,11 @@ from drl.agents.architectures.stateless import (
     HeadEligibleArchitecture,
     AsyncCNN,
     DuelingArchitecture,
+    Identity,
     Linear,
     MLP,
-    NatureCNN
-)
-
+    NatureCNN)
+from drl.agents.architectures.stateful import StatefulArchitecture
 
 __all__ = [
     "Architecture",
@@ -16,7 +16,9 @@ __all__ = [
     "HeadEligibleArchitecture",
     "AsyncCNN",
     "DuelingArchitecture",
+    "Identity",
     "Linear",
     "MLP",
-    "NatureCNN"
+    "NatureCNN",
+    "StatefulArchitecture"
 ]

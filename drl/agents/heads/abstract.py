@@ -9,11 +9,9 @@ class Head(tc.nn.Module, metaclass=abc.ABCMeta):
     """
     Runs a prediction op.
     """
-
     @abc.abstractmethod
     def forward(
-            self,
-            features: tc.Tensor
+            self, features: tc.Tensor
     ) -> Union[tc.Tensor, tc.distributions.Distribution]:
         """
         Forward method.

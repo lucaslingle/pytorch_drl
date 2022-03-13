@@ -7,10 +7,7 @@ from drl.utils.types import Module, Optimizer, Scheduler
 
 
 def get_optimizer(
-        model: Module,
-        cls_name: str,
-        cls_args: Dict[str, Any]
-) -> Optimizer:
+        model: Module, cls_name: str, cls_args: Dict[str, Any]) -> Optimizer:
     """
     Creates an optimizer.
 
@@ -39,10 +36,8 @@ def get_optimizer(
 
 
 def get_scheduler(
-        optimizer: Optimizer,
-        cls_name: str,
-        cls_args: Dict[str, Any]
-) -> Optional[Scheduler]:
+        optimizer: Optimizer, cls_name: str,
+        cls_args: Dict[str, Any]) -> Optional[Scheduler]:
     """
     Creates a learning rate scheduler.
 
@@ -66,8 +61,7 @@ def get_scheduler(
 
 def get_weight_decay_param_groups(
         model: Module,
-        wd: float
-) -> List[Dict[str, Union[tc.nn.parameter.Parameter, float]]]:
+        wd: float) -> List[Dict[str, Union[tc.nn.parameter.Parameter, float]]]:
     """
     Splits a model's parameters into two parameter groups:
         those to apply weight decay to, and those not to.
@@ -89,7 +83,9 @@ def get_weight_decay_param_groups(
             no_decay.append(param)
         else:
             apply_decay.append(param)
+    # yapf: disable
     return [
         {'params': apply_decay, 'weight_decay': wd},
         {'params': no_decay, 'weight_decay': 0.0}
     ]
+    # yapf: enable
