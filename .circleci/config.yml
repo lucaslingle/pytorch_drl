@@ -24,6 +24,7 @@ jobs:
             coverage combine
             coverage report
             coverage html
+            coveralls
       - store_test_results:
           path: test-results
       - store_artifacts:

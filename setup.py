@@ -9,6 +9,7 @@ setup(
     install_requires=[
         'atari-py==0.2.6',
         'coverage==6.3.1',
+        'coveralls==3.3.1',
         'gym==0.18.0',
         'moviepy==1.0.3',
         'opencv-python==4.5.2.52',
